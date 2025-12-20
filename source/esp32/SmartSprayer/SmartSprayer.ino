@@ -6,6 +6,9 @@
 #include "FIREBASE_CONFIG.h"
 #include "NTP_CONFIG.h"
 #include "WEATHER_CONFIG.h"
+#include "PINS_CONFIG.h"
+#include "BUZZER_CONFIG.h"
+#include "LED_CONFIG.h"
 
 void setup() {
   Serial.begin(9600);
@@ -16,6 +19,8 @@ void setup() {
   initWIFI();
   initFIREBASE();
   initNTP();
+  initBuzzer();
+  initLEDs();
 }
 
 void loop() {
@@ -54,11 +59,27 @@ void loop() {
       Serial.print("Distance 2: ");
       Serial.print(dist);
       Serial.println(" cm");
-    } else if (command == "test-display") {
-      clearLCD();
-      setLCDText("Test Display", 0, 0);
-      setLCDText("Smart Sprayer", 0, 1);
-      Serial.println("LCD test displayed");
+    } else if (command == "buzzer-on") {
+      buzzerOn();
+      Serial.println("Buzzer turned ON");
+    } else if (command == "buzzer-off") {
+      buzzerOff();
+      Serial.println("Buzzer turned OFF");
+    } else if (command == "buzzer-beep") {
+      buzzerBeep();
+      Serial.println("Buzzer beeped");
+    } else if (command == "led-ok") {
+      setSystemOK();
+      Serial.println("System OK LED ON");
+    } else if (command == "led-error") {
+      setSystemError();
+      Serial.println("System Error LED ON");
+    } else if (command == "led-warning") {
+      setSystemWarning();
+      Serial.println("System Warning LEDs ON");
+    } else if (command == "led-clear") {
+      clearSystemLEDs();
+      Serial.println("System LEDs cleared");
     } else if (command == "check-weather") {
       bool willRain = checkWeatherForRain();
       if (willRain) {

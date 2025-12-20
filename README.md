@@ -34,6 +34,8 @@ The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ES
 - 20x4 I2C LCD display module
 - GSM module (SIM800L or compatible)
 - 2-channel relay module (5V or 12V based on application)
+- Buzzer module (active/passive buzzer)
+- LED indicators (2 units: OK and Error status)
 
 ### Additional Components
 - SIM card for GSM module
@@ -57,6 +59,9 @@ The system uses centralized pin definitions in `PINS_CONFIG.h` for easy modifica
 | GSM Module | GPIO 11 | TX | Transmit data to GSM module |
 | LCD Display | GPIO 21 | SDA | I2C data line (default ESP32 I2C) |
 | LCD Display | GPIO 22 | SCL | I2C clock line (default ESP32 I2C) |
+| Buzzer | GPIO 17 | Control | Audio alert output |
+| System OK LED | GPIO 18 | Status | Indicates system OK state |
+| System Error LED | GPIO 19 | Status | Indicates system error state |
 
 ## Software Requirements
 
@@ -165,6 +170,17 @@ The system provides a comprehensive serial command interface for testing and con
 ##### Display Testing
 - `test-display`: Displays test information on the LCD screen
 
+##### Buzzer Control
+- `buzzer-on`: Turns buzzer on continuously
+- `buzzer-off`: Turns buzzer off
+- `buzzer-beep`: Produces a short beep
+
+##### LED Control
+- `led-ok`: Turns on system OK LED
+- `led-error`: Turns on system error LED
+- `led-warning`: Turns on both LEDs for warning
+- `led-clear`: Turns off all system LEDs
+
 ##### Weather Monitoring
 - `check-weather`: Fetches current weather forecast and checks for rain today
 
@@ -194,6 +210,19 @@ LCD test displayed
 ### PIN Configuration (PINS_CONFIG.h)
 - Centralized pin definitions for all hardware components
 - Easy to modify pin assignments without changing multiple files
+
+### Buzzer Functions (BUZZER_CONFIG.h)
+- `void initBuzzer()`: Initializes buzzer pin
+- `void buzzerOn()`: Turns buzzer on continuously
+- `void buzzerOff()`: Turns buzzer off
+- `void buzzerBeep(int duration_ms)`: Produces a beep for specified duration
+
+### LED Functions (LED_CONFIG.h)
+- `void initLEDs()`: Initializes LED pins
+- `void setSystemOK()`: Turns on OK LED, off error LED
+- `void setSystemError()`: Turns on error LED, off OK LED
+- `void setSystemWarning()`: Turns on both LEDs
+- `void clearSystemLEDs()`: Turns off both LEDs
 
 ### GSM Functions (GSM_CONFIG.h)
 - `void initGSM()`: Initializes GSM module communication
@@ -254,6 +283,7 @@ Smart-Sprayer/
 │       └── SmartSprayer/
 │           ├── SmartSprayer.ino
 │           ├── PINS_CONFIG.h
+│           ├── PINS_CONFIG.h
 │           ├── LCD_CONFIG.h
 │           ├── GSM_CONFIG.h
 │           ├── GSM_RECIPIENTS.h (ignored)
@@ -264,6 +294,8 @@ Smart-Sprayer/
 │           ├── FIREBASE_CONFIG.h
 │           ├── NTP_CONFIG.h
 │           ├── WEATHER_CONFIG.h
+│           ├── BUZZER_CONFIG.h
+│           ├── LED_CONFIG.h
 │           ├── WEATHER_CREDENTIALS.h (ignored)
 │           ├── WEATHER_CREDENTIALS_template.h
 │           ├── FIREBASE_CREDENTIALS.h (ignored)

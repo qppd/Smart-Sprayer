@@ -19,4 +19,11 @@
 #define LCD_SDA_PIN 21
 #define LCD_SCL_PIN 22
 
+// Buzzer Pin
+#define BUZZER_PIN 17
+
+// System Status LED Pins
+#define SYSTEM_OK_LED 18
+#define SYSTEM_ERROR_LED 19
+
 #endif // PINS_CONFIG_H
