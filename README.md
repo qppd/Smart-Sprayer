@@ -1,0 +1,292 @@
+# Smart-Sprayer
+
+## Overview
+
+The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ESP32 microcontroller platform. It is designed to revolutionize precision farming by providing intelligent pesticide spraying capabilities. The system integrates ultrasonic sensors for distance measurement, GSM communication for remote monitoring, LCD display for local status indication, and relay-controlled actuators for spray mechanism operation.
+
+## Features
+
+### Core Functionality
+- **Obstacle Detection**: Ultrasonic sensor-based distance measurement for automatic spray activation/deactivation
+- **Remote Monitoring**: GSM module integration for SMS notifications and status updates
+- **Local Display**: 20x4 LCD screen for real-time system status and information display
+- **Actuator Control**: Dual relay system for controlling spray pumps and valves
+- **Serial Interface**: Command-line interface for system testing and configuration
+
+### Advanced Features
+- **Precision Spraying**: Distance-based spray control to avoid over-spraying
+- **Network Connectivity**: Real-time network status monitoring
+- **Bulk Messaging**: SMS broadcasting to multiple recipients
+- **Modular Design**: Separate configuration headers for easy maintenance and updates
+
+## Hardware Requirements
+
+### Microcontroller
+- ESP32 development board (ESP32-WROOM-32 recommended)
+
+### Sensors and Modules
+- HC-SR04 ultrasonic distance sensor (1 unit)
+- 20x4 I2C LCD display module
+- GSM module (SIM800L or compatible)
+- 2-channel relay module (5V or 12V based on application)
+
+### Additional Components
+- SIM card for GSM module
+- Power supply (5V for ESP32, appropriate voltage for relays)
+- Jumper wires and breadboard for prototyping
+- Antenna for GSM module
+
+## Pin Configuration
+
+The system uses the following GPIO pin assignments on the ESP32:
+
+| Component | Pin | Function | Notes |
+|-----------|-----|----------|-------|
+| Ultrasonic Sensor | GPIO 12 | Trig | Trigger pin for ultrasonic pulses |
+| Ultrasonic Sensor | GPIO 13 | Echo | Echo pin for distance measurement |
+| Relay Module | GPIO 4 | Relay 1 Control | Controls first spray actuator |
+| Relay Module | GPIO 5 | Relay 2 Control | Controls second spray actuator |
+| GSM Module | GPIO 10 | RX | Receive data from GSM module |
+| GSM Module | GPIO 11 | TX | Transmit data to GSM module |
+| LCD Display | GPIO 21 | SDA | I2C data line (default ESP32 I2C) |
+| LCD Display | GPIO 22 | SCL | I2C clock line (default ESP32 I2C) |
+
+## Software Requirements
+
+### Development Environment
+- Arduino IDE 1.8.19 or later
+- ESP32 board support package for Arduino IDE
+
+### Required Libraries
+- `LiquidCrystal_I2C` (for LCD display control)
+- `SoftwareSerial` (for GSM module communication)
+
+### Installation Steps
+1. Install Arduino IDE from the official website
+2. Add ESP32 board support:
+   - Open Arduino IDE
+   - Go to File > Preferences
+   - Add `https://dl.espressif.com/dl/package_esp32_index.json` to Additional Board Manager URLs
+   - Tools > Board > Boards Manager > Search for ESP32 > Install
+3. Install required libraries:
+   - Sketch > Include Library > Manage Libraries
+   - Search and install `LiquidCrystal_I2C` and `SoftwareSerial`
+
+## Installation and Setup
+
+### Repository Setup
+```bash
+git clone https://github.com/qppd/Smart-Sprayer.git
+cd Smart-Sprayer
+```
+
+### Hardware Assembly
+1. Connect the ultrasonic sensor to GPIO 12 (Trig) and GPIO 13 (Echo)
+2. Wire the relay module to GPIO 4 and GPIO 5
+3. Connect GSM module to GPIO 10 (RX) and GPIO 11 (TX)
+4. Attach the I2C LCD to the default I2C pins (GPIO 21 SDA, GPIO 22 SCL)
+5. Insert SIM card into GSM module and attach antenna
+6. Power the system with appropriate voltage sources
+
+### Software Upload
+1. Open `source/esp32/SmartSprayer/SmartSprayer.ino` in Arduino IDE
+2. Select ESP32 Dev Module from Tools > Board
+3. Choose the correct COM port
+4. Click Upload to flash the firmware
+
+## Usage
+
+### Basic Operation
+1. Power on the ESP32 board
+2. The system will initialize all modules automatically
+3. LCD will display initialization status
+4. System is ready for operation
+
+### Serial Command Interface
+The system provides a comprehensive serial command interface for testing and configuration. Connect to the ESP32 using Arduino Serial Monitor at 9600 baud rate.
+
+#### Available Commands
+
+##### Relay Control
+- `operate-relay1_on`: Activates relay 1 (turns spray pump/valve on)
+- `operate-relay1_off`: Deactivates relay 1 (turns spray pump/valve off)
+- `operate-relay2_on`: Activates relay 2 (turns spray pump/valve on)
+- `operate-relay2_off`: Deactivates relay 2 (turns spray pump/valve off)
+
+##### GSM Communication
+- `send-sms`: Sends a test SMS message to the default number
+- `send-sms-to-all`: Broadcasts SMS to all configured recipients
+- `check-network`: Queries GSM network registration status
+
+##### Sensor Reading
+- `get-distance1`: Retrieves current distance measurement from ultrasonic sensor
+- `get-distance2`: Retrieves current distance measurement (same as distance1 for single sensor)
+
+##### Display Testing
+- `test-display`: Displays test information on the LCD screen
+
+### Command Usage Examples
+```
+operate-relay1_on
+Relay 1 turned ON
+
+get-distance1
+Distance 1: 45 cm
+
+test-display
+LCD test displayed
+```
+
+## API Reference
+
+### LCD Functions (LCD_CONFIG.h)
+- `void initLCD()`: Initializes the LCD display
+- `void clearLCD()`: Clears the LCD screen
+- `void setLCDText(String text, int x, int y)`: Displays text at specified coordinates
+- `void setLCDText(double value, int x, int y)`: Displays numeric value at coordinates
+- `void setLCDText(float value, int x, int y)`: Displays float value at coordinates
+- `void setLCDText(int value, int x, int y)`: Displays integer value at coordinates
+- `void setLCDText(char text, int x, int y)`: Displays character at coordinates
+
+### GSM Functions (GSM_CONFIG.h)
+- `void initGSM()`: Initializes GSM module communication
+- `void sendSMS(String number, String message)`: Sends SMS to specified number
+- `void sendSMSToAll(String message)`: Sends SMS to all configured numbers
+- `void checkNetwork()`: Checks GSM network registration status
+
+### Relay Functions (RELAY_CONFIG.h)
+- `void initRELAY()`: Sets up relay control pins
+- `void operateRELAY(uint16_t RELAY, boolean OPENED)`: Controls relay state
+- `void operateSSR(uint16_t RELAY, boolean OPENED)`: Controls solid-state relay
+
+### Ultrasonic Functions (SR04_CONFIG.h)
+- `void initSR04()`: Initializes ultrasonic sensor pins
+- `long readDistance()`: Returns distance measurement in centimeters
+
+## Project Structure
+
+```
+Smart-Sprayer/
+├── LICENSE
+├── README.md
+├── diagram/
+│   └── [circuit diagrams and schematics]
+├── model/
+│   └── [AI/ML models for spray optimization]
+├── source/
+│   └── esp32/
+│       └── SmartSprayer/
+│           ├── SmartSprayer.ino
+│           ├── LCD_CONFIG.h
+│           ├── GSM_CONFIG.h
+│           ├── RELAY_CONFIG.h
+│           └── SR04_CONFIG.h
+└── wiring/
+    └── [wiring diagrams and instructions]
+```
+
+## Configuration
+
+### GSM Module Configuration
+Edit `GSM_CONFIG.h` to modify:
+- Phone numbers for SMS recipients
+- GSM module pins (if different from defaults)
+- Communication baud rate
+
+### LCD Configuration
+Modify LCD parameters in `LCD_CONFIG.h`:
+- I2C address (default: 0x27)
+- Display dimensions (default: 20x4)
+
+### Relay Configuration
+Adjust relay settings in `RELAY_CONFIG.h`:
+- GPIO pins for relays
+- Relay logic (active high/low)
+
+### Ultrasonic Sensor Configuration
+Configure sensor parameters in `SR04_CONFIG.h`:
+- Trigger and echo pins
+- Measurement timing parameters
+
+## Troubleshooting
+
+### Common Issues
+
+#### ESP32 Not Detected
+- Ensure correct COM port selection in Arduino IDE
+- Check USB cable and drivers
+- Try different USB port
+
+#### LCD Not Displaying
+- Verify I2C connections and address
+- Check power supply to LCD
+- Confirm I2C pins (SDA: GPIO 21, SCL: GPIO 22)
+
+#### GSM Not Responding
+- Check SIM card insertion and PIN status
+- Verify antenna connection
+- Ensure sufficient signal strength
+- Check GSM module power supply
+
+#### Ultrasonic Sensor Inaccurate Readings
+- Ensure clear line of sight for sensor
+- Check voltage levels (5V required)
+- Verify pin connections
+- Test with known distances
+
+#### Relay Not Activating
+- Confirm relay module power supply
+- Check GPIO pin assignments
+- Verify relay logic (normally open/closed)
+
+### Debug Mode
+Enable serial debugging by monitoring the Serial output at 9600 baud. The system provides detailed status messages during initialization and operation.
+
+## Contributing
+
+We welcome contributions to the Smart-Sprayer project. Please follow these guidelines:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+### Development Guidelines
+- Maintain modular code structure
+- Add comments for complex logic
+- Test all changes thoroughly
+- Update documentation for new features
+- Follow Arduino coding standards
+
+## License
+
+This project is licensed under the terms specified in the LICENSE file. See LICENSE for details.
+
+## Acknowledgments
+
+- ESP32 community for microcontroller support
+- Arduino framework developers
+- Open-source library contributors
+
+## Contact
+
+For questions, issues, or contributions, please use the GitHub repository's issue tracker or pull request system.
+
+## Version History
+
+- v1.0.0: Initial release with basic functionality
+  - Ultrasonic distance measurement
+  - GSM SMS communication
+  - LCD status display
+  - Relay control system
+  - Serial command interface
+
+## Future Enhancements
+
+- Integration with GPS for location tracking
+- Machine learning models for spray optimization
+- Mobile app for remote control
+- Data logging and analytics
+- Battery management system
+- Weather sensor integration
