@@ -5,9 +5,18 @@
 #include "GSM_RECIPIENTS.h"
 #include "PINS_CONFIG.h"
 
+#define PWR_KEY_PIN 3
+
 SoftwareSerial sim(GSM_RX_PIN, GSM_TX_PIN); // RX, TX
 
 void initGSM() {
+  pinMode(PWR_KEY_PIN, OUTPUT);
+  digitalWrite(PWR_KEY_PIN, HIGH);
+  // Power on SIM800L
+  digitalWrite(PWR_KEY_PIN, LOW);
+  delay(1000);
+  digitalWrite(PWR_KEY_PIN, HIGH);
+  delay(5000); // Wait for module to boot
   sim.begin(9600);
   delay(1000);
   sim.println("AT");
