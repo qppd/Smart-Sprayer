@@ -3,9 +3,6 @@
 
 #include "PINS_CONFIG.h"
 
-// WiFi Manager Reset Button Pin
-#define WIFI_RESET_BUTTON_PIN 23  // GPIO 23 - Safe for input, no boot conflicts
-
 // Button configuration
 #define BUTTON_DEBOUNCE_DELAY 50  // Debounce delay in milliseconds
 #define WIFI_RESET_HOLD_TIME 3000 // Hold time for WiFi reset (3 seconds)
