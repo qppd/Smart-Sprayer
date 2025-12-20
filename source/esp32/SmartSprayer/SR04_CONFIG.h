@@ -37,4 +37,33 @@ long readDistance2() {
   return distance;
 }
 
+// Container level calculation functions
+float calculateFillLevel(long distance) {
+  // Calculate filled height: container height - measured distance
+  float filledHeight = CONTAINER_HEIGHT - distance;
+  
+  // Ensure filled height is not negative
+  if (filledHeight < 0) {
+    filledHeight = 0;
+  }
+  
+  return filledHeight;
+}
+
+float calculateFillPercentage(long distance) {
+  float filledHeight = calculateFillLevel(distance);
+  
+  // Calculate percentage: (filled height / total height) * 100
+  float percentage = (filledHeight / CONTAINER_HEIGHT) * 100.0;
+  
+  // Ensure percentage is within 0-100 range
+  if (percentage > 100.0) {
+    percentage = 100.0;
+  } else if (percentage < 0.0) {
+    percentage = 0.0;
+  }
+  
+  return percentage;
+}
+
 #endif

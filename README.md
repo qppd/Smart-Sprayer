@@ -181,6 +181,10 @@ The system provides a comprehensive serial command interface for testing and con
 - `operate-relay1_off`: Deactivates relay 1 (turns spray pump/valve off)
 - `operate-relay2_on`: Activates relay 2 (turns spray pump/valve on)
 - `operate-relay2_off`: Deactivates relay 2 (turns spray pump/valve off)
+- `operate-ssr1_on`: Activates solid state relay 1
+- `operate-ssr1_off`: Deactivates solid state relay 1
+- `operate-ssr2_on`: Activates solid state relay 2
+- `operate-ssr2_off`: Deactivates solid state relay 2
 
 ##### GSM Communication
 - `send-sms`: Sends a test SMS message to the default number
@@ -190,6 +194,7 @@ The system provides a comprehensive serial command interface for testing and con
 ##### Sensor Reading
 - `get-distance1`: Retrieves current distance measurement from ultrasonic sensor 1 (container level)
 - `get-distance2`: Retrieves current distance measurement from ultrasonic sensor 2
+- `get-level`: Calculates and displays container fill level and percentage
 
 ##### Display Testing
 - `test-display`: Displays test information on the LCD screen
@@ -204,6 +209,7 @@ The system provides a comprehensive serial command interface for testing and con
 - `led-error`: Turns on system error LED
 - `led-warning`: Turns on both LEDs for warning
 - `led-clear`: Turns off all system LEDs
+- `set-leds`: Manually set LED states (OK and Error)
 
 ##### Weather Monitoring
 - `check-weather`: Fetches current weather forecast and checks for rain today
@@ -215,7 +221,11 @@ The system provides a comprehensive serial command interface for testing and con
 ##### NTP Time Functions
 - `get-time`: Retrieves and displays current formatted date/time
 - `get-timestamp`: Gets current NTP timestamp
+- `get-timestamp-fallback`: Gets NTP timestamp with fallback
+- `get-log-prefix`: Gets formatted log prefix with timestamp
+- `get-datetime-fallback`: Gets formatted date/time with fallback
 - `check-ntp`: Checks if NTP time is synchronized
+- `update-ntp`: Manually updates NTP date/time
 
 ##### WiFi Management
 - `wifi-reset`: Resets WiFi settings and restarts in AP mode
@@ -230,6 +240,9 @@ Relay 1 turned ON
 
 get-distance1
 Distance 1: 45 cm
+
+get-level
+Distance: 45 cm, Filled: 55 cm, Percentage: 55 %
 
 test-display
 LCD test displayed
@@ -296,6 +309,8 @@ Resetting WiFi settings...
 - `void initSR04()`: Initializes ultrasonic sensor pins
 - `long readDistance()`: Returns distance measurement in centimeters from sensor 1 (used for container level monitoring)
 - `long readDistance2()`: Returns distance measurement in centimeters from sensor 2
+- `float calculateFillLevel(long distance)`: Calculates filled height in container (container height - distance)
+- `float calculateFillPercentage(long distance)`: Calculates fill percentage (0-100%)
 
 ### WiFi Functions (WIFI_CONFIG.h)
 - `void initWIFI()`: Initializes WiFi connection with auto-configuration portal

@@ -47,6 +47,18 @@ void loop() {
     } else if (command == "operate-relay2_off") {
       operateRELAY(RELAY_2, false);
       Serial.println("Relay 2 turned OFF");
+    } else if (command == "operate-ssr1_on") {
+      operateSSR(RELAY_1, true);
+      Serial.println("SSR 1 turned ON");
+    } else if (command == "operate-ssr1_off") {
+      operateSSR(RELAY_1, false);
+      Serial.println("SSR 1 turned OFF");
+    } else if (command == "operate-ssr2_on") {
+      operateSSR(RELAY_2, true);
+      Serial.println("SSR 2 turned ON");
+    } else if (command == "operate-ssr2_off") {
+      operateSSR(RELAY_2, false);
+      Serial.println("SSR 2 turned OFF");
     } else if (command == "send-sms") {
       sendSMS("+1234567890", "Test SMS from Smart Sprayer");
       Serial.println("SMS sent");
@@ -87,6 +99,12 @@ void loop() {
     } else if (command == "led-clear") {
       clearSystemLEDs();
       Serial.println("System LEDs cleared");
+    } else if (command == "set-leds") {
+      // Example: set-leds 1 0 (OK on, Error off)
+      int ok_state = 1;
+      int error_state = 0;
+      setSystemLEDs(ok_state, error_state);
+      Serial.println("System LEDs set manually");
     } else if (command == "check-weather") {
       bool willRain = checkWeatherForRain();
       if (willRain) {
@@ -110,10 +128,25 @@ void loop() {
       unsigned long ts = getNTPTimestamp();
       Serial.print("NTP Timestamp: ");
       Serial.println(ts);
+    } else if (command == "get-timestamp-fallback") {
+      unsigned long ts = getNTPTimestampWithFallback();
+      Serial.print("NTP Timestamp (with fallback): ");
+      Serial.println(ts);
+    } else if (command == "get-log-prefix") {
+      String prefix = getCurrentLogPrefix();
+      Serial.print("Log prefix: ");
+      Serial.println(prefix);
+    } else if (command == "get-datetime-fallback") {
+      String dt = getFormattedDateTimeWithFallback();
+      Serial.print("DateTime (with fallback): ");
+      Serial.println(dt);
     } else if (command == "check-ntp") {
       bool synced = isNTPSynced();
       Serial.print("NTP Synced: ");
       Serial.println(synced ? "Yes" : "No");
+    } else if (command == "update-ntp") {
+      getNTPDate();
+      Serial.println("NTP date updated");
     } else if (command == "wifi-reset") {
       Serial.println("Resetting WiFi settings...");
       resetWiFiSettings();
@@ -121,6 +154,17 @@ void loop() {
       bool pressed = isButtonPressed();
       Serial.print("Button pressed: ");
       Serial.println(pressed ? "Yes" : "No");
+    } else if (command == "get-level") {
+      long dist = readDistance();
+      float level = calculateFillLevel(dist);
+      float percentage = calculateFillPercentage(dist);
+      Serial.print("Distance: ");
+      Serial.print(dist);
+      Serial.print(" cm, Filled: ");
+      Serial.print(level);
+      Serial.print(" cm, Percentage: ");
+      Serial.print(percentage);
+      Serial.println(" %");
     } else {
       Serial.println("Unknown command");
     }

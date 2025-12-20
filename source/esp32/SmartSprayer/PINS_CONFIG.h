@@ -29,4 +29,7 @@
 // WiFi Manager Reset Button Pin
 #define WIFI_RESET_BUTTON_PIN 23
 
+// Container Level Configuration
+#define CONTAINER_HEIGHT 100.0  // Container height in cm (adjust as needed)
+
 #endif // PINS_CONFIG_H
