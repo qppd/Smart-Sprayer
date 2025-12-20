@@ -26,4 +26,7 @@
 #define SYSTEM_OK_LED 18
 #define SYSTEM_ERROR_LED 19
 
+// WiFi Manager Reset Button Pin
+#define WIFI_RESET_BUTTON_PIN 23
+
 #endif // PINS_CONFIG_H

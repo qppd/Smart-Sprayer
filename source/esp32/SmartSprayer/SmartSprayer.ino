@@ -1,7 +1,6 @@
 #include "LCD_CONFIG.h"
 #include "GSM_CONFIG.h"
 #include "RELAY_CONFIG.h"
-#include "SR04_CONFIG.h"
 #include "WIFI_CONFIG.h"
 #include "FIREBASE_CONFIG.h"
 #include "NTP_CONFIG.h"
@@ -9,6 +8,7 @@
 #include "PINS_CONFIG.h"
 #include "BUZZER_CONFIG.h"
 #include "LED_CONFIG.h"
+#include "BUTTON_CONFIG.h"
 
 void setup() {
   Serial.begin(9600);
@@ -21,9 +21,16 @@ void setup() {
   initNTP();
   initBuzzer();
   initLEDs();
+  initButton();
 }
 
 void loop() {
+  // Check for WiFi reset button trigger
+  if (checkWiFiResetTrigger()) {
+    Serial.println("WiFi reset triggered - restarting in AP mode...");
+    resetWiFiSettings();
+  }
+
   if (Serial.available()) {
     String command = Serial.readStringUntil('\n');
     command.trim();

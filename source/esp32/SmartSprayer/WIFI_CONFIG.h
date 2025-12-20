@@ -22,4 +22,12 @@ void initWIFI() {
     initNTP();
 }
 
+void resetWiFiSettings() {
+    WiFiManager wifiManager;
+    wifiManager.resetSettings();
+    Serial.println("WiFi settings reset. Restarting to enter AP mode...");
+    delay(1000);
+    ESP.restart();
+}
+
 #endif // WIFI_CONFIG_H
