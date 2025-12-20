@@ -207,6 +207,13 @@ LCD test displayed
 
 ### NTP Functions (NTP_CONFIG.h)
 - `void initNTP()`: Initializes NTP time synchronization
+- `void getNTPDate()`: Retrieves and formats current date/time
+- `unsigned long getNTPTimestamp()`: Gets Unix timestamp from NTP
+- `unsigned long getNTPTimestampWithFallback()`: NTP timestamp with automatic fallback
+- `bool isNTPSynced()`: Checks if NTP time is synchronized
+- `String getFormattedDateTime()`: Returns formatted date/time string
+- `String getFormattedDateTimeWithFallback()`: Formatted time with fallback indication
+- `String getCurrentLogPrefix()`: Provides timestamp prefix for logging
 
 ## Project Structure
 
