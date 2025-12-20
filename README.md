@@ -2,12 +2,12 @@
 
 ## Overview
 
-The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ESP32 microcontroller platform. It is designed to revolutionize precision farming by providing intelligent pesticide spraying capabilities. The system integrates ultrasonic sensors for distance measurement, GSM communication for remote monitoring, LCD display for local status indication, relay-controlled actuators for spray mechanism operation, WiFi connectivity for cloud integration, and Firebase for real-time data synchronization and remote control.
+The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ESP32 microcontroller platform. It is designed to revolutionize precision farming by providing intelligent pesticide spraying capabilities. The system integrates ultrasonic sensors for container level monitoring, GSM communication for remote monitoring, LCD display for local status indication, relay-controlled actuators for spray mechanism operation, WiFi connectivity for cloud integration, and Firebase for real-time data synchronization and remote control.
 
 ## Features
 
 ### Core Functionality
-- **Obstacle Detection**: Ultrasonic sensor-based distance measurement for automatic spray activation/deactivation
+- **Container Level Monitoring**: Ultrasonic sensor-based measurement of pesticide container fill percentage
 - **Remote Monitoring**: GSM module integration for SMS notifications and status updates
 - **Local Display**: 20x4 LCD screen for real-time system status and information display
 - **Actuator Control**: Dual relay system for controlling spray pumps and valves
@@ -23,6 +23,16 @@ The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ES
 - **Real-time Streaming**: Firebase streams for live control and monitoring
 - **Weather Integration**: OpenWeatherMap API for rain detection to prevent spraying in bad weather
 - **Modular Design**: Separate configuration headers for easy maintenance and updates
+
+### Container Level Calculation
+The ultrasonic sensor measures the distance from the sensor to the surface of the pesticide in the container. To calculate the fill percentage:
+
+1. Define a variable for the total height of the container (e.g., `CONTAINER_HEIGHT` in cm)
+2. Measure the distance from the sensor to the liquid surface using the SR04 sensor
+3. Calculate the filled height: `filledHeight = CONTAINER_HEIGHT - measuredDistance`
+4. Calculate the percentage: `percentage = (filledHeight / CONTAINER_HEIGHT) * 100`
+
+This allows precise monitoring of pesticide levels to prevent running out during spraying operations.
 
 ## Hardware Requirements
 
@@ -126,6 +136,13 @@ cd Smart-Sprayer
 ```
 
 ### Hardware Assembly
+
+#### Wiring Diagrams
+Refer to the wiring diagrams in the `wiring/` directory for complete circuit connections:
+- [Smart-Sprayer.fzz](wiring/Smart-Sprayer.fzz) - Fritzing diagram file
+- ![Smart-Sprayer Wiring Diagram](wiring/Smart-Sprayer.png)
+
+#### Assembly Instructions
 1. Connect the ultrasonic sensor to GPIO 12 (Trig) and GPIO 13 (Echo)
 2. Wire the relay module to GPIO 4 and GPIO 5
 3. Connect GSM module to GPIO 10 (RX) and GPIO 11 (TX)
@@ -164,7 +181,7 @@ The system provides a comprehensive serial command interface for testing and con
 - `check-network`: Queries GSM network registration status
 
 ##### Sensor Reading
-- `get-distance1`: Retrieves current distance measurement from ultrasonic sensor 1
+- `get-distance1`: Retrieves current distance measurement from ultrasonic sensor 1 (container level)
 - `get-distance2`: Retrieves current distance measurement from ultrasonic sensor 2
 
 ##### Display Testing
@@ -237,7 +254,7 @@ LCD test displayed
 
 ### Ultrasonic Functions (SR04_CONFIG.h)
 - `void initSR04()`: Initializes ultrasonic sensor pins
-- `long readDistance()`: Returns distance measurement in centimeters from sensor 1
+- `long readDistance()`: Returns distance measurement in centimeters from sensor 1 (used for container level monitoring)
 - `long readDistance2()`: Returns distance measurement in centimeters from sensor 2
 
 ### WiFi Functions (WIFI_CONFIG.h)
