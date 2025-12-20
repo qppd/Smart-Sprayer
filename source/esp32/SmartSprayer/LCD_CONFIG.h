@@ -2,6 +2,7 @@
 #define LCD_CONFIG_H
 
 #include <LiquidCrystal_I2C.h>
+#include "PINS_CONFIG.h"
 
 //LiquidCrystal_I2C lcd(0x27, 16, 2);
 LiquidCrystal_I2C lcd(0x27, 20, 4);

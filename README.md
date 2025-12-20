@@ -42,9 +42,8 @@ The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ES
 - Antenna for GSM module
 - Internet connection for WiFi and Firebase functionality
 
-## Pin Configuration
-
-The system uses the following GPIO pin assignments on the ESP32:
+### Pin Configuration
+The system uses centralized pin definitions in `PINS_CONFIG.h` for easy modification:
 
 | Component | Pin | Function | Notes |
 |-----------|-----|----------|-------|
@@ -190,6 +189,10 @@ LCD test displayed
 - `void setLCDText(int value, int x, int y)`: Displays integer value at coordinates
 - `void setLCDText(char text, int x, int y)`: Displays character at coordinates
 
+### PIN Configuration (PINS_CONFIG.h)
+- Centralized pin definitions for all hardware components
+- Easy to modify pin assignments without changing multiple files
+
 ### GSM Functions (GSM_CONFIG.h)
 - `void initGSM()`: Initializes GSM module communication
 - `void sendSMS(String number, String message)`: Sends SMS to specified number
@@ -247,6 +250,7 @@ Smart-Sprayer/
 │   └── esp32/
 │       └── SmartSprayer/
 │           ├── SmartSprayer.ino
+│           ├── PINS_CONFIG.h
 │           ├── LCD_CONFIG.h
 │           ├── GSM_CONFIG.h
 │           ├── GSM_RECIPIENTS.h (ignored)

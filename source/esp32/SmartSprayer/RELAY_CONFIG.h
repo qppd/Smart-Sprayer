@@ -1,8 +1,10 @@
 #ifndef RELAY_CONFIG_H
 #define RELAY_CONFIG_H
 
-uint16_t RELAY_1 = 4;
-uint16_t RELAY_2 = 5;
+#include "PINS_CONFIG.h"
+
+uint16_t RELAY_1 = RELAY_1_PIN;
+uint16_t RELAY_2 = RELAY_2_PIN;
 
 //-----------------------------------------------------------------
 //FUNCTION FOR SETTING RELAY PIN MODE------------------------------

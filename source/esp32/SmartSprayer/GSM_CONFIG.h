@@ -3,8 +3,9 @@
 
 #include <SoftwareSerial.h>
 #include "GSM_RECIPIENTS.h"
+#include "PINS_CONFIG.h"
 
-SoftwareSerial sim(10, 11); // RX, TX
+SoftwareSerial sim(GSM_RX_PIN, GSM_TX_PIN); // RX, TX
 
 void initGSM() {
   sim.begin(9600);

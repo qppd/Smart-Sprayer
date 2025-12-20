@@ -1,8 +1,10 @@
 #ifndef SR04_CONFIG_H
 #define SR04_CONFIG_H
 
-const int trigPin = 12;
-const int echoPin = 13;
+#include "PINS_CONFIG.h"
+
+const int trigPin = TRIG_PIN;
+const int echoPin = ECHO_PIN;
 
 void initSR04() {
   pinMode(trigPin, OUTPUT);
