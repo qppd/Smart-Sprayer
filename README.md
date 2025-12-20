@@ -46,7 +46,8 @@ This allows precise monitoring of pesticide levels to prevent running out during
 - 2-channel relay module (5V or 12V based on application)
 - Buzzer module (active/passive buzzer)
 - LED indicators (2 units: OK and Error status)
-- Push button (momentary switch) for WiFi manager reset
+- DS1302 RTC module (for accurate timekeeping)
+- Push buttons (4 units: WiFi reset + 3 for menu navigation)
 
 ### Additional Components
 - SIM card for GSM module
@@ -74,6 +75,12 @@ The system uses centralized pin definitions in `PINS_CONFIG.h` for easy modifica
 | System OK LED | GPIO 18 | Status | Indicates system OK state |
 | System Error LED | GPIO 19 | Status | Indicates system error state |
 | WiFi Reset Button | GPIO 23 | Input | Triggers WiFi manager reset (hold 3s) |
+| Menu Up Button | GPIO 25 | Input | Menu navigation up |
+| Menu Down Button | GPIO 26 | Input | Menu navigation down |
+| Menu Select Button | GPIO 27 | Input | Menu select/save |
+| DS1302 CE | GPIO 32 | Output | RTC chip enable |
+| DS1302 I/O | GPIO 33 | I/O | RTC data line |
+| DS1302 CLK | GPIO 14 | Output | RTC serial clock |
 
 ## Software Requirements
 
@@ -89,6 +96,9 @@ The system uses centralized pin definitions in `PINS_CONFIG.h` for easy modifica
 - `NTPClient` (for time synchronization)
 - `HTTPClient` (for weather API requests)
 - `ArduinoJson` (for parsing weather API responses)
+- `Time` (for time management)
+- `TimeAlarms` (for scheduled alarms)
+- `RtcDS1302` (for DS1302 RTC module)
 
 ### Installation Steps
 1. Install Arduino IDE from the official website
@@ -150,8 +160,10 @@ Refer to the wiring diagrams in the `wiring/` directory for complete circuit con
 3. Connect GSM module to GPIO 10 (RX) and GPIO 11 (TX)
 4. Attach the I2C LCD to the default I2C pins (GPIO 21 SDA, GPIO 22 SCL)
 5. Connect the WiFi reset button to GPIO 23 (with pull-up resistor)
-6. Insert SIM card into GSM module and attach antenna
-7. Power the system with appropriate voltage sources
+6. Connect menu navigation buttons: Up to GPIO 25, Down to GPIO 26, Select to GPIO 27
+7. Connect DS1302 RTC: CE to GPIO 32, I/O to GPIO 33, CLK to GPIO 14
+8. Insert SIM card into GSM module and attach antenna
+9. Power the system with appropriate voltage sources
 
 ### Software Upload
 1. Open `source/esp32/SmartSprayer/SmartSprayer.ino` in Arduino IDE
@@ -170,6 +182,17 @@ Refer to the wiring diagrams in the `wiring/` directory for complete circuit con
 ### WiFi Manager Reset
 - Hold the WiFi reset button (GPIO 23) for 3 seconds during boot to enter WiFi manager AP mode
 - This allows reconfiguration of WiFi credentials without reprogramming the device
+
+### LCD Menu System
+The system includes an interactive LCD menu controlled by 3 navigation buttons:
+- **Menu Up Button (GPIO 25)**: Navigate up in menus or increment values
+- **Menu Down Button (GPIO 26)**: Navigate down in menus or decrement values  
+- **Menu Select Button (GPIO 27)**: Select menu items or save settings
+
+#### Menu Options:
+1. **Schedule Spray**: Set daily spray time (hour and minute)
+2. **Cancel Schedule**: Remove existing spray schedule
+3. **View Time**: Display current time from RTC
 
 ### Serial Command Interface
 The system provides a comprehensive serial command interface for testing and configuration. Connect to the ESP32 using Arduino Serial Monitor at 9600 baud rate.
@@ -286,9 +309,21 @@ Resetting WiFi settings...
 - `void clearSystemLEDs()`: Turns off both LEDs
 
 ### Button Functions (BUTTON_CONFIG.h)
-- `void initButton()`: Initializes WiFi reset button pin with pull-up resistor
-- `bool isButtonPressed()`: Returns true if button is currently pressed
-- `bool checkWiFiResetTrigger()`: Checks for 3-second hold to trigger WiFi manager reset
+- `void initBUTTONS()`: Initializes all 4 buttons with pull-up resistors
+- `void setInputFlags()`: Reads and debounces button states
+- `void resolveInputFlags()`: Processes button presses and calls appropriate actions
+- `void inputAction(int buttonIndex)`: Handles button press actions (WiFi reset, menu navigation)
+- `void enterSchedulingMode()`: Activates spray scheduling interface
+- `void exitSchedulingMode()`: Returns to main menu
+- `void scheduleSprayAlarm(int hour, int minute)`: Sets daily spray alarm
+- `void cancelSprayAlarm()`: Removes existing spray alarm
+
+### RTC Functions (RTC_CONFIG.h)
+- `void initRTC()`: Initializes DS1302 RTC module and syncs with system time
+- `void syncRTCWithNTP()`: Synchronizes RTC with NTP time (called once during setup)
+- `bool isRTCValid()`: Checks if RTC time is valid
+- `String getRTCDateTimeString()`: Returns formatted RTC date/time string
+- `void updateSystemTimeFromRTC()`: Updates system time from RTC
 
 ### GSM Functions (GSM_CONFIG.h)
 - `void initGSM()`: Initializes GSM module communication
@@ -364,6 +399,7 @@ Smart-Sprayer/
 │           ├── BUZZER_CONFIG.h
 │           ├── LED_CONFIG.h
 │           ├── BUTTON_CONFIG.h
+│           ├── RTC_CONFIG.h
 │           ├── WEATHER_CREDENTIALS.h (ignored)
 │           ├── WEATHER_CREDENTIALS_template.h
 │           ├── FIREBASE_CREDENTIALS.h (ignored)

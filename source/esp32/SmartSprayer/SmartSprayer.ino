@@ -9,6 +9,7 @@
 #include "BUZZER_CONFIG.h"
 #include "LED_CONFIG.h"
 #include "BUTTON_CONFIG.h"
+#include "RTC_CONFIG.h"
 
 void setup() {
   Serial.begin(9600);
@@ -21,15 +22,20 @@ void setup() {
   initNTP();
   initBuzzer();
   initLEDs();
-  initButton();
+  initBUTTONS();
+  initRTC();
+
+  // Sync RTC with NTP once during initialization
+  syncRTCWithNTP();
 }
 
 void loop() {
-  // Check for WiFi reset button trigger
-  if (checkWiFiResetTrigger()) {
-    Serial.println("WiFi reset triggered - restarting in AP mode...");
-    resetWiFiSettings();
-  }
+  // Handle button inputs
+  setInputFlags();
+  resolveInputFlags();
+
+  // Handle alarms
+  Alarm.delay(10); // Allow alarms to trigger
 
   if (Serial.available()) {
     String command = Serial.readStringUntil('\n');
