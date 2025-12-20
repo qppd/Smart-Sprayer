@@ -47,18 +47,6 @@ void loop() {
     } else if (command == "operate-relay2_off") {
       operateRELAY(RELAY_2, false);
       Serial.println("Relay 2 turned OFF");
-    } else if (command == "operate-ssr1_on") {
-      operateSSR(RELAY_1, true);
-      Serial.println("SSR 1 turned ON");
-    } else if (command == "operate-ssr1_off") {
-      operateSSR(RELAY_1, false);
-      Serial.println("SSR 1 turned OFF");
-    } else if (command == "operate-ssr2_on") {
-      operateSSR(RELAY_2, true);
-      Serial.println("SSR 2 turned ON");
-    } else if (command == "operate-ssr2_off") {
-      operateSSR(RELAY_2, false);
-      Serial.println("SSR 2 turned OFF");
     } else if (command == "send-sms") {
       sendSMS("+1234567890", "Test SMS from Smart Sprayer");
       Serial.println("SMS sent");

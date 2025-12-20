@@ -24,14 +24,4 @@ void operateRELAY(uint16_t RELAY, boolean OPENED) {
     digitalWrite(RELAY, HIGH);
 }
 
-//-----------------------------------------------------------------
-//FUNCTION FOR OPERATING SOLID STATE RELAY-------------------------
-//-----------------------------------------------------------------
-void operateSSR(uint16_t RELAY, boolean OPENED) {
-  if (OPENED)
-    digitalWrite(RELAY, HIGH);
-  else
-    digitalWrite(RELAY, LOW);
-}
-
 #endif

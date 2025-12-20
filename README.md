@@ -181,10 +181,6 @@ The system provides a comprehensive serial command interface for testing and con
 - `operate-relay1_off`: Deactivates relay 1 (turns spray pump/valve off)
 - `operate-relay2_on`: Activates relay 2 (turns spray pump/valve on)
 - `operate-relay2_off`: Deactivates relay 2 (turns spray pump/valve off)
-- `operate-ssr1_on`: Activates solid state relay 1
-- `operate-ssr1_off`: Deactivates solid state relay 1
-- `operate-ssr2_on`: Activates solid state relay 2
-- `operate-ssr2_off`: Deactivates solid state relay 2
 
 ##### GSM Communication
 - `send-sms`: Sends a test SMS message to the default number
@@ -303,7 +299,6 @@ Resetting WiFi settings...
 ### Relay Functions (RELAY_CONFIG.h)
 - `void initRELAY()`: Sets up relay control pins
 - `void operateRELAY(uint16_t RELAY, boolean OPENED)`: Controls relay state
-- `void operateSSR(uint16_t RELAY, boolean OPENED)`: Controls solid-state relay
 
 ### Ultrasonic Functions (SR04_CONFIG.h)
 - `void initSR04()`: Initializes ultrasonic sensor pins
