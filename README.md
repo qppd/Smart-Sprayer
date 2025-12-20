@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ESP32 microcontroller platform. It is designed to revolutionize precision farming by providing intelligent pesticide spraying capabilities. The system integrates ultrasonic sensors for distance measurement, GSM communication for remote monitoring, LCD display for local status indication, and relay-controlled actuators for spray mechanism operation.
+The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ESP32 microcontroller platform. It is designed to revolutionize precision farming by providing intelligent pesticide spraying capabilities. The system integrates ultrasonic sensors for distance measurement, GSM communication for remote monitoring, LCD display for local status indication, relay-controlled actuators for spray mechanism operation, WiFi connectivity for cloud integration, and Firebase for real-time data synchronization and remote control.
 
 ## Features
 
@@ -14,15 +14,19 @@ The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ES
 - **Serial Interface**: Command-line interface for system testing and configuration
 
 ### Advanced Features
+- **Cloud Connectivity**: Firebase Realtime Database integration for data logging and remote control
+- **WiFi Management**: Automatic WiFi configuration with captive portal fallback
+- **Time Synchronization**: NTP integration for accurate timestamping of data
 - **Precision Spraying**: Distance-based spray control to avoid over-spraying
-- **Network Connectivity**: Real-time network status monitoring
+- **Network Connectivity**: Real-time network status monitoring across multiple protocols
 - **Bulk Messaging**: SMS broadcasting to multiple recipients
+- **Real-time Streaming**: Firebase streams for live control and monitoring
 - **Modular Design**: Separate configuration headers for easy maintenance and updates
 
 ## Hardware Requirements
 
 ### Microcontroller
-- ESP32 development board (ESP32-WROOM-32 recommended)
+- ESP32 development board (ESP32-WROOM-32 recommended) with built-in WiFi and Bluetooth
 
 ### Sensors and Modules
 - HC-SR04 ultrasonic distance sensor (1 unit)
@@ -35,6 +39,7 @@ The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ES
 - Power supply (5V for ESP32, appropriate voltage for relays)
 - Jumper wires and breadboard for prototyping
 - Antenna for GSM module
+- Internet connection for WiFi and Firebase functionality
 
 ## Pin Configuration
 
@@ -60,6 +65,9 @@ The system uses the following GPIO pin assignments on the ESP32:
 ### Required Libraries
 - `LiquidCrystal_I2C` (for LCD display control)
 - `SoftwareSerial` (for GSM module communication)
+- `WiFiManager` (for WiFi configuration)
+- `Firebase_ESP_Client` (for Firebase integration)
+- `NTPClient` (for time synchronization)
 
 ### Installation Steps
 1. Install Arduino IDE from the official website
@@ -70,7 +78,22 @@ The system uses the following GPIO pin assignments on the ESP32:
    - Tools > Board > Boards Manager > Search for ESP32 > Install
 3. Install required libraries:
    - Sketch > Include Library > Manage Libraries
-   - Search and install `LiquidCrystal_I2C` and `SoftwareSerial`
+   - Search and install the required libraries listed above
+
+### Firebase Credentials Setup
+1. Copy `source/esp32/SmartSprayer/FIREBASE_CREDENTIALS_template.h` to `source/esp32/SmartSprayer/FIREBASE_CREDENTIALS.h`
+2. Fill in your Firebase project credentials:
+   - WiFi SSID and password
+   - Firebase API key and database URL
+   - Service account credentials
+   - User credentials (optional)
+3. The `FIREBASE_CREDENTIALS.h` file is ignored by git to protect sensitive information
+
+### Security Note
+- Never commit `FIREBASE_CREDENTIALS.h` to version control
+- Use the provided template to create your credentials file
+- Regularly rotate API keys and passwords
+- Use Firebase security rules to protect your database
 
 ## Installation and Setup
 
@@ -163,12 +186,30 @@ LCD test displayed
 - `void initSR04()`: Initializes ultrasonic sensor pins
 - `long readDistance()`: Returns distance measurement in centimeters
 
+### WiFi Functions (WIFI_CONFIG.h)
+- `void initWIFI()`: Initializes WiFi connection with auto-configuration portal
+
+### Firebase Functions (FIREBASE_CONFIG.h)
+- `void initFIREBASE()`: Initializes Firebase connection and streams
+- `void updateDeviceCurrent(...)`: Updates current device state in Firebase
+- `void logDeviceData(...)`: Logs device data with timestamp
+- `void sendSmartSprayerData(...)`: Sends Smart Sprayer data to Firebase
+- `void sendMessage(...)`: Sends FCM notification
+- `void sendMessageToAll(...)`: Sends FCM to all registered devices
+- `void handleStreams()`: Processes Firebase real-time streams
+- `bool isReady()`: Checks Firebase connection status
+
+### NTP Functions (NTP_CONFIG.h)
+- `void initNTP()`: Initializes NTP time synchronization
+
 ## Project Structure
 
 ```
 Smart-Sprayer/
+├── .gitignore
 ├── LICENSE
 ├── README.md
+├── FIREBASE_CREDENTIALS_template.h
 ├── diagram/
 │   └── [circuit diagrams and schematics]
 ├── model/
@@ -180,7 +221,12 @@ Smart-Sprayer/
 │           ├── LCD_CONFIG.h
 │           ├── GSM_CONFIG.h
 │           ├── RELAY_CONFIG.h
-│           └── SR04_CONFIG.h
+│           ├── SR04_CONFIG.h
+│           ├── WIFI_CONFIG.h
+│           ├── FIREBASE_CONFIG.h
+│           ├── NTP_CONFIG.h
+│           ├── FIREBASE_CREDENTIALS.h (ignored)
+│           └── FIREBASE_CREDENTIALS_template.h
 └── wiring/
     └── [wiring diagrams and instructions]
 ```
