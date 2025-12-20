@@ -20,11 +20,11 @@
 #define LCD_SCL_PIN 22
 
 // Buzzer Pin
-#define BUZZER_PIN 8
+#define BUZZER_PIN 0
 
 // System Status LED Pins
-#define SYSTEM_OK_LED 0
-#define SYSTEM_ERROR_LED 2
+#define SYSTEM_OK_LED 32
+#define SYSTEM_ERROR_LED 33
 
 // WiFi Manager Reset Button Pin
 #define WIFI_RESET_BUTTON_PIN 23
@@ -33,11 +33,6 @@
 #define MENU_UP_BUTTON_PIN 25      // GPIO 25 - Menu up/navigation
 #define MENU_DOWN_BUTTON_PIN 26    // GPIO 26 - Menu down/navigation  
 #define MENU_SELECT_BUTTON_PIN 27  // GPIO 27 - Menu select/save
-
-// DS1302 RTC Pins - REMOVED for DS3231 I2C
-// #define RTC_CE_PIN 32    // Chip Enable
-// #define RTC_IO_PIN 33    // Data I/O
-// #define RTC_CLK_PIN 14   // Serial Clock (Note: GPIO 14 was previously ultrasonic, but we'll reuse it)
 
 // Container Level Configuration
 #define CONTAINER_HEIGHT 100.0  // Container height in cm (adjust as needed)
