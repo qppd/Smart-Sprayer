@@ -94,6 +94,33 @@ void loop() {
       } else {
         Serial.println("Weather check: No rain expected today - safe to spray");
       }
+    } else if (command == "clear-lcd") {
+      clearLCD();
+      Serial.println("LCD cleared");
+    } else if (command == "test-lcd") {
+      setLCDText("Smart Sprayer", 0, 0);
+      setLCDText("Test Message", 0, 1);
+      setLCDText("System OK", 0, 2);
+      Serial.println("LCD test display set");
+    } else if (command == "get-time") {
+      String timeStr = getFormattedDateTime();
+      Serial.print("Current time: ");
+      Serial.println(timeStr);
+    } else if (command == "get-timestamp") {
+      unsigned long ts = getNTPTimestamp();
+      Serial.print("NTP Timestamp: ");
+      Serial.println(ts);
+    } else if (command == "check-ntp") {
+      bool synced = isNTPSynced();
+      Serial.print("NTP Synced: ");
+      Serial.println(synced ? "Yes" : "No");
+    } else if (command == "wifi-reset") {
+      Serial.println("Resetting WiFi settings...");
+      resetWiFiSettings();
+    } else if (command == "button-status") {
+      bool pressed = isButtonPressed();
+      Serial.print("Button pressed: ");
+      Serial.println(pressed ? "Yes" : "No");
     } else {
       Serial.println("Unknown command");
     }

@@ -208,6 +208,21 @@ The system provides a comprehensive serial command interface for testing and con
 ##### Weather Monitoring
 - `check-weather`: Fetches current weather forecast and checks for rain today
 
+##### LCD Control
+- `clear-lcd`: Clears the LCD display
+- `test-lcd`: Displays test messages on the LCD
+
+##### NTP Time Functions
+- `get-time`: Retrieves and displays current formatted date/time
+- `get-timestamp`: Gets current NTP timestamp
+- `check-ntp`: Checks if NTP time is synchronized
+
+##### WiFi Management
+- `wifi-reset`: Resets WiFi settings and restarts in AP mode
+
+##### Button Testing
+- `button-status`: Checks if the WiFi reset button is currently pressed
+
 ### Command Usage Examples
 ```
 operate-relay1_on
@@ -218,7 +233,20 @@ Distance 1: 45 cm
 
 test-display
 LCD test displayed
+
+get-time
+Current time: 2025-12-20 14:30:25
+
+check-weather
+Weather check: No rain expected today - safe to spray
+
+clear-lcd
+LCD cleared
+
+wifi-reset
+Resetting WiFi settings...
 ```
+
 
 ## API Reference
 
