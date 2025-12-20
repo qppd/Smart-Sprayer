@@ -2,6 +2,9 @@
 #include "GSM_CONFIG.h"
 #include "RELAY_CONFIG.h"
 #include "SR04_CONFIG.h"
+#include "WIFI_CONFIG.h"
+#include "FIREBASE_CONFIG.h"
+#include "NTP_CONFIG.h"
 
 void setup() {
   Serial.begin(9600);
@@ -9,6 +12,9 @@ void setup() {
   initGSM();
   initRELAY();
   initSR04();
+  initWIFI();
+  initFIREBASE();
+  initNTP();
 }
 
 void loop() {
