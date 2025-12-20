@@ -290,3 +290,19 @@ For questions, issues, or contributions, please use the GitHub repository's issu
 - Data logging and analytics
 - Battery management system
 - Weather sensor integration
+
+## Contact
+
+- Email: quezon.province.pd@gmail.com
+- GitHub: github.com/qppd
+- Portfolio: sajed-mendoza.onrender.com
+- Facebook: facebook.com/qppd.dev
+- Facebook Page: facebook.com/QUEZONPROVINCEDEVS
+
+## Author
+
+Created by qppd
+
+## GitHub Repository
+
+This project is hosted on GitHub at: https://github.com/qppd/Smart-Sprayer
