@@ -293,11 +293,11 @@ For questions, issues, or contributions, please use the GitHub repository's issu
 
 ## Contact
 
-- Email: quezon.province.pd@gmail.com
-- GitHub: github.com/qppd
-- Portfolio: sajed-mendoza.onrender.com
-- Facebook: facebook.com/qppd.dev
-- Facebook Page: facebook.com/QUEZONPROVINCEDEVS
+- Email: [quezon.province.pd@gmail.com](mailto:quezon.province.pd@gmail.com)
+- GitHub: [github.com/qppd](https://github.com/qppd)
+- Portfolio: [sajed-mendoza.onrender.com](https://sajed-mendoza.onrender.com)
+- Facebook: [facebook.com/qppd.dev](https://facebook.com/qppd.dev)
+- Facebook Page: [facebook.com/QUEZONPROVINCEDEVS](https://facebook.com/QUEZONPROVINCEDEVS)
 
 ## Author
 
