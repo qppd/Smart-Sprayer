@@ -2,8 +2,10 @@
 #define PINS_CONFIG_H
 
 // Ultrasonic Sensor Pins
-#define TRIG_PIN 12
-#define ECHO_PIN 13
+#define TRIG_PIN 12      // Sensor 1 Trigger
+#define ECHO_PIN 13      // Sensor 1 Echo
+#define TRIG2_PIN 14     // Sensor 2 Trigger
+#define ECHO2_PIN 16     // Sensor 2 Echo
 
 // Relay Module Pins
 #define RELAY_1_PIN 4

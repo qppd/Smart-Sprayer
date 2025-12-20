@@ -50,7 +50,7 @@ void loop() {
       Serial.print(dist);
       Serial.println(" cm");
     } else if (command == "get-distance2") {
-      long dist = readDistance();
+      long dist = readDistance2();
       Serial.print("Distance 2: ");
       Serial.print(dist);
       Serial.println(" cm");

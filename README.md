@@ -30,7 +30,7 @@ The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ES
 - ESP32 development board (ESP32-WROOM-32 recommended) with built-in WiFi and Bluetooth
 
 ### Sensors and Modules
-- HC-SR04 ultrasonic distance sensor (1 unit)
+- HC-SR04 ultrasonic distance sensor (2 units)
 - 20x4 I2C LCD display module
 - GSM module (SIM800L or compatible)
 - 2-channel relay module (5V or 12V based on application)
@@ -47,8 +47,10 @@ The system uses centralized pin definitions in `PINS_CONFIG.h` for easy modifica
 
 | Component | Pin | Function | Notes |
 |-----------|-----|----------|-------|
-| Ultrasonic Sensor | GPIO 12 | Trig | Trigger pin for ultrasonic pulses |
-| Ultrasonic Sensor | GPIO 13 | Echo | Echo pin for distance measurement |
+| Ultrasonic Sensor 1 | GPIO 12 | Trig | Trigger pin for ultrasonic pulses |
+| Ultrasonic Sensor 1 | GPIO 13 | Echo | Echo pin for distance measurement |
+| Ultrasonic Sensor 2 | GPIO 14 | Trig | Trigger pin for second sensor |
+| Ultrasonic Sensor 2 | GPIO 16 | Echo | Echo pin for second sensor |
 | Relay Module | GPIO 4 | Relay 1 Control | Controls first spray actuator |
 | Relay Module | GPIO 5 | Relay 2 Control | Controls second spray actuator |
 | GSM Module | GPIO 10 | RX | Receive data from GSM module |
@@ -157,8 +159,8 @@ The system provides a comprehensive serial command interface for testing and con
 - `check-network`: Queries GSM network registration status
 
 ##### Sensor Reading
-- `get-distance1`: Retrieves current distance measurement from ultrasonic sensor
-- `get-distance2`: Retrieves current distance measurement (same as distance1 for single sensor)
+- `get-distance1`: Retrieves current distance measurement from ultrasonic sensor 1
+- `get-distance2`: Retrieves current distance measurement from ultrasonic sensor 2
 
 ##### Display Testing
 - `test-display`: Displays test information on the LCD screen
@@ -206,7 +208,8 @@ LCD test displayed
 
 ### Ultrasonic Functions (SR04_CONFIG.h)
 - `void initSR04()`: Initializes ultrasonic sensor pins
-- `long readDistance()`: Returns distance measurement in centimeters
+- `long readDistance()`: Returns distance measurement in centimeters from sensor 1
+- `long readDistance2()`: Returns distance measurement in centimeters from sensor 2
 
 ### WiFi Functions (WIFI_CONFIG.h)
 - `void initWIFI()`: Initializes WiFi connection with auto-configuration portal
