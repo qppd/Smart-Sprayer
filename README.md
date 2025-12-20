@@ -21,7 +21,7 @@ The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ES
 - **Network Connectivity**: Real-time network status monitoring across multiple protocols
 - **Bulk Messaging**: SMS broadcasting to multiple recipients
 - **Real-time Streaming**: Firebase streams for live control and monitoring
-- **Weather Integration**: OpenWeatherMap API for rain detection to prevent spraying in bad weather
+- **Weather Integration**: WeatherAPI for current weather monitoring to prevent spraying during rain
 - **Modular Design**: Separate configuration headers for easy maintenance and updates
 
 ### Container Level Calculation
@@ -128,10 +128,71 @@ The system uses centralized pin definitions in `PINS_CONFIG.h` for easy modifica
 
 ### Weather Credentials Setup
 1. Copy `source/esp32/SmartSprayer/WEATHER_CREDENTIALS_template.h` to `source/esp32/SmartSprayer/WEATHER_CREDENTIALS.h`
-2. Fill in your OpenWeatherMap API credentials:
-   - API key from https://openweathermap.org/api
-   - Location (e.g., "Manila,PH" or lat/lon coordinates)
+2. Fill in your WeatherAPI credentials:
+   - API key from https://www.weatherapi.com/
+   - Location (e.g., "Manila" or city name)
 3. The `WEATHER_CREDENTIALS.h` file is ignored by git to protect your API key
+
+#### WeatherAPI Sample Call and Response
+The system uses WeatherAPI for current weather monitoring. Here's a sample API call and response:
+
+**API Call:**
+```
+GET https://api.weatherapi.com/v1/current.json?key=64812e322c3f4b42af7135146252012&q=Manila&aqi=no
+```
+
+**Sample Response:**
+```json
+{
+    "location": {
+        "name": "Manila",
+        "region": "Manila",
+        "country": "Philippines",
+        "lat": 14.6042,
+        "lon": 120.9822,
+        "tz_id": "Asia/Manila",
+        "localtime_epoch": 1766239111,
+        "localtime": "2025-12-20 21:58"
+    },
+    "current": {
+        "last_updated_epoch": 1766238300,
+        "last_updated": "2025-12-20 21:45",
+        "temp_c": 26.1,
+        "temp_f": 79.0,
+        "is_day": 0,
+        "condition": {
+            "text": "Partly cloudy",
+            "icon": "//cdn.weatherapi.com/weather/64x64/night/116.png",
+            "code": 1003
+        },
+        "wind_mph": 4.5,
+        "wind_kph": 7.2,
+        "wind_degree": 56,
+        "wind_dir": "ENE",
+        "pressure_mb": 1011.0,
+        "pressure_in": 29.85,
+        "precip_mm": 0.0,
+        "precip_in": 0.0,
+        "humidity": 84,
+        "cloud": 75,
+        "feelslike_c": 28.5,
+        "feelslike_f": 83.4,
+        "windchill_c": 25.2,
+        "windchill_f": 77.3,
+        "heatindex_c": 27.2,
+        "heatindex_f": 81.0,
+        "dewpoint_c": 21.1,
+        "dewpoint_f": 70.0,
+        "vis_km": 10.0,
+        "vis_miles": 6.0,
+        "uv": 0.0,
+        "gust_mph": 6.6,
+        "gust_kph": 10.6
+    }
+}
+```
+
+The system checks `current.precip_mm` and `current.condition.text` to determine if it's raining.
 
 ### Security Note
 - Never commit `FIREBASE_CREDENTIALS.h`, `GSM_RECIPIENTS.h`, or `WEATHER_CREDENTIALS.h` to version control
@@ -231,7 +292,7 @@ The system provides a comprehensive serial command interface for testing and con
 - `set-leds`: Manually set LED states (OK and Error)
 
 ##### Weather Monitoring
-- `check-weather`: Fetches current weather forecast and checks for rain today
+- `check-weather`: Fetches current weather and checks for rain
 
 ##### LCD Control
 - `clear-lcd`: Clears the LCD display
@@ -270,7 +331,7 @@ get-time
 Current time: 2025-12-20 14:30:25
 
 check-weather
-Weather check: No rain expected today - safe to spray
+Weather check: No rain currently - safe to spray
 
 clear-lcd
 LCD cleared
@@ -366,7 +427,7 @@ Resetting WiFi settings...
 - `String getCurrentLogPrefix()`: Provides timestamp prefix for logging
 
 ### Weather Functions (WEATHER_CONFIG.h)
-- `bool checkWeatherForRain()`: Fetches weather forecast and returns true if rain is expected today
+- `bool checkWeatherForRain()`: Fetches current weather and returns true if it's raining
 
 ## Project Structure
 
