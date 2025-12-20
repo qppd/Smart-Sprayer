@@ -2,10 +2,9 @@
 #define GSM_CONFIG_H
 
 #include <SoftwareSerial.h>
+#include "GSM_RECIPIENTS.h"
 
 SoftwareSerial sim(10, 11); // RX, TX
-
-String phoneNumbers[] = {"+1234567890", "+0987654321"}; // example numbers
 
 void initGSM() {
   sim.begin(9600);
@@ -26,9 +25,11 @@ void sendSMS(String number, String message) {
 }
 
 void sendSMSToAll(String message) {
-  for (int i = 0; i < 2; i++) {
-    sendSMS(phoneNumbers[i], message);
-    delay(5000); // delay between sends
+  for (int i = 0; i < numRecipients; i++) {
+    if (recipients[i] != "") {  // Only send to non-empty numbers
+      sendSMS(recipients[i], message);
+      delay(5000); // delay between sends
+    }
   }
 }
 
