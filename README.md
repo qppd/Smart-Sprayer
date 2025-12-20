@@ -89,10 +89,16 @@ The system uses the following GPIO pin assignments on the ESP32:
    - User credentials (optional)
 3. The `FIREBASE_CREDENTIALS.h` file is ignored by git to protect sensitive information
 
+### GSM Recipients Setup
+1. Copy `source/esp32/SmartSprayer/GSM_RECIPIENTS_template.h` to `source/esp32/SmartSprayer/GSM_RECIPIENTS.h`
+2. Add your phone numbers to the recipients array
+3. Set the `numRecipients` variable to the number of active recipients
+4. The `GSM_RECIPIENTS.h` file is ignored by git to protect phone numbers
+
 ### Security Note
-- Never commit `FIREBASE_CREDENTIALS.h` to version control
-- Use the provided template to create your credentials file
-- Regularly rotate API keys and passwords
+- Never commit `FIREBASE_CREDENTIALS.h` or `GSM_RECIPIENTS.h` to version control
+- Use the provided templates to create your configuration files
+- Regularly rotate API keys, passwords, and phone numbers
 - Use Firebase security rules to protect your database
 
 ## Installation and Setup
@@ -220,6 +226,8 @@ Smart-Sprayer/
 │           ├── SmartSprayer.ino
 │           ├── LCD_CONFIG.h
 │           ├── GSM_CONFIG.h
+│           ├── GSM_RECIPIENTS.h (ignored)
+│           ├── GSM_RECIPIENTS_template.h
 │           ├── RELAY_CONFIG.h
 │           ├── SR04_CONFIG.h
 │           ├── WIFI_CONFIG.h
