@@ -21,6 +21,7 @@ The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ES
 - **Network Connectivity**: Real-time network status monitoring across multiple protocols
 - **Bulk Messaging**: SMS broadcasting to multiple recipients
 - **Real-time Streaming**: Firebase streams for live control and monitoring
+- **Weather Integration**: OpenWeatherMap API for rain detection to prevent spraying in bad weather
 - **Modular Design**: Separate configuration headers for easy maintenance and updates
 
 ## Hardware Requirements
@@ -68,6 +69,8 @@ The system uses the following GPIO pin assignments on the ESP32:
 - `WiFiManager` (for WiFi configuration)
 - `Firebase_ESP_Client` (for Firebase integration)
 - `NTPClient` (for time synchronization)
+- `HTTPClient` (for weather API requests)
+- `ArduinoJson` (for parsing weather API responses)
 
 ### Installation Steps
 1. Install Arduino IDE from the official website
@@ -95,8 +98,15 @@ The system uses the following GPIO pin assignments on the ESP32:
 3. Set the `numRecipients` variable to the number of active recipients
 4. The `GSM_RECIPIENTS.h` file is ignored by git to protect phone numbers
 
+### Weather Credentials Setup
+1. Copy `source/esp32/SmartSprayer/WEATHER_CREDENTIALS_template.h` to `source/esp32/SmartSprayer/WEATHER_CREDENTIALS.h`
+2. Fill in your OpenWeatherMap API credentials:
+   - API key from https://openweathermap.org/api
+   - Location (e.g., "Manila,PH" or lat/lon coordinates)
+3. The `WEATHER_CREDENTIALS.h` file is ignored by git to protect your API key
+
 ### Security Note
-- Never commit `FIREBASE_CREDENTIALS.h` or `GSM_RECIPIENTS.h` to version control
+- Never commit `FIREBASE_CREDENTIALS.h`, `GSM_RECIPIENTS.h`, or `WEATHER_CREDENTIALS.h` to version control
 - Use the provided templates to create your configuration files
 - Regularly rotate API keys, passwords, and phone numbers
 - Use Firebase security rules to protect your database
@@ -153,6 +163,9 @@ The system provides a comprehensive serial command interface for testing and con
 
 ##### Display Testing
 - `test-display`: Displays test information on the LCD screen
+
+##### Weather Monitoring
+- `check-weather`: Fetches current weather forecast and checks for rain today
 
 ### Command Usage Examples
 ```
@@ -215,6 +228,9 @@ LCD test displayed
 - `String getFormattedDateTimeWithFallback()`: Formatted time with fallback indication
 - `String getCurrentLogPrefix()`: Provides timestamp prefix for logging
 
+### Weather Functions (WEATHER_CONFIG.h)
+- `bool checkWeatherForRain()`: Fetches weather forecast and returns true if rain is expected today
+
 ## Project Structure
 
 ```
@@ -240,6 +256,9 @@ Smart-Sprayer/
 │           ├── WIFI_CONFIG.h
 │           ├── FIREBASE_CONFIG.h
 │           ├── NTP_CONFIG.h
+│           ├── WEATHER_CONFIG.h
+│           ├── WEATHER_CREDENTIALS.h (ignored)
+│           ├── WEATHER_CREDENTIALS_template.h
 │           ├── FIREBASE_CREDENTIALS.h (ignored)
 │           └── FIREBASE_CREDENTIALS_template.h
 └── wiring/
@@ -300,6 +319,12 @@ Configure sensor parameters in `SR04_CONFIG.h`:
 - Check GPIO pin assignments
 - Verify relay logic (normally open/closed)
 
+#### Weather API Issues
+- Ensure valid OpenWeatherMap API key in `WEATHER_CREDENTIALS.h`
+- Check WiFi connection for API requests
+- Verify location format (e.g., "Manila,PH")
+- Monitor serial output for API error codes
+
 ### Debug Mode
 Enable serial debugging by monitoring the Serial output at 9600 baud. The system provides detailed status messages during initialization and operation.
 
@@ -336,6 +361,10 @@ For questions, issues, or contributions, please use the GitHub repository's issu
 
 ## Version History
 
+- v1.1.0: Added weather integration for rain detection
+  - OpenWeatherMap API integration
+  - Weather-based spray control
+  - New serial command for weather checking
 - v1.0.0: Initial release with basic functionality
   - Ultrasonic distance measurement
   - GSM SMS communication
@@ -350,7 +379,6 @@ For questions, issues, or contributions, please use the GitHub repository's issu
 - Mobile app for remote control
 - Data logging and analytics
 - Battery management system
-- Weather sensor integration
 
 ## Contact
 

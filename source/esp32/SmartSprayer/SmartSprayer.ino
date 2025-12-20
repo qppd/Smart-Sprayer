@@ -5,6 +5,7 @@
 #include "WIFI_CONFIG.h"
 #include "FIREBASE_CONFIG.h"
 #include "NTP_CONFIG.h"
+#include "WEATHER_CONFIG.h"
 
 void setup() {
   Serial.begin(9600);
@@ -58,6 +59,13 @@ void loop() {
       setLCDText("Test Display", 0, 0);
       setLCDText("Smart Sprayer", 0, 1);
       Serial.println("LCD test displayed");
+    } else if (command == "check-weather") {
+      bool willRain = checkWeatherForRain();
+      if (willRain) {
+        Serial.println("Weather check: Rain expected today - avoid spraying");
+      } else {
+        Serial.println("Weather check: No rain expected today - safe to spray");
+      }
     } else {
       Serial.println("Unknown command");
     }
