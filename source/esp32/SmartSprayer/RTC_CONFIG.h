@@ -13,11 +13,13 @@ bool h12Flag;
 bool pmFlag;
 
 // Global variables for alarms and menu
-AlarmId sprayAlarmId = dtINVALID_ALARM_ID;
+AlarmId sprayAlarmId1 = dtINVALID_ALARM_ID;
+AlarmId sprayAlarmId2 = dtINVALID_ALARM_ID;
 bool schedulingMode = false;
 int currentMenuItem = 0;
 int selectedHour = 0;
 int selectedMinute = 0;
+int selectedPump = 1;
 
 // Function declarations
 void initRTC();

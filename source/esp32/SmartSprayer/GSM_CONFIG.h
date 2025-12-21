@@ -32,15 +32,77 @@ void sendSMS(String number, String message) {
   sim.println(message);
   delay(100);
   sim.write(26); // Ctrl+Z
+  delay(3000); // Wait for response
+}
+
+bool sendSMSWithResponse(String number, String message) {
+  sim.println("AT+CMGF=1");
+  delay(100);
+  
+  // Clear any previous responses
+  while (sim.available()) sim.read();
+  
+  sim.println("AT+CMGS=\"" + number + "\"");
+  delay(100);
+  sim.println(message);
+  delay(100);
+  sim.write(26); // Ctrl+Z
+  
+  // Wait for response
+  unsigned long startTime = millis();
+  String response = "";
+  
+  while (millis() - startTime < 10000) {  // 10 second timeout
+    while (sim.available()) {
+      char c = sim.read();
+      response += c;
+      if (response.indexOf("OK") >= 0) {
+        return true;
+      }
+      if (response.indexOf("ERROR") >= 0) {
+        return false;
+      }
+    }
+    delay(10);
+  }
+  
+  return false;  // Timeout or no valid response
 }
 
 void sendSMSToAll(String message) {
+  bool allSent = true;
   for (int i = 0; i < numRecipients; i++) {
     if (recipients[i] != "") {  // Only send to non-empty numbers
-      sendSMS(recipients[i], message);
+      if (!sendSMSWithResponse(recipients[i], message)) {
+        Serial.print("Failed to send SMS to: ");
+        Serial.println(recipients[i]);
+        allSent = false;
+      } else {
+        Serial.print("SMS sent to: ");
+        Serial.println(recipients[i]);
+      }
       delay(5000); // delay between sends
     }
   }
+  
+  if (!allSent) {
+    Serial.println("Some SMS messages failed to send");
+  } else {
+    Serial.println("All SMS messages sent successfully");
+  }
+}
+
+bool sendSMSToAllWithStatus(String message) {
+  bool allSent = true;
+  for (int i = 0; i < numRecipients; i++) {
+    if (recipients[i] != "") {
+      if (!sendSMSWithResponse(recipients[i], message)) {
+        allSent = false;
+      }
+      delay(5000);
+    }
+  }
+  return allSent;
 }
 
 void checkNetwork() {

@@ -22,7 +22,20 @@ The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ES
 - **Bulk Messaging**: SMS broadcasting to multiple recipients
 - **Real-time Streaming**: Firebase streams for live control and monitoring
 - **Weather Integration**: WeatherAPI for current weather monitoring to prevent spraying during rain
+- **Smart Scheduling**: Dual-pump scheduling with weather-based postponement and SMS notifications
+- **Commercial Feedback**: Professional LED blinking patterns and industrial buzzer tones for status indication
+- **Network Resilience**: Automatic GSM reconnection and SMS retry mechanisms
+- **Event Notifications**: SMS alerts for spraying completion, postponement, and system errors
 - **Modular Design**: Separate configuration headers for easy maintenance and updates
+
+### Notification System
+The Smart-Sprayer includes a comprehensive notification system for operational awareness:
+
+- **SMS Alerts**: Automatic notifications for spraying events (completion, postponement, errors)
+- **Retry Logic**: Failed SMS messages are automatically retried up to 3 times
+- **Network Monitoring**: GSM network disconnection triggers automatic reconnection attempts
+- **Commercial Feedback**: Professional LED blinking patterns and industrial buzzer tones
+- **Status Indicators**: Visual and audible feedback for all system operations
 
 ### Container Level Calculation
 The ultrasonic sensor measures the distance from the sensor to the surface of the pesticide in the container. To calculate the fill percentage:
@@ -290,6 +303,12 @@ The system provides a comprehensive serial command interface for testing and con
 - `led-warning`: Turns on both LEDs for warning
 - `led-clear`: Turns off all system LEDs
 - `set-leds`: Manually set LED states (OK and Error)
+
+##### Notification Testing
+- `test-alert`: Triggers commercial alert pattern (LEDs + buzzer)
+- `test-success`: Triggers commercial success pattern (LEDs + buzzer)
+- `test-error`: Triggers commercial error pattern (LEDs + buzzer)
+- `test-network`: Tests GSM network connection and reconnection
 
 ##### Weather Monitoring
 - `check-weather`: Fetches current weather and checks for rain

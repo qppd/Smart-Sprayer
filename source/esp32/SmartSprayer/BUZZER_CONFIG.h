@@ -22,4 +22,17 @@ void buzzerBeep(int duration_ms = 500) {
   buzzerOff();
 }
 
+void buzzerTone(int frequency, int duration_ms) {
+  // Simple tone generation using delay (not true PWM)
+  int period = 1000000 / frequency;  // Period in microseconds
+  int cycles = (frequency * duration_ms) / 1000;
+  
+  for (int i = 0; i < cycles; i++) {
+    digitalWrite(BUZZER_PIN, HIGH);
+    delayMicroseconds(period / 2);
+    digitalWrite(BUZZER_PIN, LOW);
+    delayMicroseconds(period / 2);
+  }
+}
+
 #endif // BUZZER_CONFIG_H

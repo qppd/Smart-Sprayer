@@ -5,7 +5,7 @@
 #include "FIREBASE_CONFIG.h"
 #include "NTP_CONFIG.h"
 #include "WEATHER_CONFIG.h"
-#include "PINS_CONFIG.h"
+the w#include "PINS_CONFIG.h"
 #include "BUZZER_CONFIG.h"
 #include "LED_CONFIG.h"
 #include "BUTTON_CONFIG.h"
@@ -99,6 +99,19 @@ void loop() {
       int error_state = 0;
       setSystemLEDs(ok_state, error_state);
       Serial.println("System LEDs set manually");
+    } else if (command == "test-alert") {
+      commercialAlertPattern();
+      Serial.println("Commercial alert pattern triggered");
+    } else if (command == "test-success") {
+      commercialSuccessPattern();
+      Serial.println("Commercial success pattern triggered");
+    } else if (command == "test-error") {
+      commercialErrorPattern();
+      Serial.println("Commercial error pattern triggered");
+    } else if (command == "test-network") {
+      bool connected = checkAndReconnectNetwork();
+      Serial.print("Network test: ");
+      Serial.println(connected ? "Connected" : "Failed to connect");
     } else if (command == "check-weather") {
       bool willRain = checkWeatherForRain();
       if (willRain) {
