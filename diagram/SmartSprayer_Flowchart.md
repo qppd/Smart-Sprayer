@@ -75,7 +75,7 @@ flowchart TD
     WEATHER_CLEAR_MSG[Print: No rain - safe to spray]
 
     %% LCD Commands
-    CLEAR_LCD[clearLCD()<br/>Print: LCD cleared]
+    CLEAR_LCD["clearLCD()<br/>Print: LCD cleared"]
     TEST_LCD[setLCDText() x3<br/>Print: LCD test display set]
 
     %% Time Commands
