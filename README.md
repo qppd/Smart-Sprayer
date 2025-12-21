@@ -2,31 +2,45 @@
 
 ## Overview
 
-The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ESP32 microcontroller platform. It is designed to revolutionize precision farming by providing intelligent pesticide spraying capabilities. The system integrates ultrasonic sensors for container level monitoring, GSM communication for remote monitoring, LCD display for local status indication, relay-controlled actuators for spray mechanism operation, WiFi connectivity for cloud integration, and Firebase for real-time data synchronization and remote control.
+The Smart-Sprayer is an advanced IoT-enabled agricultural device built on the ESP32 microcontroller platform. It provides intelligent, automated pesticide spraying with weather-aware operation and user-friendly button-based scheduling. The system features ultrasonic level monitoring, GSM SMS notifications, LCD status display, and comprehensive feedback systems for professional agricultural applications.
+
+### Key Operational Flow
+1. **System Startup**: ESP32 initializes all hardware components
+2. **Button Scheduling**: User sets spray time using ESP32 buttons
+3. **Automated Monitoring**: System continuously checks time and weather
+4. **Weather Validation**: Prevents spraying during rain conditions
+5. **Smart Activation**: Activates pumps when conditions are optimal
+6. **Level Monitoring**: Real-time container level checking during operation
+7. **Feedback System**: Professional audio-visual status indicators
 
 ## Features
 
 ### Core Functionality
-- **Container Level Monitoring**: Ultrasonic sensor-based measurement of pesticide container fill percentage
-- **Remote Monitoring**: GSM module integration for SMS notifications and status updates
-- **Local Display**: 20x4 LCD screen for real-time system status and information display
-- **Actuator Control**: Dual relay system for controlling spray pumps and valves
-- **Serial Interface**: Command-line interface for system testing and configuration
+- **Button-Based Scheduling**: Intuitive time setting using ESP32 buttons with LCD menu navigation
+- **Weather-Aware Operation**: Automatic rain detection prevents unnecessary spraying
+- **Container Level Monitoring**: Real-time ultrasonic measurement with low-level warnings
+- **Automated Spraying**: Scheduled activation with intelligent condition checking
+- **Professional Feedback**: Commercial-grade LED patterns and industrial buzzer tones
+- **GSM Notifications**: SMS alerts for completion, postponement, and system events
+- **Network Resilience**: Automatic reconnection with SMS retry mechanisms
 
 ### Advanced Features
-- **Cloud Connectivity**: Firebase Realtime Database integration for data logging and remote control
-- **WiFi Management**: Automatic WiFi configuration with captive portal fallback
-- **Time Synchronization**: NTP integration for accurate timestamping of data
-- **Precision Spraying**: Distance-based spray control to avoid over-spraying
-- **Network Connectivity**: Real-time network status monitoring across multiple protocols
-- **Bulk Messaging**: SMS broadcasting to multiple recipients
-- **Real-time Streaming**: Firebase streams for live control and monitoring
-- **Weather Integration**: WeatherAPI for current weather monitoring to prevent spraying during rain
-- **Smart Scheduling**: Dual-pump scheduling with weather-based postponement and SMS notifications
-- **Commercial Feedback**: Professional LED blinking patterns and industrial buzzer tones for status indication
-- **Network Resilience**: Automatic GSM reconnection and SMS retry mechanisms
-- **Event Notifications**: SMS alerts for spraying completion, postponement, and system errors
-- **Modular Design**: Separate configuration headers for easy maintenance and updates
+- **Dual Relay Control**: Independent pump/valve operation for precision spraying
+- **RTC Timekeeping**: Accurate scheduling with NTP synchronization and battery backup
+- **Firebase Integration**: Cloud data logging and remote monitoring capabilities
+- **WiFi Management**: Automatic configuration with captive portal fallback
+- **Serial Diagnostics**: Comprehensive command interface for testing and configuration
+- **Modular Architecture**: Clean separation of concerns with dedicated config headers
+
+### System Architecture
+- **ESP32 Microcontroller**: Dual-core processing with WiFi/Bluetooth
+- **Ultrasonic Sensors**: HC-SR04 for precise container level measurement
+- **GSM Module**: SIM800L for SMS communication and network monitoring
+- **LCD Display**: 20x4 I2C interface for status and menu navigation
+- **Relay System**: Dual-channel control for spray actuators
+- **Button Interface**: 4-button navigation (WiFi reset + 3 menu controls)
+- **RTC Module**: DS1302 for reliable timekeeping
+- **Audio/Visual**: Buzzer and dual LED status indicators
 
 ### Notification System
 The Smart-Sprayer includes a comprehensive notification system for operational awareness:
@@ -36,6 +50,16 @@ The Smart-Sprayer includes a comprehensive notification system for operational a
 - **Network Monitoring**: GSM network disconnection triggers automatic reconnection attempts
 - **Commercial Feedback**: Professional LED blinking patterns and industrial buzzer tones
 - **Status Indicators**: Visual and audible feedback for all system operations
+
+## System Flowchart
+
+The project includes a detailed flowchart diagram showing the complete operational process:
+
+```
+diagram/SmartSprayer_Flowchart.md
+```
+
+This flowchart illustrates the step-by-step process from ESP32 button scheduling through automated spraying cycles, including decision points for weather checking, time validation, and level monitoring.
 
 ### Container Level Calculation
 The ultrasonic sensor measures the distance from the sensor to the surface of the pesticide in the container. To calculate the fill percentage:
@@ -248,115 +272,74 @@ Refer to the wiring diagrams in the `wiring/` directory for complete circuit con
 ## Usage
 
 ### Basic Operation
-1. Power on the ESP32 board
-2. The system will initialize all modules automatically
-3. LCD will display initialization status
-4. System is ready for operation
+1. **Power On**: Connect power to the ESP32 board
+2. **System Initialization**: LCD displays startup sequence and component status
+3. **Ready State**: System shows "System Ready" when all components are initialized
+4. **Button Scheduling**: Use the 4 buttons to set spray schedules and monitor status
 
-### WiFi Manager Reset
-- Hold the WiFi reset button (GPIO 23) for 3 seconds during boot to enter WiFi manager AP mode
-- This allows reconfiguration of WiFi credentials without reprogramming the device
+### Button Interface
+The system uses 4 buttons for complete operation:
 
-### LCD Menu System
-The system includes an interactive LCD menu controlled by 3 navigation buttons:
-- **Menu Up Button (GPIO 25)**: Navigate up in menus or increment values
-- **Menu Down Button (GPIO 26)**: Navigate down in menus or decrement values  
-- **Menu Select Button (GPIO 27)**: Select menu items or save settings
+| Button | GPIO Pin | Function |
+|--------|----------|----------|
+| **WiFi Reset** | GPIO 23 | Hold 3s to reset WiFi settings |
+| **Menu Up** | GPIO 25 | Navigate menus up / increment values |
+| **Menu Down** | GPIO 26 | Navigate menus down / decrement values |
+| **Menu Select** | GPIO 27 | Select items / confirm settings |
 
-#### Menu Options:
-1. **Schedule Spray**: Set daily spray time (hour and minute)
-2. **Cancel Schedule**: Remove existing spray schedule
-3. **View Time**: Display current time from RTC
+### Scheduling Process
+1. **Enter Scheduling**: Press any menu button when system is ready
+2. **Navigate Menu**: Use Up/Down buttons to select "Schedule Spray"
+3. **Set Time**: Use Up/Down buttons to adjust hour and minute
+4. **Confirm**: Press Select button to save the schedule
+5. **Monitor**: LCD displays scheduled time and system status
 
-### Serial Command Interface
-The system provides a comprehensive serial command interface for testing and configuration. Connect to the ESP32 using Arduino Serial Monitor at 9600 baud rate.
+### Automated Operation
+Once scheduled, the system operates automatically:
+- **Time Check**: Compares current time with scheduled spray time
+- **Weather Validation**: Checks for rain conditions before spraying
+- **Pump Activation**: Activates relays when conditions are optimal
+- **Level Monitoring**: Continuously monitors container levels during spraying
+- **Completion Feedback**: Provides audio-visual confirmation when done
+- **Cycle Repeat**: Returns to monitoring for next scheduled spray
 
-#### Available Commands
+### WiFi Configuration
+- **Normal Operation**: System connects to saved WiFi network automatically
+- **Reset Mode**: Hold WiFi reset button (GPIO 23) for 3 seconds during boot
+- **AP Mode**: System creates "SmartSprayer-Setup" access point for configuration
+- **Web Portal**: Connect to AP and open 192.168.4.1 in browser to configure WiFi
 
-##### Relay Control
-- `operate-relay1_on`: Activates relay 1 (turns spray pump/valve on)
-- `operate-relay1_off`: Deactivates relay 1 (turns spray pump/valve off)
-- `operate-relay2_on`: Activates relay 2 (turns spray pump/valve on)
-- `operate-relay2_off`: Deactivates relay 2 (turns spray pump/valve off)
+### Serial Diagnostics Interface
+The system provides a serial diagnostics interface for advanced troubleshooting and configuration. Connect to the ESP32 using Arduino Serial Monitor at 9600 baud rate. This interface is primarily for maintenance and diagnostics - normal operation is fully automated through the button interface.
 
-##### GSM Communication
-- `send-sms`: Sends a test SMS message to the default number
-- `send-sms-to-all`: Broadcasts SMS to all configured recipients
+#### Available Diagnostic Commands
+
+##### System Diagnostics
 - `check-network`: Queries GSM network registration status
-
-##### Sensor Reading
-- `get-distance1`: Retrieves current distance measurement from ultrasonic sensor 1 (container level)
+- `get-distance1`: Retrieves current distance measurement from ultrasonic sensor 1
 - `get-distance2`: Retrieves current distance measurement from ultrasonic sensor 2
 - `get-level`: Calculates and displays container fill level and percentage
-
-##### Display Testing
-- `test-display`: Displays test information on the LCD screen
-
-##### Buzzer Control
-- `buzzer-on`: Turns buzzer on continuously
-- `buzzer-off`: Turns buzzer off
-- `buzzer-beep`: Produces a short beep
-
-##### LED Control
-- `led-ok`: Turns on system OK LED
-- `led-error`: Turns on system error LED
-- `led-warning`: Turns on both LEDs for warning
-- `led-clear`: Turns off all system LEDs
-- `set-leds`: Manually set LED states (OK and Error)
-
-##### Notification Testing
-- `test-alert`: Triggers commercial alert pattern (LEDs + buzzer)
-- `test-success`: Triggers commercial success pattern (LEDs + buzzer)
-- `test-error`: Triggers commercial error pattern (LEDs + buzzer)
-- `test-network`: Tests GSM network connection and reconnection
-
-##### Weather Monitoring
 - `check-weather`: Fetches current weather and checks for rain
-
-##### LCD Control
-- `clear-lcd`: Clears the LCD display
-- `test-lcd`: Displays test messages on the LCD
-
-##### NTP Time Functions
 - `get-time`: Retrieves and displays current formatted date/time
-- `get-timestamp`: Gets current NTP timestamp
-- `get-timestamp-fallback`: Gets NTP timestamp with fallback
-- `get-log-prefix`: Gets formatted log prefix with timestamp
-- `get-datetime-fallback`: Gets formatted date/time with fallback
-- `check-ntp`: Checks if NTP time is synchronized
-- `update-ntp`: Manually updates NTP date/time
-
-##### WiFi Management
 - `wifi-reset`: Resets WiFi settings and restarts in AP mode
 
-##### Button Testing
-- `button-status`: Checks if the WiFi reset button is currently pressed
+##### Component Testing (Maintenance Only)
+- `operate-relay1_on/off`: Manual relay control for testing
+- `buzzer-beep`: Test buzzer functionality
+- `led-ok/error/warning/clear`: Test LED indicators
+- `test-display`: Display test information on LCD
+- `send-sms`: Send test SMS message
 
 ### Command Usage Examples
 ```
-operate-relay1_on
-Relay 1 turned ON
-
-get-distance1
-Distance 1: 45 cm
-
 get-level
 Distance: 45 cm, Filled: 55 cm, Percentage: 55 %
-
-test-display
-LCD test displayed
-
-get-time
-Current time: 2025-12-20 14:30:25
 
 check-weather
 Weather check: No rain currently - safe to spray
 
-clear-lcd
-LCD cleared
-
-wifi-reset
-Resetting WiFi settings...
+get-time
+Current time: 2025-12-20 14:30:25
 ```
 
 
@@ -590,16 +573,23 @@ For questions, issues, or contributions, please use the GitHub repository's issu
 
 ## Version History
 
+- v1.2.0: Enhanced operational flow and professional documentation
+  - Redesigned flowchart as step-by-step process from button scheduling
+  - Removed testing commands from operational flow
+  - Updated README.md with current project state
+  - Improved button-based scheduling interface
+  - Enhanced automated monitoring and feedback systems
 - v1.1.0: Added weather integration for rain detection
-  - OpenWeatherMap API integration
-  - Weather-based spray control
-  - New serial command for weather checking
-- v1.0.0: Initial release with basic functionality
-  - Ultrasonic distance measurement
-  - GSM SMS communication
-  - LCD status display
-  - Relay control system
-  - Serial command interface
+  - WeatherAPI integration for intelligent spray control
+  - Weather-based postponement of spraying operations
+  - Enhanced serial diagnostics interface
+- v1.0.0: Initial release with core IoT functionality
+  - Ultrasonic container level monitoring
+  - GSM SMS notification system
+  - LCD status display and menu navigation
+  - Dual relay control for spray actuators
+  - Firebase cloud integration
+  - NTP time synchronization with RTC backup
 
 ## Future Enhancements
 
