@@ -76,24 +76,24 @@ flowchart TD
 
     %% LCD Commands
     CLEAR_LCD["clearLCD()<br/>Print: LCD cleared"]
-    TEST_LCD[setLCDText() x3<br/>Print: LCD test display set]
+    TEST_LCD["setLCDText() x3<br/>Print: LCD test display set"]
 
     %% Time Commands
-    GET_TIME[getFormattedDateTime()<br/>Print: Current time: X]
-    GET_TIMESTAMP[getNTPTimestamp()<br/>Print: NTP Timestamp: X]
-    GET_TS_FALLBACK[getNTPTimestampWithFallback()<br/>Print: NTP Timestamp (fallback): X]
-    GET_LOG_PREFIX[getCurrentLogPrefix()<br/>Print: Log prefix: X]
-    GET_DT_FALLBACK[getFormattedDateTimeWithFallback()<br/>Print: DateTime (fallback): X]
-    CHECK_NTP[isNTPSynced()<br/>Print: NTP Synced: Yes/No]
-    UPDATE_NTP[getNTPDate()<br/>Print: NTP date updated]
+    GET_TIME["getFormattedDateTime()<br/>Print: Current time: X"]
+    GET_TIMESTAMP["getNTPTimestamp()<br/>Print: NTP Timestamp: X"]
+    GET_TS_FALLBACK["getNTPTimestampWithFallback()<br/>Print: NTP Timestamp (fallback): X"]
+    GET_LOG_PREFIX["getCurrentLogPrefix()<br/>Print: Log prefix: X"]
+    GET_DT_FALLBACK["getFormattedDateTimeWithFallback()<br/>Print: DateTime (fallback): X"]
+    CHECK_NTP["isNTPSynced()<br/>Print: NTP Synced: Yes/No"]
+    UPDATE_NTP["getNTPDate()<br/>Print: NTP date updated"]
 
     %% System Commands
-    WIFI_RESET[resetWiFiSettings()<br/>Print: Resetting WiFi settings]
-    BUTTON_STATUS[isButtonPressed()<br/>Print: Button pressed: Yes/No]
-    GET_LEVEL[Calculate level & percentage<br/>Print: Distance, Filled, Percentage]
+    WIFI_RESET["resetWiFiSettings()<br/>Print: Resetting WiFi settings"]
+    BUTTON_STATUS["isButtonPressed()<br/>Print: Button pressed: Yes/No"]
+    GET_LEVEL["Calculate level & percentage<br/>Print: Distance, Filled, Percentage"]
 
     %% Unknown Command
-    UNKNOWN_CMD[Print: Unknown command]
+    UNKNOWN_CMD["Print: Unknown command"]
 
     %% Flow Connections
     START --> SETUP
