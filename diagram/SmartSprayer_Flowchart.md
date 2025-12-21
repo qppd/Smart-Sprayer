@@ -4,40 +4,40 @@
 %%{init: {'flowchart': {'nodeSpacing': 20, 'rankSpacing': 60}}}%%
 flowchart TD
     %% System Startup
-    START(["🚀 ESP32 Power On"])
-    SETUP(["⚙️ System Initialization<br/>Hardware Setup"])
-    READY(["✅ System Ready<br/>LCD Display Active"])
+    START(["ESP32 Power On"])
+    SETUP(["System Initialization<br/>Hardware Setup"])
+    READY(["System Ready<br/>LCD Display Active"])
 
     %% Main Monitoring Loop
-    MONITOR(["🔄 Main Monitoring Loop<br/>Continuous Operation"])
-    CHECK_BUTTONS(["🔘 Check Button Presses<br/>User Input Detection"])
-    BUTTON_PRESSED{{"🔘 Button Pressed?"}}
+    MONITOR(["Main Monitoring Loop<br/>Continuous Operation"])
+    CHECK_BUTTONS(["Check Button Presses<br/>User Input Detection"])
+    BUTTON_PRESSED{{"Button Pressed?"}}
 
     %% Scheduling Process
-    SCHEDULING_MODE(["📅 Enter Scheduling Mode<br/>LCD Shows Menu"])
-    SET_TIME(["⏰ Set Spray Time<br/>Use Buttons to Adjust"])
-    CONFIRM_TIME(["✅ Confirm Schedule<br/>Save to RTC"])
-    SCHEDULED(["📋 Schedule Set<br/>Return to Monitoring"])
+    SCHEDULING_MODE(["Enter Scheduling Mode<br/>LCD Shows Menu"])
+    SET_TIME(["Set Spray Time<br/>Use Buttons to Adjust"])
+    CONFIRM_TIME(["Confirm Schedule<br/>Save to RTC"])
+    SCHEDULED(["Schedule Set<br/>Return to Monitoring"])
 
     %% Time & Weather Check
-    CHECK_TIME(["🕐 Check Current Time<br/>Compare with Schedule"])
-    TIME_MATCH{{"⏰ Time to Spray?"}}
-    CHECK_WEATHER(["🌦️ Check Weather<br/>Rain Detection"])
-    WEATHER_OK{{"☀️ Weather OK?"}}
+    CHECK_TIME(["Check Current Time<br/>Compare with Schedule"])
+    TIME_MATCH{{"Time to Spray?"}}
+    CHECK_WEATHER(["Check Weather<br/>Rain Detection"])
+    WEATHER_OK{{"Weather OK?"}}
 
     %% Spray Activation
-    ACTIVATE_PUMPS(["🔌 Activate Pumps<br/>Relay Control"])
-    SPRAYING_ACTIVE(["💧 Spraying Active<br/>Monitor Levels"])
-    CHECK_LEVELS(["📏 Check Container Levels<br/>Ultrasonic Sensors"])
-    LEVELS_OK{{"📊 Levels Sufficient?"}}
+    ACTIVATE_PUMPS(["Activate Pumps<br/>Relay Control"])
+    SPRAYING_ACTIVE(["Spraying Active<br/>Monitor Levels"])
+    CHECK_LEVELS(["Check Container Levels<br/>Ultrasonic Sensors"])
+    LEVELS_OK{{"Levels Sufficient?"}}
 
     %% Feedback & Completion
-    SUCCESS_FEEDBACK(["🎉 Success Feedback<br/>Buzzer & LED"])
-    SPRAY_COMPLETE(["✅ Spraying Complete<br/>Deactivate Pumps"])
-    LOW_LEVEL_WARNING(["⚠️ Low Level Warning<br/>Alert User"])
+    SUCCESS_FEEDBACK(["Success Feedback<br/>Buzzer & LED"])
+    SPRAY_COMPLETE(["Spraying Complete<br/>Deactivate Pumps"])
+    LOW_LEVEL_WARNING(["Low Level Warning<br/>Alert User"])
 
     %% Return to Monitoring
-    RETURN_MONITOR(["🔄 Return to Monitoring<br/>Wait for Next Cycle"])
+    RETURN_MONITOR(["Return to Monitoring<br/>Wait for Next Cycle"])
 
     %% Flow Connections
     START --> SETUP
