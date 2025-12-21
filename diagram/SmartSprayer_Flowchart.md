@@ -26,7 +26,7 @@ flowchart TD
     SET_FLAGS["setInputFlags()"]
     RESOLVE_FLAGS["resolveInputFlags()"]
     ALARM_DELAY["Alarm.delay(10)"]
-    SERIAL_CHECK{Serial.available()?}
+    SERIAL_CHECK{"Serial.available()?"}
 
     %% Serial Command Processing
     READ_COMMAND[Read Serial Command]
