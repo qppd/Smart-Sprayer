@@ -571,34 +571,6 @@ This project is licensed under the terms specified in the LICENSE file. See LICE
 
 For questions, issues, or contributions, please use the GitHub repository's issue tracker or pull request system.
 
-## Version History
-
-- v1.2.0: Enhanced operational flow and professional documentation
-  - Redesigned flowchart as step-by-step process from button scheduling
-  - Removed testing commands from operational flow
-  - Updated README.md with current project state
-  - Improved button-based scheduling interface
-  - Enhanced automated monitoring and feedback systems
-- v1.1.0: Added weather integration for rain detection
-  - WeatherAPI integration for intelligent spray control
-  - Weather-based postponement of spraying operations
-  - Enhanced serial diagnostics interface
-- v1.0.0: Initial release with core IoT functionality
-  - Ultrasonic container level monitoring
-  - GSM SMS notification system
-  - LCD status display and menu navigation
-  - Dual relay control for spray actuators
-  - Firebase cloud integration
-  - NTP time synchronization with RTC backup
-
-## Future Enhancements
-
-- Integration with GPS for location tracking
-- Machine learning models for spray optimization
-- Mobile app for remote control
-- Data logging and analytics
-- Battery management system
-
 ## Contact
 
 - Email: [quezon.province.pd@gmail.com](mailto:quezon.province.pd@gmail.com)
