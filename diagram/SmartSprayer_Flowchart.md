@@ -7,69 +7,69 @@ flowchart TD
 
     %% Setup Function
     SETUP[Setup Function]
-    SERIAL_INIT[Serial.begin(9600)]
-    LCD_INIT[initLCD()]
-    GSM_INIT[initGSM()]
-    RELAY_INIT[initRELAY()]
-    SR04_INIT[initSR04()]
-    WIFI_INIT[initWIFI()]
-    FIREBASE_INIT[initFIREBASE()]
-    NTP_INIT[initNTP()]
-    BUZZER_INIT[initBuzzer()]
-    LED_INIT[initLEDs()]
-    BUTTON_INIT[initBUTTONS()]
-    RTC_INIT[initRTC()]
-    SYNC_RTC[syncRTCWithNTP()]
+    SERIAL_INIT["Serial.begin(9600)"]
+    LCD_INIT["initLCD()"]
+    GSM_INIT["initGSM()"]
+    RELAY_INIT["initRELAY()"]
+    SR04_INIT["initSR04()"]
+    WIFI_INIT["initWIFI()"]
+    FIREBASE_INIT["initFIREBASE()"]
+    NTP_INIT["initNTP()"]
+    BUZZER_INIT["initBuzzer()"]
+    LED_INIT["initLEDs()"]
+    BUTTON_INIT["initBUTTONS()"]
+    RTC_INIT["initRTC()"]
+    SYNC_RTC["syncRTCWithNTP()"]
 
     %% Main Loop
     LOOP[Main Loop - Continuous]
-    SET_FLAGS[setInputFlags()]
-    RESOLVE_FLAGS[resolveInputFlags()]
-    ALARM_DELAY[Alarm.delay(10)]
+    SET_FLAGS["setInputFlags()"]
+    RESOLVE_FLAGS["resolveInputFlags()"]
+    ALARM_DELAY["Alarm.delay(10)"]
     SERIAL_CHECK{Serial.available()?}
 
     %% Serial Command Processing
     READ_COMMAND[Read Serial Command]
-    TRIM_COMMAND[command.trim()]
+    TRIM_COMMAND["command.trim()"]
 
     %% Command Decision Tree
     COMMAND_DECISION{Command Type}
 
     %% Relay Commands
-    RELAY1_ON[operateRELAY(RELAY_1, true)<br/>Print: Relay 1 turned ON]
-    RELAY1_OFF[operateRELAY(RELAY_1, false)<br/>Print: Relay 1 turned OFF]
-    RELAY2_ON[operateRELAY(RELAY_2, true)<br/>Print: Relay 2 turned ON]
-    RELAY2_OFF[operateRELAY(RELAY_2, false)<br/>Print: Relay 2 turned OFF]
+    RELAY1_ON["operateRELAY(RELAY_1, true)<br/>Print: Relay 1 turned ON"]
+    RELAY1_OFF["operateRELAY(RELAY_1, false)<br/>Print: Relay 1 turned OFF"]
+    RELAY2_ON["operateRELAY(RELAY_2, true)<br/>Print: Relay 2 turned ON"]
+    RELAY2_OFF["operateRELAY(RELAY_2, false)<br/>Print: Relay 2 turned OFF"]
 
     %% GSM Commands
-    SEND_SMS[sendSMS(+1234567890, Test SMS)<br/>Print: SMS sent]
-    SEND_SMS_ALL[sendSMSToAll(Test SMS)<br/>Print: SMS sent to all]
-    CHECK_NETWORK[checkNetwork()<br/>Print: Network check initiated]
+    SEND_SMS["sendSMS(+1234567890, Test SMS)<br/>Print: SMS sent"]
+    SEND_SMS_ALL["sendSMSToAll(Test SMS)<br/>Print: SMS sent to all"]
+    CHECK_NETWORK["checkNetwork()<br/>Print: Network check initiated"]
 
     %% Ultrasonic Commands
-    GET_DISTANCE1[readDistance()<br/>Print: Distance 1: X cm]
-    GET_DISTANCE2[readDistance2()<br/>Print: Distance 2: X cm]
+    GET_DISTANCE1["readDistance()<br/>Print: Distance 1: X cm"]
+    GET_DISTANCE2["readDistance2()<br/>Print: Distance 2: X cm"]
 
     %% Buzzer Commands
-    BUZZER_ON[buzzerOn()<br/>Print: Buzzer turned ON]
-    BUZZER_OFF[buzzerOff()<br/>Print: Buzzer turned OFF]
-    BUZZER_BEEP[buzzerBeep()<br/>Print: Buzzer beeped]
+    BUZZER_ON["buzzerOn()<br/>Print: Buzzer turned ON"]
+    BUZZER_OFF["buzzerOff()<br/>Print: Buzzer turned OFF"]
+    BUZZER_BEEP["buzzerBeep()<br/>Print: Buzzer beeped"]
 
     %% LED Commands
-    LED_OK[setSystemOK()<br/>Print: System OK LED ON]
-    LED_ERROR[setSystemError()<br/>Print: System Error LED ON]
-    LED_WARNING[setSystemWarning()<br/>Print: System Warning LEDs ON]
-    LED_CLEAR[clearSystemLEDs()<br/>Print: System LEDs cleared]
-    SET_LEDS[setSystemLEDs(1,0)<br/>Print: System LEDs set manually]
+    LED_OK["setSystemOK()<br/>Print: System OK LED ON"]
+    LED_ERROR["setSystemError()<br/>Print: System Error LED ON"]
+    LED_WARNING["setSystemWarning()<br/>Print: System Warning LEDs ON"]
+    LED_CLEAR["clearSystemLEDs()<br/>Print: System LEDs cleared"]
+    SET_LEDS["setSystemLEDs(1,0)<br/>Print: System LEDs set manually"]
 
     %% Notification Test Commands
-    TEST_ALERT[commercialAlertPattern()<br/>Print: Commercial alert pattern triggered]
-    TEST_SUCCESS[commercialSuccessPattern()<br/>Print: Commercial success pattern triggered]
-    TEST_ERROR[commercialErrorPattern()<br/>Print: Commercial error pattern triggered]
-    TEST_NETWORK[checkAndReconnectNetwork()<br/>Print: Network test result]
+    TEST_ALERT["commercialAlertPattern()<br/>Print: Commercial alert pattern triggered"]
+    TEST_SUCCESS["commercialSuccessPattern()<br/>Print: Commercial success pattern triggered"]
+    TEST_ERROR["commercialErrorPattern()<br/>Print: Commercial error pattern triggered"]
+    TEST_NETWORK["checkAndReconnectNetwork()<br/>Print: Network test result"]
 
     %% Weather Command
-    CHECK_WEATHER[checkWeatherForRain()]
+    CHECK_WEATHER["checkWeatherForRain()"]
     WEATHER_RAIN{willRain?}
     WEATHER_RAIN_MSG[Print: Rain expected - avoid spraying]
     WEATHER_CLEAR_MSG[Print: No rain - safe to spray]
