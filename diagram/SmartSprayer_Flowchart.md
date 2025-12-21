@@ -1,111 +1,84 @@
 # Smart-Sprayer System Flowchart
 
 ```mermaid
+%%{init: {'flowchart': {'nodeSpacing': 20, 'rankSpacing': 60}}}%%
 flowchart TD
     %% Start
     START(["🚀 ESP32 Power On"])
 
     %% Setup Phase
-    subgraph SETUP_PHASE["System Initialization"]
-        SETUP(["⚙️ Setup Function"])
-        SERIAL_INIT(["📡 Serial.begin(9600)"])
-        LCD_INIT(["🖥️ initLCD()"])
-        GSM_INIT(["📱 initGSM()"])
-        RELAY_INIT(["🔌 initRELAY()"])
-        SR04_INIT(["📏 initSR04()"])
-        WIFI_INIT(["🌐 initWIFI()"])
-        FIREBASE_INIT(["☁️ initFIREBASE()"])
-        NTP_INIT(["⏰ initNTP()"])
-        BUZZER_INIT(["🔊 initBuzzer()"])
-        LED_INIT(["💡 initLEDs()"])
-        BUTTON_INIT(["🔘 initBUTTONS()"])
-        RTC_INIT(["🕐 initRTC()"])
-        SYNC_RTC(["🔄 syncRTCWithNTP()"])
-    end
+    SETUP(["⚙️ Setup Function"])
+    SERIAL_INIT(["📡 Serial.begin(9600)"])
+    LCD_INIT(["🖥️ initLCD()"])
+    GSM_INIT(["📱 initGSM()"])
+    RELAY_INIT(["🔌 initRELAY()"])
+    SR04_INIT(["📏 initSR04()"])
+    WIFI_INIT(["🌐 initWIFI()"])
+    FIREBASE_INIT(["☁️ initFIREBASE()"])
+    NTP_INIT(["⏰ initNTP()"])
+    BUZZER_INIT(["🔊 initBuzzer()"])
+    LED_INIT(["💡 initLEDs()"])
+    BUTTON_INIT(["🔘 initBUTTONS()"])
+    RTC_INIT(["🕐 initRTC()"])
+    SYNC_RTC(["🔄 syncRTCWithNTP()"])
 
     %% Main Loop
-    subgraph MAIN_LOOP["Continuous Operation"]
-        LOOP(["🔄 Main Loop"])
-        SET_FLAGS(["📝 setInputFlags()"])
-        RESOLVE_FLAGS(["🔧 resolveInputFlags()"])
-        ALARM_DELAY(["⏳ Alarm.delay(10)"])
-        SERIAL_CHECK{"📨 Serial.available()?"}
-    end
+    LOOP(["🔄 Main Loop"])
+    SET_FLAGS(["📝 setInputFlags()"])
+    RESOLVE_FLAGS(["🔧 resolveInputFlags()"])
+    ALARM_DELAY(["⏳ Alarm.delay(10)"])
+    SERIAL_CHECK{"📨 Serial.available()?"}
 
     %% Serial Command Processing
-    subgraph CMD_PROCESS["Command Processing"]
-        READ_COMMAND(["📖 Read Serial Command"])
-        TRIM_COMMAND(["✂️ command.trim()"])
-        COMMAND_DECISION{"🎯 Command Type"}
+    READ_COMMAND(["📖 Read Serial Command"])
+    TRIM_COMMAND(["✂️ command.trim()"])
+    COMMAND_DECISION{"🎯 Command Type"}
 
-        subgraph RELAY_CMDS["Relay Control"]
-            RELAY1_ON(["🔌 Relay 1 ON<br/>Pump 1 Activate"])
-            RELAY1_OFF(["🔌 Relay 1 OFF<br/>Pump 1 Deactivate"])
-            RELAY2_ON(["🔌 Relay 2 ON<br/>Pump 2 Activate"])
-            RELAY2_OFF(["🔌 Relay 2 OFF<br/>Pump 2 Deactivate"])
-        end
+    %% Hardware Control Commands
+    RELAY1_ON(["🔌 Relay 1 ON<br/>Pump 1 Activate"])
+    RELAY1_OFF(["🔌 Relay 1 OFF<br/>Pump 1 Deactivate"])
+    RELAY2_ON(["🔌 Relay 2 ON<br/>Pump 2 Activate"])
+    RELAY2_OFF(["🔌 Relay 2 OFF<br/>Pump 2 Deactivate"])
+    GET_DISTANCE1(["📏 Distance 1<br/>Ultrasonic Reading"])
+    GET_DISTANCE2(["📏 Distance 2<br/>Ultrasonic Reading"])
+    GET_LEVEL(["📊 Level Calculation<br/>Percentage & Status"])
+    BUZZER_ON(["🔊 Buzzer ON<br/>Continuous Tone"])
+    BUZZER_OFF(["🔇 Buzzer OFF<br/>Silence"])
+    BUZZER_BEEP(["🔔 Buzzer Beep<br/>Short Tone"])
+    LED_OK(["✅ System OK<br/>Green LED"])
+    LED_ERROR(["❌ System Error<br/>Red LED"])
+    LED_WARNING(["⚠️ System Warning<br/>Yellow LEDs"])
+    LED_CLEAR(["🧹 Clear LEDs<br/>All Off"])
+    SET_LEDS(["🎛️ Set LEDs<br/>Manual Control"])
 
-        subgraph GSM_CMDS["GSM & SMS"]
-            SEND_SMS(["📱 Send SMS<br/>Test Message"])
-            SEND_SMS_ALL(["📱 Send to All<br/>Bulk SMS"])
-            CHECK_NETWORK(["📡 Network Check<br/>Connection Status"])
-        end
+    %% Communication & Weather Commands
+    SEND_SMS(["📱 Send SMS<br/>Test Message"])
+    SEND_SMS_ALL(["📱 Send to All<br/>Bulk SMS"])
+    CHECK_NETWORK(["📡 Network Check<br/>Connection Status"])
+    CHECK_WEATHER(["🌦️ Weather Check<br/>Rain Detection"])
+    WEATHER_RAIN{{"🌧️ Rain Expected?"}}
+    WEATHER_RAIN_MSG(["🌧️ Rain Alert<br/>Postpone Spraying"])
+    WEATHER_CLEAR_MSG(["☀️ Clear Weather<br/>Safe to Spray"])
 
-        subgraph SENSOR_CMDS["Sensors"]
-            GET_DISTANCE1(["📏 Distance 1<br/>Ultrasonic Reading"])
-            GET_DISTANCE2(["📏 Distance 2<br/>Ultrasonic Reading"])
-            GET_LEVEL(["📊 Level Calculation<br/>Percentage & Status"])
-        end
+    %% System & Time Commands
+    CLEAR_LCD(["🧹 Clear LCD<br/>Reset Display"])
+    TEST_LCD(["🖥️ Test LCD<br/>Display Patterns"])
+    GET_TIME(["🕐 Current Time<br/>Formatted Display"])
+    GET_TIMESTAMP(["⏱️ NTP Timestamp<br/>Unix Time"])
+    GET_TS_FALLBACK(["⏱️ Timestamp Fallback<br/>RTC Backup"])
+    GET_LOG_PREFIX(["📝 Log Prefix<br/>Timestamp Format"])
+    GET_DT_FALLBACK(["🕐 DateTime Fallback<br/>RTC Backup"])
+    CHECK_NTP(["🔗 NTP Sync Status<br/>Synchronization"])
+    UPDATE_NTP(["🔄 Update NTP<br/>Force Sync"])
+    WIFI_RESET(["🔄 WiFi Reset<br/>Clear Settings"])
+    BUTTON_STATUS(["🔘 Button Status<br/>Input Check"])
+    UNKNOWN_CMD(["❓ Unknown Command<br/>Error Message"])
 
-        subgraph AUDIO_CMDS["Audio Feedback"]
-            BUZZER_ON(["🔊 Buzzer ON<br/>Continuous Tone"])
-            BUZZER_OFF(["🔇 Buzzer OFF<br/>Silence"])
-            BUZZER_BEEP(["🔔 Buzzer Beep<br/>Short Tone"])
-        end
-
-        subgraph VISUAL_CMDS["Visual Feedback"]
-            LED_OK(["✅ System OK<br/>Green LED"])
-            LED_ERROR(["❌ System Error<br/>Red LED"])
-            LED_WARNING(["⚠️ System Warning<br/>Yellow LEDs"])
-            LED_CLEAR(["🧹 Clear LEDs<br/>All Off"])
-            SET_LEDS(["🎛️ Set LEDs<br/>Manual Control"])
-        end
-
-        subgraph TEST_CMDS["System Tests"]
-            TEST_ALERT(["🚨 Alert Pattern<br/>Commercial Alert"])
-            TEST_SUCCESS(["🎉 Success Pattern<br/>Completion Tone"])
-            TEST_ERROR(["💥 Error Pattern<br/>Failure Alert"])
-            TEST_NETWORK(["🌐 Network Test<br/>Reconnect Check"])
-        end
-
-        subgraph WEATHER_CMDS["Weather"]
-            CHECK_WEATHER(["🌦️ Weather Check<br/>Rain Detection"])
-            WEATHER_RAIN{{"🌧️ Rain Expected?"}}
-            WEATHER_RAIN_MSG(["🌧️ Rain Alert<br/>Postpone Spraying"])
-            WEATHER_CLEAR_MSG(["☀️ Clear Weather<br/>Safe to Spray"])
-        end
-
-        subgraph LCD_CMDS["Display"]
-            CLEAR_LCD(["🧹 Clear LCD<br/>Reset Display"])
-            TEST_LCD(["🖥️ Test LCD<br/>Display Patterns"])
-        end
-
-        subgraph TIME_CMDS["Time Management"]
-            GET_TIME(["🕐 Current Time<br/>Formatted Display"])
-            GET_TIMESTAMP(["⏱️ NTP Timestamp<br/>Unix Time"])
-            GET_TS_FALLBACK(["⏱️ Timestamp Fallback<br/>RTC Backup"])
-            GET_LOG_PREFIX(["📝 Log Prefix<br/>Timestamp Format"])
-            GET_DT_FALLBACK(["🕐 DateTime Fallback<br/>RTC Backup"])
-            CHECK_NTP(["🔗 NTP Sync Status<br/>Synchronization"])
-            UPDATE_NTP(["🔄 Update NTP<br/>Force Sync"])
-        end
-
-        subgraph SYSTEM_CMDS["System Control"]
-            WIFI_RESET(["🔄 WiFi Reset<br/>Clear Settings"])
-            BUTTON_STATUS(["🔘 Button Status<br/>Input Check"])
-            UNKNOWN_CMD(["❓ Unknown Command<br/>Error Message"])
-        end
-    end
+    %% System Tests
+    TEST_ALERT(["🚨 Alert Pattern<br/>Commercial Alert"])
+    TEST_SUCCESS(["🎉 Success Pattern<br/>Completion Tone"])
+    TEST_ERROR(["💥 Error Pattern<br/>Failure Alert"])
+    TEST_NETWORK(["🌐 Network Test<br/>Reconnect Check"])
 
     %% Flow Connections
     START --> SETUP
@@ -216,18 +189,11 @@ flowchart TD
     classDef loopClass fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px,color:#4a148c,font-weight:bold
     classDef commandClass fill:#e8f5e8,stroke:#388e3c,stroke-width:3px,color:#1b5e20,font-weight:bold
     classDef decisionClass fill:#fff8e1,stroke:#f57c00,stroke-width:3px,color:#e65100,font-weight:bold
-    classDef subgraphClass fill:#fafafa,stroke:#616161,stroke-width:2px,color:#424242
 
-    class SETUP,START setupClass
+    class START,SETUP,SERIAL_INIT,LCD_INIT,GSM_INIT,RELAY_INIT,SR04_INIT,WIFI_INIT,FIREBASE_INIT,NTP_INIT,BUZZER_INIT,LED_INIT,BUTTON_INIT,RTC_INIT,SYNC_RTC setupClass
     class LOOP,SET_FLAGS,RESOLVE_FLAGS,ALARM_DELAY,SERIAL_CHECK loopClass
-    class RELAY1_ON,RELAY1_OFF,RELAY2_ON,RELAY2_OFF,SEND_SMS,SEND_SMS_ALL,CHECK_NETWORK,GET_DISTANCE1,GET_DISTANCE2,BUZZER_ON,BUZZER_OFF,BUZZER_BEEP,LED_OK,LED_ERROR,LED_WARNING,LED_CLEAR,SET_LEDS,TEST_ALERT,TEST_SUCCESS,TEST_ERROR,TEST_NETWORK,WEATHER_RAIN_MSG,WEATHER_CLEAR_MSG,CLEAR_LCD,TEST_LCD,GET_TIME,GET_TIMESTAMP,GET_TS_FALLBACK,GET_LOG_PREFIX,GET_DT_FALLBACK,CHECK_NTP,UPDATE_NTP,WIFI_RESET,BUTTON_STATUS,GET_LEVEL,UNKNOWN_CMD commandClass
-    class COMMAND_DECISION,WEATHER_RAIN decisionClass
-
-    %% Subgraph styling
-    classDef SETUP_PHASE subgraphClass
-    classDef MAIN_LOOP subgraphClass
-    classDef CMD_PROCESS subgraphClass
-    classDef RELAY_CMDS,GSM_CMDS,SENSOR_CMDS,AUDIO_CMDS,VISUAL_CMDS,TEST_CMDS,WEATHER_CMDS,LCD_CMDS,TIME_CMDS,SYSTEM_CMDS subgraphClass
+    class READ_COMMAND,TRIM_COMMAND,COMMAND_DECISION,RELAY1_ON,RELAY1_OFF,RELAY2_ON,RELAY2_OFF,GET_DISTANCE1,GET_DISTANCE2,GET_LEVEL,BUZZER_ON,BUZZER_OFF,BUZZER_BEEP,LED_OK,LED_ERROR,LED_WARNING,LED_CLEAR,SET_LEDS,SEND_SMS,SEND_SMS_ALL,CHECK_NETWORK,CHECK_WEATHER,WEATHER_RAIN,WEATHER_RAIN_MSG,WEATHER_CLEAR_MSG,CLEAR_LCD,TEST_LCD,GET_TIME,GET_TIMESTAMP,GET_TS_FALLBACK,GET_LOG_PREFIX,GET_DT_FALLBACK,CHECK_NTP,UPDATE_NTP,WIFI_RESET,BUTTON_STATUS,UNKNOWN_CMD,TEST_ALERT,TEST_SUCCESS,TEST_ERROR,TEST_NETWORK commandClass
+    class WEATHER_RAIN decisionClass
 ```
 
 ## Flowchart Legend
