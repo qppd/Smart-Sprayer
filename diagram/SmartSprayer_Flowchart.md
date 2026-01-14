@@ -4,7 +4,7 @@
 %%{init: {'flowchart': {'nodeSpacing': 20, 'rankSpacing': 60}}}%%
 flowchart TD
     %% System Startup
-    START(["ESP32 Power On"])
+    START(["Raspberry Pi Power On"])
     SETUP(["System Initialization<br/>Hardware Setup"])
     READY(["System Ready<br/>LCD Display Active"])
 
@@ -15,7 +15,7 @@ flowchart TD
 
     %% Scheduling Process
     SCHEDULING_MODE(["Enter Scheduling Mode<br/>LCD Shows Menu"])
-    SET_TIME(["Set Spray Time<br/>Use Buttons to Adjust"])
+    SET_TIME(["Set Spray Time<br/>Use Interface to Adjust"])
     CONFIRM_TIME(["Confirm Schedule<br/>Save to RTC"])
     SCHEDULED(["Schedule Set<br/>Return to Monitoring"])
 
@@ -90,7 +90,7 @@ flowchart TD
 ## Flowchart Legend
 
 ### **System Startup (Blue)**
-- ESP32 powers on and initializes all hardware components
+- Raspberry Pi powers on and initializes all hardware components
 - System becomes ready with active LCD display
 
 ### **Main Monitoring (Purple)**
@@ -99,7 +99,7 @@ flowchart TD
 
 ### **Scheduling Process (Purple)**
 - User enters scheduling mode via button press
-- Sets desired spray time using ESP32 buttons
+- Sets desired spray time using Raspberry Pi interface
 - Confirms and saves schedule to RTC module
 
 ### **Automated Spraying (Purple)**
@@ -115,10 +115,10 @@ flowchart TD
 - Container level monitoring
 
 ### **Key Features**
-1. **Button-Based Scheduling**: Easy time setting using ESP32 buttons
+1. **Interface-Based Scheduling**: Easy time setting using Raspberry Pi interface
 2. **Weather-Aware Operation**: Automatic rain detection and postponement
 3. **Level Monitoring**: Real-time container level checking during spraying
 4. **User Feedback**: Audio-visual indicators for system status
 5. **Automated Cycling**: Continuous monitoring and scheduled operation
 
-This flowchart represents the complete operational process of the Smart-Sprayer system, from initial setup through automated spraying cycles, with user scheduling via ESP32 buttons as the primary interaction method.
+This flowchart represents the complete operational process of the Smart-Sprayer system, from initial setup through automated spraying cycles, with user scheduling via Raspberry Pi as the primary interaction method.
