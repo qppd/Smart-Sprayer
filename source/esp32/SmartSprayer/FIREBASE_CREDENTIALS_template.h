@@ -7,10 +7,10 @@
 
 // Firebase project credentials
 #define API_KEY ""
-#define DATABASE_URL ""
+#define DATABASE_URL "https://smart-sprayer-default-rtdb.firebaseio.com"
 
 // Firebase project credentials
-#define FIREBASE_PROJECT_ID ""
+#define FIREBASE_PROJECT_ID "smart-sprayer"
 #define FIREBASE_CLIENT_EMAIL ""
 
 // Service Account Private Key
