@@ -1,0 +1,19 @@
+2026-01-20 19:11:57 - INFO - Smart Sprayer Logger initialized
+2026-01-20 19:11:58 - INFO - === Smart Sprayer GUI Started ===
+2026-01-20 19:11:58 - INFO - Scheduler initialized
+2026-01-20 19:11:58 - INFO - Scheduler started
+2026-01-20 19:12:00 - DEBUG - Switched to panel: dashboard
+2026-01-20 19:12:00 - INFO - GUI initialization complete
+2026-01-20 19:12:10 - DEBUG - Switched to panel: scheduling
+2026-01-20 19:12:14 - DEBUG - Switched to panel: previous_data
+2026-01-20 19:12:17 - DEBUG - Switched to panel: dashboard
+2026-01-20 19:14:00 - DEBUG - Switched to panel: scheduling
+2026-01-20 19:14:22 - DEBUG - Switched to panel: previous_data
+2026-01-20 19:14:25 - DEBUG - Switched to panel: notifications
+2026-01-20 19:14:27 - DEBUG - Switched to panel: logs
+2026-01-20 19:14:38 - DEBUG - Switched to panel: notifications
+2026-01-20 19:15:07 - DEBUG - Switched to panel: previous_data
+2026-01-20 19:15:08 - DEBUG - Switched to panel: scheduling
+2026-01-20 19:16:10 - INFO - === Shutting down Smart Sprayer ===
+2026-01-20 19:16:12 - INFO - Scheduler stopped
+2026-01-20 19:16:13 - INFO - Shutdown complete
