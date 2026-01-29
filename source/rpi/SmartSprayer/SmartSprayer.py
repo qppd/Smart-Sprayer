@@ -25,6 +25,7 @@ import RPi.GPIO as GPIO
 import time
 import threading
 import sys
+import select
 from BUTTON_CONFIG import setup_buttons, read_buttons
 from BUZZER_CONFIG import setup_buzzer, buzzer_on, buzzer_off, buzzer_beep
 from RELAY_CONFIG import setup_relay, relay_on, relay_off
