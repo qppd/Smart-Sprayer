@@ -6,7 +6,7 @@ import os
 import sys
 
 # Determine if running on PC or Raspberry Pi
-PC_MODE = os.name == 'nt' or not os.path.exists('/sys/class/gpio')
+PC_MODE = True  # Force mock mode
 
 class HardwareInterface:
     """Base interface for hardware operations"""
