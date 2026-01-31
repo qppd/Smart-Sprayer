@@ -46,21 +46,16 @@ The following hardware-specific CONFIG files have been removed as ESP32 handles 
 - `SmartSprayer.py` - Simplified to CLI stub, directs users to GUI
 - `requirements.txt` - Added pyserial for ESP32 communication
 
-## Hardware Interface Modes
+## Hardware Interface
 
-The system supports two modes via `hardware_interface.py`:
+The system uses `hardware_interface.py` with ESP32 serial communication:
 
-### 1. PC Mock Mode (PC_MODE = True)
-- Uses `MockHardware` class
-- Simulates all hardware for development/testing
-- No physical hardware required
-- Tank levels simulate realistic behavior
-
-### 2. ESP32 Communication Mode (PC_MODE = False)
+### ESP32 Communication Mode
 - Uses `ESP32Hardware` class
 - Communicates with ESP32 via serial port
 - Sends text commands, parses responses
 - Default serial port: `/dev/ttyUSB0` (configurable)
+- Baudrate: 9600 (configurable)
 
 ## ESP32 Serial Commands
 
@@ -99,29 +94,28 @@ The RPI sends these commands to ESP32:
 
 ## Usage
 
-### For Development (PC Mock Mode)
-```python
-# In hardware/hardware_interface.py
-PC_MODE = True
+### Running the GUI
 
-# Run GUI
+```bash
+# Ensure ESP32 is connected to serial port
+# Default: /dev/ttyUSB0
+
+# Run the GUI application
 python run_gui.py
 ```
 
-### For Production (ESP32 Mode)
-```python
-# In hardware/hardware_interface.py
-PC_MODE = False
+### Configuring Serial Port
 
-# Ensure ESP32 is connected to /dev/ttyUSB0 (or update port)
-# Run GUI
-python run_gui.py
-```
+If your ESP32 is on a different serial port, you can configure it when getting hardware:
 
-### Changing Serial Port
-Edit `hardware/esp32_hardware.py`:
 ```python
-ESP32Hardware(port='/dev/ttyUSB0', baudrate=9600, timeout=1)
+from hardware.hardware_interface import get_hardware
+
+# Default usage
+hardware = get_hardware()
+
+# Custom serial port
+hardware = get_hardware(port='/dev/ttyACM0', baudrate=9600, timeout=1)
 ```
 
 ## GUI Features Preserved
@@ -144,11 +138,11 @@ The following components are NO LONGER directly controlled by RPI:
 
 ## Benefits of New Architecture
 
-1. **Separation of Concerns**: RPI handles UI/logic, ESP32 handles hardware
-2. **Easier Testing**: Mock mode allows GUI development without hardware
+1. **Direct Communication**: RPI talks directly to ESP32 via serial
+2. **Separation of Concerns**: RPI handles UI/logic, ESP32 handles hardware
 3. **Better Reliability**: ESP32 is purpose-built for real-time hardware control
 4. **Simplified RPI Code**: No GPIO dependencies, cleaner codebase
-5. **Modularity**: Easy to swap hardware implementations
+5. **Easy Configuration**: Serial port and baudrate easily configurable
 6. **Safety**: Hardware abstraction prevents direct GPIO conflicts
 
 ## Migration Notes

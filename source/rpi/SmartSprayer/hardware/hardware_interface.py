@@ -1,23 +1,15 @@
 # hardware_interface.py
 # Hardware abstraction interface for Smart Sprayer
-# Allows switching between ESP32 communication and PC mock mode
+# RPI communicates with ESP32 via serial for all hardware operations
 
 import os
 import sys
-
-# Determine if running on PC or with ESP32
-# Set to True for PC mock mode (testing without ESP32)
-# Set to False for ESP32 communication mode (production)
-PC_MODE = True  # Change to False when using real ESP32
 
 class HardwareInterface:
     """Base interface for hardware operations"""
     
     def __init__(self):
-        if PC_MODE:
-            self.mode = "PC Mock"
-        else:
-            self.mode = "ESP32"
+        self.mode = "ESP32"
         print(f"Hardware Interface initialized in {self.mode} mode")
     
     # Relay Controls
@@ -59,12 +51,17 @@ class HardwareInterface:
         raise NotImplementedError
 
 
-def get_hardware():
-    """Factory function to get appropriate hardware implementation"""
-    if PC_MODE:
-        from hardware.mock_hardware import MockHardware
-        return MockHardware()
-    else:
-        from hardware.esp32_hardware import ESP32Hardware
-        return ESP32Hardware()
+def get_hardware(port='/dev/ttyUSB0', baudrate=9600, timeout=1):
+    """Factory function to get ESP32 hardware implementation
+    
+    Args:
+        port: Serial port for ESP32 connection (default: /dev/ttyUSB0)
+        baudrate: Serial communication speed (default: 9600)
+        timeout: Serial read timeout in seconds (default: 1)
+    
+    Returns:
+        ESP32Hardware instance
+    """
+    from hardware.esp32_hardware import ESP32Hardware
+    return ESP32Hardware(port=port, baudrate=baudrate, timeout=timeout)
 
