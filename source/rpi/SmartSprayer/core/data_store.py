@@ -1,5 +1,5 @@
 # data_store.py
-# Data persistence for schedules and spray history
+# Data persistence for schedules and spray history with Firebase sync
 
 import json
 import os
@@ -7,10 +7,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Optional
 
+try:
+    from core.firebase_service import get_firebase_service
+    FIREBASE_ENABLED = True
+except ImportError:
+    FIREBASE_ENABLED = False
+    print("Warning: Firebase service not available")
+
 class DataStore:
-    """Manages persistent storage of schedules and history"""
+    """Manages persistent storage of schedules and history with Firebase sync"""
     
-    def __init__(self, data_dir="data"):
+    def __init__(self, data_dir="data", enable_firebase=True):
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(exist_ok=True)
         
@@ -19,6 +26,13 @@ class DataStore:
         
         # Initialize files if they don't exist
         self._init_files()
+        
+        # Firebase integration
+        self.firebase = None
+        if FIREBASE_ENABLED and enable_firebase:
+            self.firebase = get_firebase_service()
+            if self.firebase.connected:
+                print("DataStore: Firebase sync enabled")
     
     def _init_files(self):
         """Initialize data files"""
@@ -62,6 +76,10 @@ class DataStore:
         schedules.append(schedule)
         self._save_json(self.schedules_file, schedules)
         
+        # Sync to Firebase
+        if self.firebase and self.firebase.connected:
+            self.firebase.upload_schedule(schedule)
+        
         return schedule
     
     def update_schedule(self, schedule_id: str, updates: Dict) -> Optional[Dict]:
@@ -73,6 +91,11 @@ class DataStore:
                 schedules[i].update(updates)
                 schedules[i]['updated_at'] = datetime.now().isoformat()
                 self._save_json(self.schedules_file, schedules)
+                
+                # Sync to Firebase
+                if self.firebase and self.firebase.connected:
+                    self.firebase.upload_schedule(schedules[i])
+                
                 return schedules[i]
         
         return None
@@ -86,6 +109,11 @@ class DataStore:
         
         if len(schedules) < original_count:
             self._save_json(self.schedules_file, schedules)
+            
+            # Sync to Firebase
+            if self.firebase and self.firebase.connected:
+                self.firebase.delete_schedule(schedule_id)
+            
             return True
         
         return False
@@ -123,9 +151,15 @@ class DataStore:
         history = self.get_history()
         
         spray_data['completed_at'] = datetime.now().isoformat()
-        history.append(spray_data)
+        if 'id' not in spray_data:
+            spray_data['id'] = f"HIST_{datetime.now().strftime('%Y%m%d%H%M%S%f')}"
         
+        history.append(spray_data)
         self._save_json(self.history_file, history)
+        
+        # Sync to Firebase
+        if self.firebase and self.firebase.connected:
+            self.firebase.upload_history_entry(spray_data)
     
     def clear_history(self):
         """Clear history"""
@@ -160,6 +194,27 @@ class DataStore:
         
         with open(export_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
+    
+    def sync_all_to_firebase(self):
+        """Manually sync all local data to Firebase"""
+        if not self.firebase or not self.firebase.connected:
+            print("Firebase not available for sync")
+            return False
+        
+        try:
+            # Sync all schedules
+            schedules = self.get_all_schedules()
+            self.firebase.upload_schedules(schedules)
+            
+            # Sync all history
+            history = self.get_history()
+            self.firebase.upload_history(history)
+            
+            print("All data synced to Firebase successfully")
+            return True
+        except Exception as e:
+            print(f"Error syncing to Firebase: {e}")
+            return False
 
 
 # Global data store instance

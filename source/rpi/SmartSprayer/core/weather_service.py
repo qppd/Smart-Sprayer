@@ -1,0 +1,120 @@
+# weather_service.py
+# Weather checking service for Smart Sprayer (RPI handles weather API calls)
+
+import requests
+from typing import Dict, Optional
+from datetime import datetime
+
+try:
+    from firebase_credentials import WEATHER_API_KEY, WEATHER_API_URL
+    WEATHER_AVAILABLE = True
+except ImportError:
+    print("Warning: Weather API credentials not found")
+    WEATHER_AVAILABLE = False
+    WEATHER_API_KEY = None
+    WEATHER_API_URL = None
+
+
+class WeatherService:
+    """Weather service to check rain conditions"""
+    
+    def __init__(self):
+        self.api_key = WEATHER_API_KEY
+        self.api_url = WEATHER_API_URL
+        self.available = WEATHER_AVAILABLE and self.api_key and self.api_url
+        self.last_check = None
+        self.last_result = None
+    
+    def check_weather_for_rain(self) -> bool:
+        """
+        Check if it's currently raining or rain is expected
+        Returns True if rain detected (should avoid spraying)
+        Returns False if no rain (safe to spray)
+        """
+        if not self.available:
+            print("Weather API not configured")
+            return False  # Assume safe to spray if weather check unavailable
+        
+        try:
+            response = requests.get(self.api_url, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                
+                # Get current precipitation
+                current = data.get('current', {})
+                precip_mm = current.get('precip_mm', 0.0)
+                condition = current.get('condition', {}).get('text', '')
+                
+                # Check if it's raining
+                is_raining = precip_mm > 0.0 or 'rain' in condition.lower()
+                
+                self.last_check = datetime.now().isoformat()
+                self.last_result = {
+                    'is_raining': is_raining,
+                    'precip_mm': precip_mm,
+                    'condition': condition,
+                    'timestamp': self.last_check
+                }
+                
+                if is_raining:
+                    print(f"Weather: Raining ({precip_mm}mm, {condition})")
+                else:
+                    print(f"Weather: No rain ({condition})")
+                
+                return is_raining
+            else:
+                print(f"Weather API error: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"Weather check failed: {e}")
+            return False  # Assume safe to spray if check fails
+    
+    def get_weather_data(self) -> Optional[Dict]:
+        """Get detailed weather data"""
+        if not self.available:
+            return None
+        
+        try:
+            response = requests.get(self.api_url, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                current = data.get('current', {})
+                
+                weather_data = {
+                    'temperature_c': current.get('temp_c'),
+                    'temperature_f': current.get('temp_f'),
+                    'humidity': current.get('humidity'),
+                    'condition': current.get('condition', {}).get('text'),
+                    'wind_kph': current.get('wind_kph'),
+                    'precip_mm': current.get('precip_mm'),
+                    'cloud': current.get('cloud'),
+                    'feels_like_c': current.get('feelslike_c'),
+                    'uv': current.get('uv'),
+                    'timestamp': datetime.now().isoformat()
+                }
+                
+                return weather_data
+            else:
+                return None
+                
+        except Exception as e:
+            print(f"Error getting weather data: {e}")
+            return None
+    
+    def get_last_result(self) -> Optional[Dict]:
+        """Get last weather check result"""
+        return self.last_result
+
+
+# Global weather service instance
+_weather_service = None
+
+def get_weather_service() -> WeatherService:
+    """Get the global weather service instance"""
+    global _weather_service
+    if _weather_service is None:
+        _weather_service = WeatherService()
+    return _weather_service

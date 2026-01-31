@@ -11,5 +11,8 @@ requests>=2.31.0
 # Serial communication with ESP32
 pyserial>=3.5
 
+# Firebase integration
+Pyrebase4>=4.7.1
+
 # For Raspberry Pi GPIO mode (optional - not used when communicating with ESP32)
 # RPi.GPIO>=0.7.1

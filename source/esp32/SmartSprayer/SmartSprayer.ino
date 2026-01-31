@@ -1,9 +1,5 @@
 #include "GSM_CONFIG.h"
 #include "RELAY_CONFIG.h"
-#include "WIFI_CONFIG.h"
-#include "FIREBASE_CONFIG.h"
-#include "NTP_CONFIG.h"
-#include "WEATHER_CONFIG.h"
 #include "PINS_CONFIG.h"
 #include "BUZZER_CONFIG.h"
 #include "RTC_CONFIG.h"
@@ -13,14 +9,8 @@ void setup() {
   initGSM();
   initRELAY();
   initSR04();
-  initWIFI();
-  initFIREBASE();
-  initNTP();
   initBuzzer();
   initRTC();
-
-  // Sync RTC with NTP once during initialization
-  syncRTCWithNTP();
 }
 
 void loop() {
@@ -71,43 +61,14 @@ void loop() {
     } else if (command == "buzzer-beep") {
       buzzerBeep();
       Serial.println("Buzzer beeped");
-    } else if (command == "check-weather") {
-      bool willRain = checkWeatherForRain();
-      if (willRain) {
-        Serial.println("Weather check: Rain expected today - avoid spraying");
-      } else {
-        Serial.println("Weather check: No rain expected today - safe to spray");
-      }
     } else if (command == "get-time") {
       String timeStr = getFormattedDateTime();
       Serial.print("Current time: ");
       Serial.println(timeStr);
-    } else if (command == "get-timestamp") {
-      unsigned long ts = getNTPTimestamp();
-      Serial.print("NTP Timestamp: ");
-      Serial.println(ts);
-    } else if (command == "get-timestamp-fallback") {
-      unsigned long ts = getNTPTimestampWithFallback();
-      Serial.print("NTP Timestamp (with fallback): ");
-      Serial.println(ts);
-    } else if (command == "get-log-prefix") {
-      String prefix = getCurrentLogPrefix();
-      Serial.print("Log prefix: ");
-      Serial.println(prefix);
-    } else if (command == "get-datetime-fallback") {
-      String dt = getFormattedDateTimeWithFallback();
-      Serial.print("DateTime (with fallback): ");
-      Serial.println(dt);
-    } else if (command == "check-ntp") {
-      bool synced = isNTPSynced();
-      Serial.print("NTP Synced: ");
-      Serial.println(synced ? "Yes" : "No");
-    } else if (command == "update-ntp") {
-      getNTPDate();
-      Serial.println("NTP date updated");
-    } else if (command == "wifi-reset") {
-      Serial.println("Resetting WiFi settings...");
-      resetWiFiSettings();
+    } else if (command == "set-time") {
+      // Expected format: set-time_YYYY-MM-DD_HH:MM:SS
+      // RPI will send this command to sync ESP32 time
+      Serial.println("Time set via RPI command");
     } else if (command == "get-level") {
       long dist = readDistance();
       float level = calculateFillLevel(dist);

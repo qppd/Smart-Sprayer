@@ -1,6 +1,12 @@
+# ESP32 Credentials
 FIREBASE_CREDENTIALS.h
 GSM_RECIPIENTS.h
 WEATHER_CREDENTIALS.h
+
+# RPI Credentials
+source/rpi/SmartSprayer/firebase_credentials.py
+
+# 3D Models
 *.gcode
 *.stl
 
