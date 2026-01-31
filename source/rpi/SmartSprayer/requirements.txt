@@ -8,7 +8,8 @@ tkcalendar>=1.6.1
 # Data handling
 requests>=2.31.0
 
-# For Raspberry Pi mode (optional on PC)
-# Uncomment when deploying to Raspberry Pi:
+# Serial communication with ESP32
+pyserial>=3.5
+
+# For Raspberry Pi GPIO mode (optional - not used when communicating with ESP32)
 # RPi.GPIO>=0.7.1
-# pyserial>=3.5

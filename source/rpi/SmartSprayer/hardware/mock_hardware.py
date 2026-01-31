@@ -24,22 +24,6 @@ class MockHardware(HardwareInterface):
         # Buzzer state
         self.buzzer_state = False
         
-        # LED states
-        self.leds = {
-            'status': False,
-            'warning': False,
-            'ok': False,
-            'error': False
-        }
-        
-        # Button states
-        self.buttons = {
-            'up': False,
-            'down': False,
-            'select': False,
-            'reset': False
-        }
-        
         # Start simulation thread
         self.running = True
         self.sim_thread = threading.Thread(target=self._simulate_tank_changes, daemon=True)
@@ -118,14 +102,12 @@ class MockHardware(HardwareInterface):
         self.buzzer_off()
     
     def set_led(self, led_name, state):
-        """Set LED state"""
-        if led_name in self.leds:
-            self.leds[led_name] = bool(state)
-            print(f"[MOCK] LED '{led_name}' set to {'ON' if state else 'OFF'}")
+        """LEDs removed from ESP32 - deprecated"""
+        print(f"[MOCK] LED functionality not available (removed from ESP32)")
     
     def read_button(self, button_name):
-        """Read button state"""
-        return self.buttons.get(button_name, False)
+        """Buttons removed from ESP32 - deprecated"""
+        return False
     
     def set_tank_level(self, sensor_num, distance):
         """Manually set tank level for testing"""
