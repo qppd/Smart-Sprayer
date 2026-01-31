@@ -12,6 +12,9 @@ from core.reschedule_logic import get_reschedule_manager
 class Scheduler:
     """Main scheduler for spray operations"""
     
+    # Pump specifications
+    PUMP_RATE_ML_PER_MIN = 5000  # 5L/min = 5000 mL/min
+    
     def __init__(self, hardware_interface=None):
         self.data_store = get_data_store()
         self.logger = get_logger()
@@ -101,8 +104,14 @@ class Scheduler:
                 self.hardware.buzzer_beep(0.5)
                 self.hardware.set_led('status', 1)
             
-            # Spray for configured duration (e.g., 30 seconds)
-            spray_duration = schedule.get('duration', 30)
+            # Calculate spray duration based on volume
+            volume_ml = schedule.get('volume_ml', 1000)  # Default 1000 mL
+            spray_duration = self.calculate_spray_duration(volume_ml)
+            
+            self.logger.log_info(
+                f"Spraying {volume_ml} mL for {spray_duration:.1f} seconds"
+            )
+            
             time.sleep(spray_duration)
             
             # Turn off relay
@@ -119,6 +128,7 @@ class Scheduler:
                 'time': schedule['time'],
                 'spray_type': spray_type,
                 'container': container,
+                'volume_ml': volume_ml,
                 'duration': spray_duration,
                 'schedule_id': schedule['id']
             })
@@ -135,15 +145,21 @@ class Scheduler:
                 'error': str(e)
             })
     
+    def calculate_spray_duration(self, volume_ml: float) -> float:
+        """Calculate spray duration in seconds based on volume and pump rate"""
+        # Pump rate: 5000 mL/min = 5000/60 mL/sec
+        duration_seconds = (volume_ml / self.PUMP_RATE_ML_PER_MIN) * 60
+        return duration_seconds
+    
     def create_schedule(self, date: str, time: str, spray_type: str, 
-                       container: str, duration: int = 30) -> Dict:
+                       container: str, volume_ml: float = 1000) -> Dict:
         """Create a single schedule"""
         schedule = {
             'date': date,
             'time': time,
             'spray_type': spray_type,
             'container': container,
-            'duration': duration,
+            'volume_ml': volume_ml,
             'status': 'scheduled'
         }
         
@@ -154,7 +170,7 @@ class Scheduler:
     
     def create_recurring_schedules(self, start_date: str, interval_days: int, 
                                   count: int, time: str, spray_type: str, 
-                                  container: str, duration: int = 30) -> List[Dict]:
+                                  container: str, volume_ml: float = 1000) -> List[Dict]:
         """Create multiple schedules with fixed interval"""
         schedules = []
         series_id = f"SERIES_{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -169,7 +185,7 @@ class Scheduler:
                 'time': time,
                 'spray_type': spray_type,
                 'container': container,
-                'duration': duration,
+                'volume_ml': volume_ml,
                 'status': 'scheduled',
                 'series_id': series_id,
                 'series_interval': interval_days

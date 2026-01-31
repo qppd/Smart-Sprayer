@@ -185,6 +185,45 @@ class SchedulingPanel(ctk.CTkFrame):
             radiobutton_height=20
         ).pack(side="left", padx=10)
         
+        # Volume Input (mL)
+        volume_label = ctk.CTkLabel(
+            form_scroll,
+            text="SPRAY VOLUME (mL):",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color="#FFFFFF"
+        )
+        volume_label.pack(anchor="w", pady=(15, 5))
+        
+        volume_input_frame = ctk.CTkFrame(form_scroll, fg_color="transparent")
+        volume_input_frame.pack(fill="x", pady=5)
+        
+        self.volume_entry = ctk.CTkEntry(
+            volume_input_frame,
+            placeholder_text="e.g., 1000",
+            font=ctk.CTkFont(size=14),
+            height=40,
+            width=150
+        )
+        self.volume_entry.insert(0, "1000")  # Default 1000 mL
+        self.volume_entry.pack(side="left", padx=5)
+        
+        volume_unit_label = ctk.CTkLabel(
+            volume_input_frame,
+            text="mL",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color="#4CAF50"
+        )
+        volume_unit_label.pack(side="left", padx=5)
+        
+        # Duration calculation info (based on 5L/min pump rate)
+        self.duration_info_label = ctk.CTkLabel(
+            form_scroll,
+            text="Duration: Calculated based on pump rate (5L/min)",
+            font=ctk.CTkFont(size=12),
+            text_color="#888888"
+        )
+        self.duration_info_label.pack(anchor="w", pady=(2, 0))
+        
         # Recurring Options
         recurring_label = ctk.CTkLabel(
             form_scroll,
@@ -364,6 +403,16 @@ class SchedulingPanel(ctk.CTkFrame):
         spray_type = self.spray_type_var.get()
         container = self.container_var.get()
         
+        # Get and validate volume
+        try:
+            volume_ml = float(self.volume_entry.get())
+            if volume_ml <= 0:
+                messagebox.showerror("Error", "Volume must be greater than 0 mL")
+                return
+        except ValueError:
+            messagebox.showerror("Error", "Please enter a valid volume in mL")
+            return
+        
         try:
             if self.recurring_var.get():
                 # Create recurring schedules
@@ -375,22 +424,25 @@ class SchedulingPanel(ctk.CTkFrame):
                     return
                 
                 schedules = self.scheduler.create_recurring_schedules(
-                    date, interval, count, time, spray_type, container
+                    date, interval, count, time, spray_type, container, volume_ml
                 )
                 
                 messagebox.showinfo(
                     "Success",
-                    f"Created {len(schedules)} recurring schedules with {interval}-day interval"
+                    f"Created {len(schedules)} recurring schedules with {interval}-day interval\nVolume: {volume_ml} mL per spray"
                 )
             else:
                 # Create single schedule
                 schedule = self.scheduler.create_schedule(
-                    date, time, spray_type, container
+                    date, time, spray_type, container, volume_ml
                 )
+                
+                # Calculate duration for display
+                duration = self.scheduler.calculate_spray_duration(volume_ml)
                 
                 messagebox.showinfo(
                     "Success",
-                    f"Schedule created for {date} at {time}"
+                    f"Schedule created for {date} at {time}\nVolume: {volume_ml} mL\nDuration: {duration:.1f} seconds"
                 )
             
             self._clear_form()
@@ -409,6 +461,8 @@ class SchedulingPanel(ctk.CTkFrame):
         self.minute_spinbox.set("00")
         self.spray_type_var.set("Fertilizer")
         self.container_var.set("Container 1")
+        self.volume_entry.delete(0, "end")
+        self.volume_entry.insert(0, "1000")  # Reset to default 1000 mL
         self.recurring_var.set(False)
         self.interval_entry.delete(0, "end")
         self.count_entry.delete(0, "end")
@@ -461,9 +515,15 @@ class SchedulingPanel(ctk.CTkFrame):
         content = ctk.CTkFrame(card, fg_color="transparent")
         content.pack(fill="both", expand=True, padx=10, pady=10)
         
+        # Get volume and calculate duration
+        volume_ml = schedule.get('volume_ml', 1000)
+        duration = self.scheduler.calculate_spray_duration(volume_ml)
+        
         info_text = (
             f"Type: {schedule['spray_type']}\n"
             f"Container: {schedule['container']}\n"
+            f"Volume: {volume_ml} mL\n"
+            f"Duration: {duration:.1f} seconds\n"
             f"Status: {schedule['status'].upper()}\n"
             f"Reschedules: {schedule.get('reschedule_count', 0)}/{self.reschedule_mgr.MAX_RESCHEDULES}"
         )

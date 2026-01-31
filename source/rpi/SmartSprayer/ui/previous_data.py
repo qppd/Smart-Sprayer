@@ -279,9 +279,19 @@ class PreviousDataPanel(ctk.CTkFrame):
             text_color="#CCCCCC"
         ).pack(side="left", padx=5)
         
+        # Volume
+        volume_ml = item.get('volume_ml', 'N/A')
+        volume_text = f"Volume: {volume_ml} mL" if volume_ml != 'N/A' else "Volume: N/A"
+        ctk.CTkLabel(
+            details,
+            text=volume_text,
+            font=ctk.CTkFont(size=13),
+            text_color="#CCCCCC"
+        ).pack(side="left", padx=5)
+        
         # Duration
         duration = item.get('duration', 'N/A')
-        duration_text = f"Duration: {duration}s"
+        duration_text = f"Duration: {duration}s" if duration != 'N/A' else "Duration: N/A"
         ctk.CTkLabel(
             details,
             text=duration_text,

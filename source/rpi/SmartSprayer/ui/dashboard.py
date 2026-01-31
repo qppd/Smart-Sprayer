@@ -235,11 +235,17 @@ class DashboardPanel(ctk.CTkFrame):
         next_schedule = self.scheduler.get_next_schedule()
         
         if next_schedule:
+            # Get volume and calculate duration
+            volume_ml = next_schedule.get('volume_ml', 1000)
+            duration = self.scheduler.calculate_spray_duration(volume_ml)
+            
             info_text = (
                 f"Date: {next_schedule['date']}\n"
                 f"Time: {next_schedule['time']}\n"
                 f"Type: {next_schedule['spray_type']}\n"
                 f"Container: {next_schedule['container']}\n"
+                f"Volume: {volume_ml} mL\n"
+                f"Duration: {duration:.1f} seconds\n"
                 f"Status: {next_schedule['status'].upper()}"
             )
             
