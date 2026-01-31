@@ -1,13 +1,13 @@
-# logs_viewer.py
-# System logs viewer panel
+# spraying_events_logs_viewer.py
+# Spraying events logs viewer panel
 
 import customtkinter as ctk
 from tkinter import messagebox
 import threading
 import time
 
-class LogsViewerPanel(ctk.CTkFrame):
-    """Logs viewer panel"""
+class SprayingEventsLogsViewerPanel(ctk.CTkFrame):
+    """Spraying events logs viewer panel"""
     
     def __init__(self, parent, logger):
         super().__init__(parent)
@@ -24,14 +24,14 @@ class LogsViewerPanel(ctk.CTkFrame):
         self.update_thread.start()
         
         # Initial load
-        self.refresh_logs()
+        self.refresh_spraying_events_logs()
     
     def _create_widgets(self):
-        """Create logs viewer widgets"""
+        """Create spraying events logs viewer widgets"""
         # Title
         title = ctk.CTkLabel(
             self,
-            text="SYSTEM LOGS",
+            text="SPRAYING EVENTS LOGS",
             font=ctk.CTkFont(size=32, weight="bold"),
             text_color="#4CAF50"
         )
@@ -72,7 +72,7 @@ class LogsViewerPanel(ctk.CTkFrame):
             variable=self.filter_var,
             font=ctk.CTkFont(size=14),
             width=120,
-            command=lambda _: self.refresh_logs()
+            command=lambda _: self.refresh_spraying_events_logs()
         )
         filter_combo.pack(side="left", padx=5)
         
@@ -83,7 +83,7 @@ class LogsViewerPanel(ctk.CTkFrame):
         refresh_btn = ctk.CTkButton(
             btn_frame,
             text="🔄 Refresh",
-            command=self.refresh_logs,
+            command=self.refresh_spraying_events_logs,
             font=ctk.CTkFont(size=14),
             height=35,
             width=110,
@@ -94,8 +94,8 @@ class LogsViewerPanel(ctk.CTkFrame):
         
         clear_btn = ctk.CTkButton(
             btn_frame,
-            text="🗑 Clear Logs",
-            command=self._clear_logs,
+            text="🗑 Clear Spraying Events Logs",
+            command=self._clear_spraying_events_logs,
             font=ctk.CTkFont(size=14),
             height=35,
             width=110,
@@ -145,13 +145,13 @@ class LogsViewerPanel(ctk.CTkFrame):
         """Auto-refresh loop"""
         while self.running:
             if self.auto_refresh:
-                self.refresh_logs()
+                self.refresh_spraying_events_logs()
             time.sleep(5)  # Refresh every 5 seconds
     
-    def refresh_logs(self):
-        """Refresh log display"""
+    def refresh_spraying_events_logs(self):
+        """Refresh spraying events logs display"""
         try:
-            # Read logs
+            # Read spraying events logs
             log_lines = self.logger.read_logs(num_lines=200)
             
             # Apply filter
@@ -163,8 +163,8 @@ class LogsViewerPanel(ctk.CTkFrame):
             self.log_textbox.delete("1.0", "end")
             
             if not log_lines:
-                self.log_textbox.insert("1.0", "No log entries found.\n")
-                self.status_label.configure(text="No logs")
+                self.log_textbox.insert("1.0", "No spraying events log entries found.\n")
+                self.status_label.configure(text="No spraying events logs")
                 return
             
             # Insert logs with color coding
@@ -198,18 +198,18 @@ class LogsViewerPanel(ctk.CTkFrame):
         
         except Exception as e:
             self.log_textbox.delete("1.0", "end")
-            self.log_textbox.insert("1.0", f"Error loading logs: {e}\n")
+            self.log_textbox.insert("1.0", f"Error loading spraying events logs: {e}\n")
             self.status_label.configure(text="Error")
     
-    def _clear_logs(self):
-        """Clear log file"""
-        if messagebox.askyesno("Confirm", "Clear all log entries?"):
+    def _clear_spraying_events_logs(self):
+        """Clear spraying events log file"""
+        if messagebox.askyesno("Confirm", "Clear all spraying events log entries?"):
             try:
                 self.logger.clear_logs()
-                self.refresh_logs()
-                messagebox.showinfo("Success", "Logs cleared successfully")
+                self.refresh_spraying_events_logs()
+                messagebox.showinfo("Success", "Spraying events logs cleared successfully")
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to clear logs: {e}")
+                messagebox.showerror("Error", f"Failed to clear spraying events logs: {e}")
     
     def cleanup(self):
         """Cleanup resources"""
