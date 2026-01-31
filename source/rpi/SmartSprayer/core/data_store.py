@@ -226,3 +226,123 @@ def get_data_store():
     if _data_store_instance is None:
         _data_store_instance = DataStore()
     return _data_store_instance
+# Convenience functions for recipients management
+def get_recipients():
+    """Get all SMS recipients"""
+    store = get_data_store()
+    recipients_file = store.data_dir / "recipients.json"
+    
+    if not recipients_file.exists():
+        store._save_json(recipients_file, [])
+        return []
+    
+    recipients = store._load_json(recipients_file)
+    return recipients
+
+def add_recipient(phone: str, name: str = None) -> bool:
+    """Add a new SMS recipient"""
+    try:
+        store = get_data_store()
+        recipients_file = store.data_dir / "recipients.json"
+        
+        recipients = get_recipients()
+        
+        # Check if already exists
+        for recipient in recipients:
+            if recipient['phone'] == phone:
+                print(f"Recipient {phone} already exists")
+                return False
+        
+        # Add new recipient
+        new_recipient = {
+            'phone': phone,
+            'name': name if name else phone,
+            'added_at': datetime.now().isoformat()
+        }
+        recipients.append(new_recipient)
+        
+        # Save locally
+        store._save_json(recipients_file, recipients)
+        
+        # Sync to Firebase
+        if store.firebase and store.firebase.connected:
+            try:
+                store.firebase.update_recipients(recipients)
+                print(f"Recipient {phone} synced to Firebase")
+            except Exception as e:
+                print(f"Failed to sync recipient to Firebase: {e}")
+        
+        print(f"Recipient {phone} added successfully")
+        return True
+    except Exception as e:
+        print(f"Error adding recipient: {e}")
+        return False
+
+def delete_recipient(phone: str) -> bool:
+    """Delete an SMS recipient"""
+    try:
+        store = get_data_store()
+        recipients_file = store.data_dir / "recipients.json"
+        
+        recipients = get_recipients()
+        
+        # Find and remove
+        updated_recipients = [r for r in recipients if r['phone'] != phone]
+        
+        if len(updated_recipients) == len(recipients):
+            print(f"Recipient {phone} not found")
+            return False
+        
+        # Save locally
+        store._save_json(recipients_file, updated_recipients)
+        
+        # Sync to Firebase
+        if store.firebase and store.firebase.connected:
+            try:
+                store.firebase.update_recipients(updated_recipients)
+                print(f"Recipient deletion synced to Firebase")
+            except Exception as e:
+                print(f"Failed to sync deletion to Firebase: {e}")
+        
+        print(f"Recipient {phone} deleted successfully")
+        return True
+    except Exception as e:
+        print(f"Error deleting recipient: {e}")
+        return False
+
+def update_recipient(phone: str, new_name: str) -> bool:
+    """Update recipient name"""
+    try:
+        store = get_data_store()
+        recipients_file = store.data_dir / "recipients.json"
+        
+        recipients = get_recipients()
+        
+        # Find and update
+        found = False
+        for recipient in recipients:
+            if recipient['phone'] == phone:
+                recipient['name'] = new_name
+                found = True
+                break
+        
+        if not found:
+            print(f"Recipient {phone} not found")
+            return False
+        
+        # Save locally
+        store._save_json(recipients_file, recipients)
+        
+        # Sync to Firebase
+        if store.firebase and store.firebase.connected:
+            try:
+                store.firebase.update_recipients(recipients)
+                print(f"Recipient update synced to Firebase")
+            except Exception as e:
+                print(f"Failed to sync update to Firebase: {e}")
+        
+        print(f"Recipient {phone} updated successfully")
+        return True
+    except Exception as e:
+        print(f"Error updating recipient: {e}")
+        return False

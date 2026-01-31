@@ -164,13 +164,36 @@ class ESP32Hardware(HardwareInterface):
         print(f"[ESP32] SMS command sent")
         return response
     
-    def get_time(self):
-        """Get current time from ESP32"""
-        response = self._send_command("get-time")
+    def send_sms_to_all(self, message):
+        """Send SMS to all recipients via ESP32"""
+        response = self._send_command("send-sms-to-all")
+        print(f"[ESP32] SMS sent to all recipients")
         return response
     
-    def wifi_reset(self):
-        """Reset WiFi settings on ESP32"""
+    def sync_recipients(self, recipients_list):
+        """Sync recipients list to ESP32"""
+        if not self.connected:
+            print("[ESP32] Not connected. Cannot sync recipients.")
+            return False
+        
+        try:
+            # Clear existing recipients on ESP32
+            self._send_command("clear-recipients")
+            time.sleep(0.2)
+            
+            # Add each recipient
+            for recipient in recipients_list:
+                phone = recipient.get('phone', '')
+                if phone:
+                    self._send_command(f"add-recipient_{phone}")
+                    time.sleep(0.1)
+            
+            print(f"[ESP32] Synced {len(recipients_list)} recipients to ESP32")
+            return True
+        except Exception as e:
+            print(f"[ESP32] Error syncing recipients: {e}")
+            return False
+    
         response = self._send_command("wifi-reset")
         print("[ESP32] WiFi reset command sent")
         return response

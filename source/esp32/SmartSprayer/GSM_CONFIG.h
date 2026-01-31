@@ -2,26 +2,79 @@
 #define GSM_CONFIG_H
 
 #include <SoftwareSerial.h>
-#include "GSM_RECIPIENTS.h"
 #include "PINS_CONFIG.h"
 
-#define PWR_KEY_PIN 3
+#define MAX_RECIPIENTS 10
 
 SoftwareSerial sim(GSM_RX_PIN, GSM_TX_PIN); // RX, TX
 
+// Dynamic recipients array (managed by RPI via serial commands)
+String recipients[MAX_RECIPIENTS];
+int numRecipients = 0;
+
 void initGSM() {
-  pinMode(PWR_KEY_PIN, OUTPUT);
-  digitalWrite(PWR_KEY_PIN, HIGH);
-  // Power on SIM800L
-  digitalWrite(PWR_KEY_PIN, LOW);
-  delay(1000);
-  digitalWrite(PWR_KEY_PIN, HIGH);
-  delay(5000); // Wait for module to boot
-  sim.begin(9600);
+ sim.begin(9600);
   delay(1000);
   sim.println("AT");
   delay(1000);
   // Assume OK
+}
+
+// Test GSM communication
+void testGSMConnection() {
+  Serial.println("[GSM] Sending AT command...");
+  sim.println("AT");
+}
+
+// Add recipient via serial command
+void addRecipient(String number) {
+  if (numRecipients < MAX_RECIPIENTS) {
+    recipients[numRecipients] = number;
+    numRecipients++;
+    Serial.print("Recipient added: ");
+    Serial.println(number);
+  } else {
+    Serial.println("Max recipients reached");
+  }
+}
+
+// Remove recipient via serial command
+void removeRecipient(String number) {
+  for (int i = 0; i < numRecipients; i++) {
+    if (recipients[i] == number) {
+      // Shift remaining recipients
+      for (int j = i; j < numRecipients - 1; j++) {
+        recipients[j] = recipients[j + 1];
+      }
+      recipients[numRecipients - 1] = "";
+      numRecipients--;
+      Serial.print("Recipient removed: ");
+      Serial.println(number);
+      return;
+    }
+  }
+  Serial.println("Recipient not found");
+}
+
+// Clear all recipients
+void clearRecipients() {
+  for (int i = 0; i < MAX_RECIPIENTS; i++) {
+    recipients[i] = "";
+  }
+  numRecipients = 0;
+  Serial.println("All recipients cleared");
+}
+
+// List all recipients
+void listRecipients() {
+  Serial.print("Recipients (");
+  Serial.print(numRecipients);
+  Serial.println("):");
+  for (int i = 0; i < numRecipients; i++) {
+    Serial.print(i + 1);
+    Serial.print(": ");
+    Serial.println(recipients[i]);
+  }
 }
 
 void sendSMS(String number, String message) {

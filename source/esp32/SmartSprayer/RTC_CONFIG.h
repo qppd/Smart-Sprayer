@@ -4,13 +4,13 @@
 #include "PINS_CONFIG.h"
 #include <TimeLib.h>
 #include <TimeAlarms.h>
-#include <Wire.h>
-#include <DS3231.h>
+#include <virtuabotixRTC.h>
 
-// RTC instance
-DS3231 myRTC;
-bool h12Flag;
-bool pmFlag;
+// Utility macro
+#define countof(a) (sizeof(a) / sizeof(a[0]))
+
+// RTC instance (CLK, DAT, RST)
+virtuabotixRTC myRTC(RTC_CLK_PIN, RTC_DAT_PIN, RTC_RST_PIN);
 
 // Global variables for alarms and menu
 AlarmId sprayAlarmId1 = dtINVALID_ALARM_ID;
@@ -33,44 +33,46 @@ void updateSystemTimeFromRTC();
 //FUNCTION FOR INITIALIZING RTC------------------------------------
 //-----------------------------------------------------------------
 void initRTC() {
-  Serial.print("Initializing RTC...");
+  Serial.println("Initializing DS1302 RTC...");
 
-  Wire.begin();
+  // Set initial time (2026-02-01 00:00:00)
+  // setDS1302Time(seconds, minutes, hours, day of week, day, month, year)
+  myRTC.setDS1302Time(0, 0, 0, 7, 1, 2, 26);  // Saturday, Feb 1, 2026
+  delay(100);
+  
+  // Read initial time from RTC
+  myRTC.updateTime();
 
-  myRTC.setClockMode(false);  // set to 24h
-
-  if (myRTC.oscillatorCheck()) {
-    Serial.println("RTC oscillator is running");
-  } else {
-    Serial.println("RTC oscillator has stopped or battery is low");
-  }
-
-  // Sync system time with RTC initially
+  // Sync system time with RTC
   updateSystemTimeFromRTC();
 
-  Serial.println("RTC initialized successfully!");
+  Serial.println("DS1302 RTC initialized successfully!");
+  printRTCDateTime();
 }
 
 //-----------------------------------------------------------------
 //FUNCTION FOR SYNCING RTC WITH NTP--------------------------------
 //-----------------------------------------------------------------
 void syncRTCWithNTP() {
-  Serial.println("Syncing RTC with NTP...");
+  Serial.println("Syncing DS1302 RTC with NTP...");
 
   // Get current NTP time
   time_t ntpTime = now();
 
   if (ntpTime > 0) {
-    // Set RTC time
-    myRTC.setYear(year(ntpTime) - 2000);
-    myRTC.setMonth(month(ntpTime));
-    myRTC.setDate(day(ntpTime));
-    myRTC.setDoW(weekday(ntpTime));  // TimeLib weekday is 1-7, DS3231 expects 1-7
-    myRTC.setHour(hour(ntpTime));
-    myRTC.setMinute(minute(ntpTime));
-    myRTC.setSecond(second(ntpTime));
+    // Set RTC time using DS1302
+    // setDS1302Time(seconds, minutes, hours, day of week, day, month, year)
+    myRTC.setDS1302Time(
+      second(ntpTime),
+      minute(ntpTime),
+      hour(ntpTime),
+      weekday(ntpTime),
+      day(ntpTime),
+      month(ntpTime),
+      year(ntpTime) - 2000  // DS1302 uses 2-digit year
+    );
 
-    Serial.println("RTC synced with NTP successfully");
+    Serial.println("DS1302 RTC synced with NTP successfully");
     printRTCDateTime();
   } else {
     Serial.println("Failed to get NTP time for RTC sync");
@@ -81,110 +83,106 @@ void syncRTCWithNTP() {
 //FUNCTION FOR CHECKING RTC VALIDITY-------------------------------
 //-----------------------------------------------------------------
 bool isRTCValid() {
-  return myRTC.oscillatorCheck();
+  myRTC.updateTime();
+  // Check if year is reasonable (between 2000 and 2099)
+  return (myRTC.year >= 0 && myRTC.year <= 99);
 }
 
 //-----------------------------------------------------------------
 //FUNCTION FOR PRINTING RTC DATETIME-------------------------------
 //-----------------------------------------------------------------
 void printRTCDateTime() {
-  // send what's going on to the serial monitor.
+  // Update time from DS1302
+  myRTC.updateTime();
   
-  // Start with the year
-  Serial.print("2");
-  if (myRTC.getCentury()) {      // Won't need this for 89 years.
-    Serial.print("1");
-  } else {
-    Serial.print("0");
-  }
-  Serial.print(myRTC.getYear(), DEC);
-  Serial.print(' ');
-  
-  // then the month
-  Serial.print(myRTC.getMonth(myRTC.getCentury()), DEC);
-  Serial.print(" ");
-  
-  // then the date
-  Serial.print(myRTC.getDate(), DEC);
-  Serial.print(" ");
-  
-  // and the day of the week
-  Serial.print(myRTC.getDoW(), DEC);
-  Serial.print(" ");
-  
-  // Finally the hour, minute, and second
-  Serial.print(myRTC.getHour(h12Flag, pmFlag), DEC);
-  Serial.print(" ");
-  Serial.print(myRTC.getMinute(), DEC);
-  Serial.print(" ");
-  Serial.print(myRTC.getSecond(), DEC);
- 
-  // Add AM/PM indicator
-  if (h12Flag) {
-    if (pmFlag) {
-      Serial.print(" PM ");
-    } else {
-      Serial.print(" AM ");
-    }
-  } else {
-    Serial.print(" 24h ");
-  }
- 
-  // Display the temperature
-  Serial.print("T=");
-  Serial.print(myRTC.getTemperature(), 2);
-  
-  // Tell whether the time is (likely to be) valid
-  if (myRTC.oscillatorCheck()) {
-    Serial.print(" O+");
-  } else {
-    Serial.print(" O-");
-  }
- 
-  Serial.println();
+  // Print in format: Date / Time: DD/MM/YY HH:MM:SS
+  Serial.print("Date / Time: ");
+  if (myRTC.dayofmonth < 10) Serial.print("0");
+  Serial.print(myRTC.dayofmonth);
+  Serial.print("/");
+  if (myRTC.month < 10) Serial.print("0");
+  Serial.print(myRTC.month);
+  Serial.print("/");
+  if (myRTC.year < 10) Serial.print("0");
+  Serial.print(myRTC.year);
+  Serial.print("  ");
+  if (myRTC.hours < 10) Serial.print("0");
+  Serial.print(myRTC.hours);
+  Serial.print(":");
+  if (myRTC.minutes < 10) Serial.print("0");
+  Serial.print(myRTC.minutes);
+  Serial.print(":");
+  if (myRTC.seconds < 10) Serial.print("0");
+  Serial.println(myRTC.seconds);
 }
 
 //-----------------------------------------------------------------
 //FUNCTION FOR GETTING RTC DATETIME STRING-------------------------
 //-----------------------------------------------------------------
 String getRTCDateTimeString() {
-  if (!isRTCValid()) {
-    return "RTC INVALID";
-  }
-
+  myRTC.updateTime();
+  
   char datestring[20];
-  snprintf_P(datestring,
-             countof(datestring),
-             PSTR("%02u:%02u:%02u %02u/%02u"),
-             myRTC.getHour(h12Flag, pmFlag),
-             myRTC.getMinute(),
-             myRTC.getSecond(),
-             myRTC.getDate(),
-             myRTC.getMonth(myRTC.getCentury()));
+  snprintf(datestring,
+           sizeof(datestring),
+           "%02d:%02d:%02d %02d/%02d/%02d",
+           myRTC.hours,
+           myRTC.minutes,
+           myRTC.seconds,
+           myRTC.dayofmonth,
+           myRTC.month,
+           myRTC.year);
   return String(datestring);
+}
+
+//-----------------------------------------------------------------
+//FUNCTION FOR GETTING FORMATTED DATETIME--------------------------
+//-----------------------------------------------------------------
+String getFormattedDateTime() {
+  return getRTCDateTimeString();
 }
 
 //-----------------------------------------------------------------
 //FUNCTION FOR UPDATING SYSTEM TIME FROM RTC-----------------------
 //-----------------------------------------------------------------
 void updateSystemTimeFromRTC() {
-  if (!isRTCValid()) {
-    Serial.println("Cannot update system time: RTC invalid");
-    return;
-  }
-
-void updateSystemTimeFromRTC() {
-  if (!isRTCValid()) {
-    Serial.println("Cannot update system time: RTC invalid");
-    return;
-  }
+  myRTC.updateTime();
 
   // Set system time using TimeLib
-  setTime(myRTC.getHour(h12Flag, pmFlag), myRTC.getMinute(), myRTC.getSecond(),
-          myRTC.getDate(), myRTC.getMonth(myRTC.getCentury()), myRTC.getYear() + 2000);
+  setTime(myRTC.hours, myRTC.minutes, myRTC.seconds,
+          myRTC.dayofmonth, myRTC.month, myRTC.year + 2000);
 
-  Serial.println("System time updated from RTC");
+  Serial.println("System time updated from DS1302 RTC");
 }
+
+//-----------------------------------------------------------------
+//FUNCTION FOR SETTING RTC TIME MANUALLY---------------------------
+//-----------------------------------------------------------------
+void setRTCTimeManual(int year, int month, int day, int hour, int minute, int second) {
+  // Calculate day of week (1=Monday, 7=Sunday)
+  // Using simplified algorithm - you can improve this
+  int dow = 1;  // Default to Monday
+  
+  Serial.print("[RTC] Setting time to: 20");
+  Serial.print(year);
+  Serial.print("-");
+  Serial.print(month);
+  Serial.print("-");
+  Serial.print(day);
+  Serial.print(" ");
+  Serial.print(hour);
+  Serial.print(":");
+  Serial.print(minute);
+  Serial.print(":");
+  Serial.print(second);
+  Serial.println();
+  
+  myRTC.setDS1302Time(second, minute, hour, dow, day, month, year);
+  delay(100);
+  myRTC.updateTime();
+  
+  Serial.println("[RTC] Time set successfully!");
+  printRTCDateTime();
 }
 
 #endif // RTC_CONFIG_H

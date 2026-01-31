@@ -20,6 +20,7 @@ from ui.scheduling import SchedulingPanel
 from ui.previous_data import PreviousDataPanel
 from ui.notifications import NotificationsPanel
 from ui.spraying_events_logs_viewer import SprayingEventsLogsViewerPanel
+from ui.settings import SettingsFrame
 
 
 class SmartSprayerUI(ctk.CTk):
@@ -93,7 +94,8 @@ class SmartSprayerUI(ctk.CTk):
             ("Scheduling", "📅", "scheduling"),
             ("Previous Data", "📋", "previous_data"),
             ("Notifications", "🔔", "notifications"),
-            ("Spraying Events Logs", "📝", "spraying_events_logs")
+            ("Spraying Events Logs", "📝", "spraying_events_logs"),
+            ("Settings", "⚙️", "settings")
         ]
         
         for i, (text, icon, key) in enumerate(nav_items):
@@ -169,6 +171,10 @@ class SmartSprayerUI(ctk.CTk):
         self.panels["spraying_events_logs"] = SprayingEventsLogsViewerPanel(
             self.content_frame,
             self.logger
+        )
+        
+        self.panels["settings"] = SettingsFrame(
+            self.content_frame
         )
         
         # Show dashboard by default

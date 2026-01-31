@@ -9,9 +9,11 @@ uint16_t RELAY_2 = RELAY_2_PIN;
 //-----------------------------------------------------------------
 //FUNCTION FOR SETTING RELAY PIN MODE------------------------------
 //-----------------------------------------------------------------
-void initRELAY(){
+void initRELAY() {
   pinMode(RELAY_1, OUTPUT);
   pinMode(RELAY_2, OUTPUT);
+  digitalWrite(RELAY_1, HIGH);
+  digitalWrite(RELAY_2, HIGH);
 }
 
 //-----------------------------------------------------------------

@@ -301,10 +301,45 @@ class FirebaseService:
             print(f"Error getting weather data: {e}")
             return None
     
-    # Analytics
-    def get_analytics(self) -> Dict:
-        """Get spray analytics from Firebase"""
+    # Recipients Management
+    def update_recipients(self, recipients: List[Dict]) -> bool:
+        """Upload recipients list to Firebase"""
         if not self.connected:
+            return False
+        
+        try:
+            data = {
+                'recipients': recipients,
+                'updated_at': datetime.now().isoformat()
+            }
+            
+            self.db.child("devices").child(self.device_id).child("recipients").set(
+                data, 
+                self.user['idToken'] if self.user else None
+            )
+            print(f"Recipients synced to Firebase: {len(recipients)} recipients")
+            return True
+        except Exception as e:
+            print(f"Error updating recipients: {e}")
+            return False
+    
+    def get_recipients(self) -> List[Dict]:
+        """Get recipients list from Firebase"""
+        if not self.connected:
+            return []
+        
+        try:
+            data = self.db.child("devices").child(self.device_id).child("recipients").get(
+                self.user['idToken'] if self.user else None
+            ).val()
+            
+            if data and 'recipients' in data:
+                return data['recipients']
+            return []
+        except Exception as e:
+            print(f"Error getting recipients: {e}")
+            return []
+    
             return {}
         
         try:
