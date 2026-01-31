@@ -30,21 +30,23 @@ The following hardware-specific CONFIG files have been removed as ESP32 handles 
 - `SR04_CONFIG.py` - Ultrasonic sensors (now via ESP32)
 - `NTP_CONFIG.py` - NTP time sync (now via ESP32)
 - `GSM_RECIPIENTS.py` - SMS recipients (now via ESP32)
+- `FIREBASE_CONFIG.py` - Firebase functions (not used in current implementation)
+- `WEATHER_CONFIG.py` - Weather API functions (ESP32 handles weather checks)
+- `WIFI_CONFIG.py` - WiFi functions (ESP32 handles WiFi)
+- `mock_hardware.py` - Mock hardware for PC testing (no longer needed)
+- `.idea/` - IDE configuration folder (added to .gitignore)
 
 ### Kept Files
-- `PINS_CONFIG.py` - Reference only (describes ESP32 pin assignments)
-- `FIREBASE_CONFIG.py` - Firebase credentials (RPI-side)
-- `WEATHER_CONFIG.py` - Weather API credentials (RPI-side)
-- `WIFI_CONFIG.py` - WiFi credentials (reference)
+- `PINS_CONFIG.py` - Reference only (describes ESP32 pin assignments and container height)
 
 ### New Files
-- `hardware/esp32_hardware.py` - ESP32 serial communication implementation
+- `hardware/esp32_hardware.py` - ESP32 USB serial communication implementation
   
 ### Modified Files
-- `hardware/hardware_interface.py` - Updated to support ESP32 mode
-- `hardware/mock_hardware.py` - Removed button and LED support
-- `SmartSprayer.py` - Simplified to CLI stub, directs users to GUI
+- `hardware/hardware_interface.py` - Simplified to only support ESP32 mode
+- `SmartSprayer.py` - Simplified to CLI stub, removed unused imports
 - `requirements.txt` - Added pyserial for ESP32 communication
+- `.gitignore` - Added Python, IDE, and OS-specific entries
 
 ## Hardware Interface
 
@@ -52,10 +54,14 @@ The system uses `hardware_interface.py` with ESP32 serial communication:
 
 ### ESP32 Communication Mode
 - Uses `ESP32Hardware` class
-- Communicates with ESP32 via serial port
+- Communicates with ESP32 via USB serial port
 - Sends text commands, parses responses
-- Default serial port: `/dev/ttyUSB0` (configurable)
-- Baudrate: 9600 (configurable)
+- Default serial port: `/dev/ttyUSB0` (Raspberry Pi/Linux)
+- Common ports:
+  - Linux/Raspberry Pi: `/dev/ttyUSB0`, `/dev/ttyACM0`
+  - Windows: `COM3`, `COM4`, `COM5`
+  - macOS: `/dev/cu.usbserial-XXXX`
+- Baudrate: 9600 (matches ESP32 configuration)
 
 ## ESP32 Serial Commands
 
@@ -94,6 +100,21 @@ The RPI sends these commands to ESP32:
 
 ## Usage
 
+### Connecting ESP32
+
+1. Connect ESP32 to Raspberry Pi via USB cable
+2. Verify the serial port:
+   ```bash
+   # On Raspberry Pi/Linux
+   ls /dev/ttyUSB* /dev/ttyACM*
+   # Common ports: /dev/ttyUSB0 or /dev/ttyACM0
+   ```
+3. Grant serial port permissions (if needed):
+   ```bash
+   sudo usermod -a -G dialout $USER
+   # Then logout and login again
+   ```
+
 ### Running the GUI
 
 ```bash
@@ -111,11 +132,48 @@ If your ESP32 is on a different serial port, you can configure it when getting h
 ```python
 from hardware.hardware_interface import get_hardware
 
-# Default usage
+# Default usage (uses /dev/ttyUSB0)
 hardware = get_hardware()
 
 # Custom serial port
 hardware = get_hardware(port='/dev/ttyACM0', baudrate=9600, timeout=1)
+
+# Windows example
+hardware = get_hardware(port='COM3', baudrate=9600, timeout=1)
+```
+
+## Core Files Structure
+
+```
+SmartSprayer/
+├── run_gui.py                    # Main GUI launcher
+├── SmartSprayer.py               # Deprecated CLI (use run_gui.py instead)
+├── PINS_CONFIG.py                # Pin reference (for ESP32)
+├── requirements.txt              # Python dependencies
+├── RPI_ESP32_ARCHITECTURE.md     # This documentation
+├── hardware/
+│   ├── __init__.py
+│   ├── hardware_interface.py     # Hardware abstraction layer
+│   └── esp32_hardware.py         # ESP32 USB serial communication
+├── core/
+│   ├── __init__.py
+│   ├── data_store.py             # JSON data storage
+│   ├── logger.py                 # Logging system
+│   ├── scheduler.py              # Spray scheduling
+│   └── reschedule_logic.py       # Reschedule logic
+├── ui/
+│   ├── __init__.py
+│   ├── main_ui.py                # Main GUI window
+│   ├── dashboard.py              # Dashboard panel
+│   ├── scheduling.py             # Scheduling panel
+│   ├── previous_data.py          # History panel
+│   ├── notifications.py          # Notifications panel
+│   └── spraying_events_logs_viewer.py  # Logs panel
+├── data/
+│   ├── schedules.json            # Spray schedules
+│   └── history.json              # Spray history
+└── logs/
+    └── smart_sprayer.log         # Application logs
 ```
 
 ## GUI Features Preserved

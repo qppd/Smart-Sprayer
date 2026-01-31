@@ -1,6 +1,11 @@
 # esp32_hardware.py
-# Hardware implementation that communicates with ESP32 via serial
+# Hardware implementation that communicates with ESP32 via USB serial
 # ESP32 handles all physical hardware components
+#
+# Common serial port names:
+#   Linux/Raspberry Pi: /dev/ttyUSB0, /dev/ttyACM0
+#   Windows: COM3, COM4, COM5, etc.
+#   macOS: /dev/cu.usbserial-XXXX
 
 import serial
 import time
@@ -8,7 +13,7 @@ import threading
 from hardware.hardware_interface import HardwareInterface
 
 class ESP32Hardware(HardwareInterface):
-    """Hardware implementation that communicates with ESP32 via serial"""
+    """Hardware implementation that communicates with ESP32 via USB serial"""
     
     def __init__(self, port='/dev/ttyUSB0', baudrate=9600, timeout=1):
         super().__init__()

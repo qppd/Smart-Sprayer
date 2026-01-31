@@ -4,9 +4,6 @@
 # RPI now communicates with ESP32 via serial for all hardware operations
 
 # Import only necessary config modules
-from FIREBASE_CONFIG import *
-from WEATHER_CONFIG import *
-from WIFI_CONFIG import WIFI_SSID, WIFI_PASSWORD
 from PINS_CONFIG import CONTAINER_HEIGHT
 
 import time
