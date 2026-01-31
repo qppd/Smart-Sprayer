@@ -9,6 +9,13 @@ from core.data_store import get_data_store
 from core.logger import get_logger
 from core.reschedule_logic import get_reschedule_manager
 
+try:
+    from core.weather_service import get_weather_service
+    WEATHER_AVAILABLE = True
+except ImportError:
+    WEATHER_AVAILABLE = False
+    print("Weather service not available")
+
 class Scheduler:
     """Main scheduler for spray operations"""
     
@@ -20,6 +27,11 @@ class Scheduler:
         self.logger = get_logger()
         self.reschedule_mgr = get_reschedule_manager()
         self.hardware = hardware_interface
+        
+        # Initialize weather service
+        self.weather = None
+        if WEATHER_AVAILABLE:
+            self.weather = get_weather_service()
         
         self.running = False
         self.scheduler_thread = None
@@ -78,6 +90,29 @@ class Scheduler:
     
     def _execute_schedule(self, schedule: Dict):
         """Execute a spray schedule"""
+        
+        # Check weather before executing
+        if self.weather and self.weather.available:
+            self.logger.log_info("Checking weather before spray...")
+            
+            # Check current weather
+            is_raining = self.weather.check_weather_for_rain()
+            
+            if is_raining:
+                self.logger.log_warning(f"Rain detected! Rescheduling spray schedule {schedule['id']}")
+                self._reschedule_due_to_weather(schedule)
+                return
+            
+            # Check forecast for next 24 hours
+            rain_forecast = self.weather.check_forecast_for_rain(hours_ahead=24)
+            
+            if rain_forecast:
+                self.logger.log_warning(f"Rain expected in forecast! Rescheduling spray schedule {schedule['id']}")
+                self._reschedule_due_to_weather(schedule)
+                return
+            
+            self.logger.log_info("Weather check passed - safe to spray")
+        
         self.logger.log_spray_executed(schedule)
         
         # Update status to executing
@@ -145,6 +180,50 @@ class Scheduler:
                 'error': str(e)
             })
     
+    def _reschedule_due_to_weather(self, schedule: Dict):
+        """Reschedule a spray due to weather conditions"""
+        # Calculate new date (postpone by 1 day)
+        current_date = datetime.strptime(schedule['date'], '%Y-%m-%d')
+        new_date = current_date + timedelta(days=1)
+        new_date_str = new_date.strftime('%Y-%m-%d')
+        
+        # Keep same time
+        time_str = schedule['time']
+        
+        # Use reschedule manager
+        success, message, affected = self.reschedule_mgr.reschedule(
+            schedule['id'],
+            new_date_str,
+            time_str
+        )
+        
+        if success:
+            self.logger.log_info(
+                f"Schedule {schedule['id']} rescheduled to {new_date_str} {time_str} due to weather"
+            )
+            
+            # Update status with weather reason
+            self.data_store.update_schedule(schedule['id'], {
+                'reschedule_reason': 'weather',
+                'weather_checked_at': datetime.now().isoformat()
+            })
+            
+            # Notify via callback
+            if self.on_status_change_callback:
+                self.on_status_change_callback({
+                    'type': 'weather_reschedule',
+                    'schedule_id': schedule['id'],
+                    'new_date': new_date_str,
+                    'message': 'Schedule postponed due to rain'
+                })
+        else:
+            self.logger.log_warning(f"Failed to reschedule due to weather: {message}")
+            # Mark as cancelled if max reschedules reached
+            self.data_store.update_schedule(schedule['id'], {
+                'status': 'cancelled',
+                'cancel_reason': 'weather_max_reschedules'
+            })
+    
     def calculate_spray_duration(self, volume_ml: float) -> float:
         """Calculate spray duration in seconds based on volume and pump rate"""
         # Pump rate: 5000 mL/min = 5000/60 mL/sec
@@ -203,6 +282,43 @@ class Scheduler:
         )
         
         return schedules
+    
+    def check_weather_for_schedule(self, schedule_id: str) -> Dict:
+        """
+        Manually check weather for a specific schedule
+        Returns weather status and recommendation
+        """
+        if not self.weather or not self.weather.available:
+            return {
+                'available': False,
+                'message': 'Weather service not configured'
+            }
+        
+        schedule = self.data_store.get_schedule_by_id(schedule_id)
+        if not schedule:
+            return {
+                'available': False,
+                'message': 'Schedule not found'
+            }
+        
+        # Check current weather
+        is_raining = self.weather.check_weather_for_rain()
+        
+        # Check forecast
+        rain_forecast = self.weather.check_forecast_for_rain(hours_ahead=24)
+        
+        # Get detailed weather
+        weather_data = self.weather.get_weather_data()
+        
+        return {
+            'available': True,
+            'schedule_id': schedule_id,
+            'is_raining_now': is_raining,
+            'rain_forecast': rain_forecast,
+            'recommendation': 'Reschedule' if (is_raining or rain_forecast) else 'Safe to spray',
+            'weather_data': weather_data,
+            'checked_at': datetime.now().isoformat()
+        }
     
     def get_next_schedule(self) -> Optional[Dict]:
         """Get the next upcoming schedule"""

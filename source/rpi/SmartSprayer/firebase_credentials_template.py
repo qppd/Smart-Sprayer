@@ -17,5 +17,9 @@ FIREBASE_USER = {
 }
 
 # Weather API configuration (for weather check via RPI)
-WEATHER_API_KEY = "YOUR_WEATHER_API_KEY"
-WEATHER_API_URL = "http://api.weatherapi.com/v1/current.json?key=YOUR_WEATHER_API_KEY&q=YOUR_LOCATION&aqi=no"
+WEATHER_API_KEY = "64812e322c3f4b42af7135146252012"
+WEATHER_LOCATION = "Manila"
+WEATHER_API_URL = f"https://api.weatherapi.com/v1/current.json?key={WEATHER_API_KEY}&q={WEATHER_LOCATION}&aqi=no"
+
+# Optional: 5-day forecast URL (for advanced weather prediction)
+WEATHER_FORECAST_URL = f"https://api.weatherapi.com/v1/forecast.json?key={WEATHER_API_KEY}&q={WEATHER_LOCATION}&days=5&aqi=no"

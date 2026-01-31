@@ -6,13 +6,14 @@ from typing import Dict, Optional
 from datetime import datetime
 
 try:
-    from firebase_credentials import WEATHER_API_KEY, WEATHER_API_URL
+    from firebase_credentials import WEATHER_API_KEY, WEATHER_API_URL, WEATHER_FORECAST_URL
     WEATHER_AVAILABLE = True
 except ImportError:
     print("Warning: Weather API credentials not found")
     WEATHER_AVAILABLE = False
     WEATHER_API_KEY = None
     WEATHER_API_URL = None
+    WEATHER_FORECAST_URL = None
 
 
 class WeatherService:
@@ -21,6 +22,7 @@ class WeatherService:
     def __init__(self):
         self.api_key = WEATHER_API_KEY
         self.api_url = WEATHER_API_URL
+        self.forecast_url = WEATHER_FORECAST_URL
         self.available = WEATHER_AVAILABLE and self.api_key and self.api_url
         self.last_check = None
         self.last_result = None
@@ -107,6 +109,53 @@ class WeatherService:
     def get_last_result(self) -> Optional[Dict]:
         """Get last weather check result"""
         return self.last_result
+    
+    def check_forecast_for_rain(self, hours_ahead: int = 24) -> bool:
+        """
+        Check if rain is expected in the next X hours
+        Returns True if rain expected (should reschedule)
+        Returns False if no rain (safe to spray)
+        """
+        if not self.available or not self.forecast_url:
+            print("Weather forecast API not configured")
+            return False
+        
+        try:
+            response = requests.get(self.forecast_url, timeout=10)
+            
+            if response.status_code == 200:
+                data = response.json()
+                forecast = data.get('forecast', {}).get('forecastday', [])
+                
+                if not forecast:
+                    return False
+                
+                # Check current day and next day
+                for day in forecast[:2]:  # Check today and tomorrow
+                    day_data = day.get('day', {})
+                    
+                    # Check for rain probability
+                    daily_chance_of_rain = day_data.get('daily_chance_of_rain', 0)
+                    daily_will_it_rain = day_data.get('daily_will_it_rain', 0)
+                    total_precip_mm = day_data.get('totalprecip_mm', 0.0)
+                    
+                    # Rain expected if:
+                    # - High chance of rain (>50%)
+                    # - API says it will rain
+                    # - Expected precipitation > 1mm
+                    if daily_chance_of_rain > 50 or daily_will_it_rain == 1 or total_precip_mm > 1.0:
+                        print(f"Rain forecast: {daily_chance_of_rain}% chance, {total_precip_mm}mm expected")
+                        return True
+                
+                print("Forecast: No significant rain expected")
+                return False
+            else:
+                print(f"Weather forecast API error: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"Forecast check failed: {e}")
+            return False
 
 
 # Global weather service instance
