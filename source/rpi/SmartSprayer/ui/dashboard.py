@@ -195,40 +195,51 @@ class DashboardPanel(ctk.CTkFrame):
                 print(f"Dashboard update error: {e}")
     
     def _update_tank_levels(self):
-        """Update tank level displays"""
+        """Update tank level displays using ESP32"""
         if self.hardware:
-            # Container 1
-            level1 = self.hardware.get_tank_level_percentage(1)
-            self.tank1_progress.set(level1 / 100)
-            self.tank1_label.configure(text=f"{level1:.1f}%")
-            self.tank1_liters.configure(text=f"{level1:.0f} Liters")
-            
-            # Set color based on level
-            if level1 > 50:
-                color1 = "#4CAF50"  # Green
-            elif level1 > 20:
-                color1 = "#FF9800"  # Orange
-            else:
-                color1 = "#F44336"  # Red
-            
-            self.tank1_progress.configure(progress_color=color1)
-            self.tank1_label.configure(text_color=color1)
-            
-            # Container 2
-            level2 = self.hardware.get_tank_level_percentage(2)
-            self.tank2_progress.set(level2 / 100)
-            self.tank2_label.configure(text=f"{level2:.1f}%")
-            self.tank2_liters.configure(text=f"{level2:.0f} Liters")
-            
-            if level2 > 50:
-                color2 = "#4CAF50"
-            elif level2 > 20:
-                color2 = "#FF9800"
-            else:
-                color2 = "#F44336"
-            
-            self.tank2_progress.configure(progress_color=color2)
-            self.tank2_label.configure(text_color=color2)
+            try:
+                # Use efficient bulk read if connected
+                if hasattr(self.hardware, 'get_both_tank_levels') and self.hardware.connected:
+                    levels = self.hardware.get_both_tank_levels()
+                    level1 = levels.get('tank1', 0.0)
+                    level2 = levels.get('tank2', 0.0)
+                else:
+                    # Fallback to individual reads
+                    level1 = self.hardware.get_tank_level_percentage(1)
+                    level2 = self.hardware.get_tank_level_percentage(2)
+                
+                # Update Container 1
+                self.tank1_progress.set(level1 / 100)
+                self.tank1_label.configure(text=f"{level1:.1f}%")
+                self.tank1_liters.configure(text=f"{level1:.0f} Liters")
+                
+                # Set color based on level
+                if level1 > 50:
+                    color1 = "#4CAF50"  # Green
+                elif level1 > 20:
+                    color1 = "#FF9800"  # Orange
+                else:
+                    color1 = "#F44336"  # Red
+                
+                self.tank1_progress.configure(progress_color=color1)
+                self.tank1_label.configure(text_color=color1)
+                
+                # Update Container 2
+                self.tank2_progress.set(level2 / 100)
+                self.tank2_label.configure(text=f"{level2:.1f}%")
+                self.tank2_liters.configure(text=f"{level2:.0f} Liters")
+                
+                if level2 > 50:
+                    color2 = "#4CAF50"
+                elif level2 > 20:
+                    color2 = "#FF9800"
+                else:
+                    color2 = "#F44336"
+                
+                self.tank2_progress.configure(progress_color=color2)
+                self.tank2_label.configure(text_color=color2)
+            except Exception as e:
+                print(f"Error updating tank levels: {e}")
     
     def _update_next_schedule(self):
         """Update next schedule information"""

@@ -38,32 +38,27 @@ long readDistance2() {
 }
 
 // Container level calculation functions
-float calculateFillLevel(long distance) {
-  // Calculate filled height: container height - measured distance
-  float filledHeight = CONTAINER_HEIGHT - distance;
-  
-  // Ensure filled height is not negative
-  if (filledHeight < 0) {
-    filledHeight = 0;
-  }
-  
-  return filledHeight;
-}
-
+// Distance 25cm = Full (100%), Distance 50cm = Empty (0%)
 float calculateFillPercentage(long distance) {
-  float filledHeight = calculateFillLevel(distance);
+  // Invert the logic: smaller distance = more full
+  // 25cm = 100%, 50cm = 0%
+  float usableRange = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE;  // 50 - 25 = 25cm
+  float currentLevel = CONTAINER_EMPTY_DISTANCE - distance;  // How much above empty
   
-  // Calculate percentage: (filled height / total height) * 100
-  float percentage = (filledHeight / CONTAINER_HEIGHT) * 100.0;
+  float percentage = (currentLevel / usableRange) * 100.0;
   
-  // Ensure percentage is within 0-100 range
-  if (percentage > 100.0) {
-    percentage = 100.0;
-  } else if (percentage < 0.0) {
-    percentage = 0.0;
-  }
+  // Clamp to 0-100
+  if (percentage > 100.0) percentage = 100.0;
+  if (percentage < 0.0) percentage = 0.0;
   
   return percentage;
+}
+
+float calculateFillLevel(long distance) {
+  // Return the actual liquid level in cm from bottom
+  float level = CONTAINER_EMPTY_DISTANCE - distance;
+  if (level < 0) level = 0;
+  return level;
 }
 
 #endif

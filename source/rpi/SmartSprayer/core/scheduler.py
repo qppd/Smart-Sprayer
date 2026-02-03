@@ -99,16 +99,16 @@ class Scheduler:
             is_raining = self.weather.check_weather_for_rain()
             
             if is_raining:
-                self.logger.log_warning(f"Rain detected! Rescheduling spray schedule {schedule['id']}")
-                self._reschedule_due_to_weather(schedule)
+                self.logger.log_warning(f"Rain detected! Checking reschedule count for schedule {schedule['id']}")
+                self._handle_weather_reschedule(schedule)
                 return
             
             # Check forecast for next 24 hours
             rain_forecast = self.weather.check_forecast_for_rain(hours_ahead=24)
             
             if rain_forecast:
-                self.logger.log_warning(f"Rain expected in forecast! Rescheduling spray schedule {schedule['id']}")
-                self._reschedule_due_to_weather(schedule)
+                self.logger.log_warning(f"Rain expected in forecast! Checking reschedule count for schedule {schedule['id']}")
+                self._handle_weather_reschedule(schedule)
                 return
             
             self.logger.log_info("Weather check passed - safe to spray")
@@ -121,41 +121,38 @@ class Scheduler:
         if self.on_schedule_due_callback:
             self.on_schedule_due_callback(schedule)
         
-        # Perform spray operation
+        # Perform spray operation via ESP32
         try:
             container = schedule['container']
             spray_type = schedule['spray_type']
-            
-            self.logger.log_info(
-                f"Executing spray: {spray_type} using {container}"
-            )
+            volume_ml = schedule.get('volume_ml', 1000)  # Default 1000 mL
             
             # Determine which relay to activate based on container
             relay_num = 1 if container == "Container 1" else 2
             
-            # Turn on relay
-            if self.hardware:
-                self.hardware.relay_on(relay_num)
-                self.hardware.buzzer_beep(0.5)
-                self.hardware.set_led('status', 1)
-            
             # Calculate spray duration based on volume
-            volume_ml = schedule.get('volume_ml', 1000)  # Default 1000 mL
             spray_duration = self.calculate_spray_duration(volume_ml)
             
             self.logger.log_info(
-                f"Spraying {volume_ml} mL for {spray_duration:.1f} seconds"
+                f"Executing spray: {spray_type} using {container}, "
+                f"{volume_ml}mL for {spray_duration:.1f} seconds"
             )
             
-            time.sleep(spray_duration)
-            
-            # Turn off relay
+            # Execute spray via ESP32
             if self.hardware:
-                self.hardware.relay_off(relay_num)
-                self.hardware.set_led('status', 0)
+                # Use ESP32's spray command (ESP32 handles relay, SMS, buzzer)
+                self.hardware.spray(relay_num, spray_duration, volume_ml)
+                
+                # Wait for spray to complete (ESP32 is blocking during spray)
+                # Add a small buffer for SMS sending
+                import time
+                time.sleep(spray_duration + 2)
             
             # Mark as completed
-            self.data_store.update_schedule(schedule['id'], {'status': 'completed'})
+            self.data_store.update_schedule(schedule['id'], {
+                'status': 'completed',
+                'completed_at': datetime.now().isoformat()
+            })
             
             # Add to history
             self.data_store.add_to_history({
@@ -180,8 +177,43 @@ class Scheduler:
                 'error': str(e)
             })
     
-    def _reschedule_due_to_weather(self, schedule: Dict):
-        """Reschedule a spray due to weather conditions"""
+    def _handle_weather_reschedule(self, schedule: Dict):
+        """
+        Handle weather-based reschedule with 3-attempt limit.
+        
+        Logic:
+        1. If rain detected today → reschedule to tomorrow
+        2. If rain again tomorrow → reschedule to day after
+        3. After 3 consecutive rain reschedules → CANCEL (user must manually reschedule)
+        """
+        reschedule_count = schedule.get('reschedule_count', 0)
+        
+        self.logger.log_info(f"Weather reschedule attempt #{reschedule_count + 1} for schedule {schedule['id']}")
+        
+        if reschedule_count >= 3:
+            # Max reschedules reached - cancel the schedule
+            self.logger.log_warning(
+                f"Maximum weather reschedules (3) reached for schedule {schedule['id']}. "
+                f"Cancelling - user must manually reschedule."
+            )
+            
+            self.data_store.update_schedule(schedule['id'], {
+                'status': 'cancelled',
+                'cancel_reason': 'weather_max_reschedules',
+                'cancelled_at': datetime.now().isoformat(),
+                'cancel_message': 'Cancelled after 3 consecutive rain days. Please reschedule manually.'
+            })
+            
+            # Notify via callback
+            if self.on_status_change_callback:
+                self.on_status_change_callback({
+                    'type': 'weather_cancelled',
+                    'schedule_id': schedule['id'],
+                    'message': 'Schedule cancelled after 3 rain postponements. Please create new schedule.'
+                })
+            
+            return
+        
         # Calculate new date (postpone by 1 day)
         current_date = datetime.strptime(schedule['date'], '%Y-%m-%d')
         new_date = current_date + timedelta(days=1)
@@ -190,38 +222,33 @@ class Scheduler:
         # Keep same time
         time_str = schedule['time']
         
-        # Use reschedule manager
-        success, message, affected = self.reschedule_mgr.reschedule(
-            schedule['id'],
-            new_date_str,
-            time_str
+        # Update schedule directly with new date and incremented count
+        updates = {
+            'date': new_date_str,
+            'time': time_str,
+            'reschedule_count': reschedule_count + 1,
+            'status': 'rescheduled',
+            'reschedule_reason': 'weather',
+            'weather_checked_at': datetime.now().isoformat(),
+            'original_date': schedule.get('original_date', schedule['date']),
+            'original_time': schedule.get('original_time', schedule['time'])
+        }
+        
+        self.data_store.update_schedule(schedule['id'], updates)
+        
+        self.logger.log_info(
+            f"Schedule {schedule['id']} rescheduled to {new_date_str} {time_str} "
+            f"due to weather (attempt {reschedule_count + 1}/3)"
         )
         
-        if success:
-            self.logger.log_info(
-                f"Schedule {schedule['id']} rescheduled to {new_date_str} {time_str} due to weather"
-            )
-            
-            # Update status with weather reason
-            self.data_store.update_schedule(schedule['id'], {
-                'reschedule_reason': 'weather',
-                'weather_checked_at': datetime.now().isoformat()
-            })
-            
-            # Notify via callback
-            if self.on_status_change_callback:
-                self.on_status_change_callback({
-                    'type': 'weather_reschedule',
-                    'schedule_id': schedule['id'],
-                    'new_date': new_date_str,
-                    'message': 'Schedule postponed due to rain'
-                })
-        else:
-            self.logger.log_warning(f"Failed to reschedule due to weather: {message}")
-            # Mark as cancelled if max reschedules reached
-            self.data_store.update_schedule(schedule['id'], {
-                'status': 'cancelled',
-                'cancel_reason': 'weather_max_reschedules'
+        # Notify via callback
+        if self.on_status_change_callback:
+            self.on_status_change_callback({
+                'type': 'weather_reschedule',
+                'schedule_id': schedule['id'],
+                'new_date': new_date_str,
+                'reschedule_count': reschedule_count + 1,
+                'message': f'Schedule postponed due to rain (attempt {reschedule_count + 1}/3)'
             })
     
     def calculate_spray_duration(self, volume_ml: float) -> float:

@@ -27,6 +27,13 @@
 #define WIFI_RESET_BUTTON_PIN 13
 
 // Container Level Configuration
-#define CONTAINER_HEIGHT 100.0  // Container height in cm (adjust as needed)
+// Ultrasonic measures from top of container
+// 25cm distance = Full (liquid at top)
+// 50cm distance = Empty (liquid at bottom)
+#define CONTAINER_EMPTY_DISTANCE 50.0  // Distance when tank is empty (cm)
+#define CONTAINER_FULL_DISTANCE 25.0   // Distance when tank is full (cm)
+
+// Pump Configuration
+#define PUMP_FLOW_RATE_ML_PER_MIN 5000.0  // 5 Liters per minute = 5000 mL/min
 
 #endif // PINS_CONFIG_H

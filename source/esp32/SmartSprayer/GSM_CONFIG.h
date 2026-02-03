@@ -1,19 +1,19 @@
 #ifndef GSM_CONFIG_H
 #define GSM_CONFIG_H
 
-#include <SoftwareSerial.h>
+// #include <SoftwareSerial.h>  // Commented out for HardwareSerial
 #include "PINS_CONFIG.h"
 
 #define MAX_RECIPIENTS 10
 
-SoftwareSerial sim(GSM_RX_PIN, GSM_TX_PIN); // RX, TX
+HardwareSerial sim(1); // UART1 for ESP32
 
 // Dynamic recipients array (managed by RPI via serial commands)
 String recipients[MAX_RECIPIENTS];
 int numRecipients = 0;
 
 void initGSM() {
- sim.begin(9600);
+  sim.begin(9600, SERIAL_8N1, GSM_RX_PIN, GSM_TX_PIN);
   delay(1000);
   sim.println("AT");
   delay(1000);

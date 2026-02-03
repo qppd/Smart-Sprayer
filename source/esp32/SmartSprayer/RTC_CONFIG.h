@@ -35,13 +35,16 @@ void updateSystemTimeFromRTC();
 void initRTC() {
   Serial.println("Initializing DS1302 RTC...");
 
-  // Set initial time (2026-02-01 00:00:00)
+  // Force set initial time with correct year format (2026-02-01 01:22:00)
   // setDS1302Time(seconds, minutes, hours, day of week, day, month, year)
-  myRTC.setDS1302Time(0, 0, 0, 7, 1, 2, 26);  // Saturday, Feb 1, 2026
-  delay(100);
+  // Year should be 2-digit: 26 for 2026
+  myRTC.setDS1302Time(0, 22, 1, 7, 1, 2, 26);  // Saturday, Feb 1, 2026 01:22:00
+  delay(200);
   
-  // Read initial time from RTC
+  // Read back and verify
   myRTC.updateTime();
+  Serial.print("[DEBUG] After init, year value: ");
+  Serial.println(myRTC.year);
 
   // Sync system time with RTC
   updateSystemTimeFromRTC();
@@ -94,8 +97,12 @@ bool isRTCValid() {
 void printRTCDateTime() {
   // Update time from DS1302
   myRTC.updateTime();
-  
-  // Print in format: Date / Time: DD/MM/YY HH:MM:SS
+
+  // Debug: print raw year value
+  Serial.print("[DEBUG] Raw year value from RTC: ");
+  Serial.println(myRTC.year);
+
+  // Print in format: Date / Time: DD/MM/YYYY HH:MM:SS
   Serial.print("Date / Time: ");
   if (myRTC.dayofmonth < 10) Serial.print("0");
   Serial.print(myRTC.dayofmonth);
@@ -103,8 +110,20 @@ void printRTCDateTime() {
   if (myRTC.month < 10) Serial.print("0");
   Serial.print(myRTC.month);
   Serial.print("/");
-  if (myRTC.year < 10) Serial.print("0");
-  Serial.print(myRTC.year);
+  
+  // Handle RTC year offset bug: RTC adds ~2096 to year value
+  // If year > 2000, subtract 2096 to get correct 20XX year
+  int displayYear;
+  if (myRTC.year > 2000) {
+    displayYear = myRTC.year - 2096;  // Remove RTC offset
+    if (displayYear < 2000) displayYear += 2000;  // Add century if needed
+  } else if (myRTC.year > 100) {
+    displayYear = myRTC.year;  // Already full year
+  } else {
+    displayYear = myRTC.year + 2000;  // Add century for 2-digit year
+  }
+  Serial.print(displayYear);
+  
   Serial.print("  ");
   if (myRTC.hours < 10) Serial.print("0");
   Serial.print(myRTC.hours);
@@ -121,17 +140,28 @@ void printRTCDateTime() {
 //-----------------------------------------------------------------
 String getRTCDateTimeString() {
   myRTC.updateTime();
-  
-  char datestring[20];
+
+  // Handle RTC year offset bug: RTC adds ~2096 to year value
+  int displayYear;
+  if (myRTC.year > 2000) {
+    displayYear = myRTC.year - 2096;  // Remove RTC offset
+    if (displayYear < 2000) displayYear += 2000;  // Add century if needed
+  } else if (myRTC.year > 100) {
+    displayYear = myRTC.year;  // Already full year
+  } else {
+    displayYear = myRTC.year + 2000;  // Add century for 2-digit year
+  }
+
+  char datestring[25];
   snprintf(datestring,
            sizeof(datestring),
-           "%02d:%02d:%02d %02d/%02d/%02d",
+           "%02d:%02d:%02d %02d/%02d/%04d",
            myRTC.hours,
            myRTC.minutes,
            myRTC.seconds,
            myRTC.dayofmonth,
            myRTC.month,
-           myRTC.year);
+           displayYear);
   return String(datestring);
 }
 

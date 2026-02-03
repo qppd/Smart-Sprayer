@@ -175,17 +175,26 @@ class SettingsFrame(ctk.CTkScrollableFrame):
                 messagebox.showerror("Error", f"Error deleting recipient: {str(e)}")
     
     def _sync_to_esp32(self):
-        """Sync all recipients to ESP32"""
+        """Sync all recipients to ESP32 using bulk sync"""
         try:
             if not self.hardware:
                 messagebox.showerror("Error", "Hardware not available")
                 return
             
+            if not self.hardware.connected:
+                messagebox.showerror("Error", "ESP32 not connected")
+                return
+            
             recipients = get_recipients()
-            success = self.hardware.sync_recipients(recipients)
+            
+            # Extract phone numbers only for bulk sync
+            phone_numbers = [r.get('phone', '') for r in recipients if r.get('phone')]
+            
+            # Use bulk sync (more efficient)
+            success = self.hardware.sync_recipients_bulk(phone_numbers)
             
             if success:
-                messagebox.showinfo("Success", f"Synced {len(recipients)} recipients to ESP32")
+                messagebox.showinfo("Success", f"Synced {len(phone_numbers)} recipients to ESP32")
             else:
                 messagebox.showerror("Error", "Failed to sync recipients")
         except Exception as e:

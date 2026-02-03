@@ -49,6 +49,9 @@ class SmartSprayerUI(ctk.CTk):
         # Start scheduler
         self.scheduler.start()
         
+        # Sync ESP32 on startup (time and recipients)
+        self._sync_esp32_on_startup()
+        
         # Create UI
         self._create_ui()
         
@@ -199,6 +202,40 @@ class SmartSprayerUI(ctk.CTk):
                 self.nav_buttons[panel_key].configure(fg_color="#4CAF50")
             
             self.logger.log_debug(f"Switched to panel: {panel_key}")
+    
+    def _sync_esp32_on_startup(self):
+        """Sync ESP32 with RPI on startup (time and recipients)"""
+        try:
+            if self.hardware and self.hardware.connected:
+                self.logger.log_info("Syncing ESP32 on startup...")
+                
+                # 1. Sync time from RPI to ESP32 RTC
+                self.logger.log_info("Syncing time to ESP32 RTC...")
+                self.hardware.sync_time()
+                
+                # 2. Sync recipients from data store to ESP32
+                self.logger.log_info("Syncing recipients to ESP32...")
+                from core.data_store import get_recipients
+                recipients = get_recipients()
+                
+                if recipients:
+                    phone_numbers = [r.get('phone', '') for r in recipients if r.get('phone')]
+                    self.hardware.sync_recipients_bulk(phone_numbers)
+                    self.logger.log_info(f"Synced {len(phone_numbers)} recipients to ESP32")
+                else:
+                    self.hardware.sync_recipients_bulk([])
+                    self.logger.log_info("No recipients to sync")
+                
+                # 3. Get ESP32 status for logging
+                status = self.hardware.get_status()
+                if status:
+                    self.logger.log_info(f"ESP32 Status: {status}")
+                
+                self.logger.log_info("ESP32 startup sync complete!")
+            else:
+                self.logger.log_warning("ESP32 not connected - skipping startup sync")
+        except Exception as e:
+            self.logger.log_error(f"ESP32 startup sync failed: {e}")
     
     def _show_about(self):
         """Show about dialog"""

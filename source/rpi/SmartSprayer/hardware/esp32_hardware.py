@@ -98,24 +98,33 @@ class ESP32Hardware(HardwareInterface):
         return 0.0
     
     def get_tank_level_percentage(self, sensor_num=1):
-        """Get tank level as percentage via ESP32"""
+        """Get tank level as percentage via ESP32
+        
+        Tank configuration:
+        - 25cm distance = 100% FULL (liquid close to sensor)
+        - 50cm distance = 0% EMPTY (liquid far from sensor)
+        """
         command = "get-level" if sensor_num == 1 else f"get-distance{sensor_num}"
         response = self._send_command(command)
         
-        # Parse response: "Percentage: 75.5 %"
         if response:
             try:
-                if "Percentage:" in response:
-                    parts = response.split("Percentage:")
-                    if len(parts) > 1:
-                        percentage_str = parts[1].strip().split()[0]
-                        return float(percentage_str)
-                else:
-                    # Calculate from distance
-                    distance = self.read_distance(sensor_num)
-                    container_height = 100.0  # cm (from PINS_CONFIG)
-                    percentage = ((container_height - distance) / container_height) * 100
-                    return max(0, min(100, percentage))
+                # Try to parse percentage from response (ESP32 calculates it)
+                if "%" in response:
+                    # Extract percentage value
+                    for part in response.split():
+                        if "%" in part:
+                            percentage_str = part.replace("(", "").replace(")", "").replace("%", "")
+                            return max(0.0, min(100.0, float(percentage_str)))
+                
+                # Fallback: calculate from distance if percentage not found
+                distance = self.read_distance(sensor_num)
+                # 25cm = 100%, 50cm = 0%
+                # Percentage = ((50 - distance) / (50 - 25)) * 100
+                CONTAINER_EMPTY_DISTANCE = 50.0
+                CONTAINER_FULL_DISTANCE = 25.0
+                percentage = ((CONTAINER_EMPTY_DISTANCE - distance) / (CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE)) * 100
+                return max(0.0, min(100.0, percentage))
             except Exception as e:
                 print(f"[ESP32] Error parsing level response: {e}")
         
@@ -194,12 +203,109 @@ class ESP32Hardware(HardwareInterface):
             print(f"[ESP32] Error syncing recipients: {e}")
             return False
     
-        response = self._send_command("wifi-reset")
-        print("[ESP32] WiFi reset command sent")
+    def sync_time(self, dt=None):
+        """Sync RPI time to ESP32 RTC
+        
+        Args:
+            dt: datetime object to sync. If None, uses current time.
+        """
+        if not self.connected:
+            print("[ESP32] Not connected. Cannot sync time.")
+            return False
+        
+        from datetime import datetime
+        if dt is None:
+            dt = datetime.now()
+        
+        # Format: sync-time_YY_MM_DD_HH_MM_SS
+        command = f"sync-time_{dt.year % 100}_{dt.month}_{dt.day}_{dt.hour}_{dt.minute}_{dt.second}"
+        response = self._send_command(command)
+        print(f"[ESP32] Time synced: {dt.strftime('%Y-%m-%d %H:%M:%S')}")
         return response
     
-    def cleanup(self):
-        """Close serial connection"""
+    def get_status(self):
+        """Get complete ESP32 status including time, tank levels, recipient count"""
+        response = self._send_command("get-status")
+        
+        if response:
+            print(f"[ESP32] Status: {response}")
+            # Parse response: [STATUS] Time=2026/01/20 15:30:45 Tank1=85.0% Tank2=90.0% Recipients=3
+            status = {}
+            if "[STATUS]" in response:
+                try:
+                    parts = response.split("[STATUS]")[1].strip().split()
+                    for part in parts:
+                        if "=" in part:
+                            key, value = part.split("=", 1)
+                            status[key] = value
+                except Exception as e:
+                    print(f"[ESP32] Error parsing status: {e}")
+            return status
+        return None
+    
+    def get_both_tank_levels(self):
+        """Get both tank levels as percentages"""
+        response = self._send_command("get-levels")
+        
+        levels = {'tank1': 0.0, 'tank2': 0.0}
+        if response and "[LEVELS]" in response:
+            try:
+                # Parse: [LEVELS] Tank1=85.0% Tank2=90.0%
+                parts = response.split("[LEVELS]")[1].strip().split()
+                for part in parts:
+                    if "Tank1=" in part:
+                        levels['tank1'] = float(part.split("=")[1].replace("%", ""))
+                    elif "Tank2=" in part:
+                        levels['tank2'] = float(part.split("=")[1].replace("%", ""))
+            except Exception as e:
+                print(f"[ESP32] Error parsing tank levels: {e}")
+        
+        return levels
+    
+    def spray(self, relay_num, duration_seconds, volume_ml):
+        """Execute spray operation on ESP32
+        
+        Args:
+            relay_num: Which relay to use (1 or 2)
+            duration_seconds: How long to spray in seconds
+            volume_ml: Volume being sprayed in mL (for logging/SMS)
+        
+        Returns:
+            Response from ESP32
+        """
+        if not self.connected:
+            print("[ESP32] Not connected. Cannot execute spray.")
+            return None
+        
+        command = f"spray_{relay_num}_{int(duration_seconds)}_{int(volume_ml)}"
+        response = self._send_command(command)
+        
+        print(f"[ESP32] Spray executed: Relay {relay_num}, {duration_seconds}s, {volume_ml}mL")
+        return response
+    
+    def sync_recipients_bulk(self, phone_numbers):
+        """Sync all recipients to ESP32 in one command
+        
+        Args:
+            phone_numbers: List of phone number strings
+        """
+        if not self.connected:
+            print("[ESP32] Not connected. Cannot sync recipients.")
+            return False
+        
+        if not phone_numbers:
+            # Just clear recipients if empty list
+            response = self._send_command("clear-recipients")
+            return True
+        
+        # Format: sync-recipients_+639123456789,+639987654321
+        numbers_str = ",".join(phone_numbers)
+        command = f"sync-recipients_{numbers_str}"
+        response = self._send_command(command)
+        
+        print(f"[ESP32] Bulk synced {len(phone_numbers)} recipients")
+        return response
+
         if self.serial_connection and self.connected:
             self.serial_connection.close()
             print("[ESP32] Serial connection closed")
