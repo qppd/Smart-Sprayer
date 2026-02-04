@@ -67,7 +67,7 @@ class SmartSprayerUI(ctk.CTk):
         self.grid_rowconfigure(0, weight=1)
         
         # LEFT SIDEBAR - Navigation
-        self.sidebar = ctk.CTkFrame(self, width=250, corner_radius=0, fg_color="#1A1A1A")
+        self.sidebar = ctk.CTkFrame(self, width=250, corner_radius=0, fg_color="#E8F5E9")
         self.sidebar.grid(row=0, column=0, sticky="nsew")
         self.sidebar.grid_rowconfigure(7, weight=1)
         
@@ -109,8 +109,8 @@ class SmartSprayerUI(ctk.CTk):
                 height=50,
                 corner_radius=10,
                 fg_color="transparent",
-                text_color="#FFFFFF",
-                hover_color="#2B2B2B",
+                text_color="#1B5E20",
+                hover_color="#C8E6C9",
                 anchor="w",
                 command=lambda k=key: self._show_panel(k)
             )
@@ -122,7 +122,7 @@ class SmartSprayerUI(ctk.CTk):
             self.sidebar,
             text="System: PC Mode\nStatus: Running",
             font=ctk.CTkFont(size=12),
-            text_color="#888888",
+            text_color="#2E7D32",
             justify="left"
         )
         self.system_info.grid(row=8, column=0, padx=20, pady=20, sticky="s")
@@ -140,7 +140,7 @@ class SmartSprayerUI(ctk.CTk):
         about_btn.grid(row=9, column=0, padx=15, pady=10, sticky="ew")
         
         # RIGHT CONTENT AREA
-        self.content_frame = ctk.CTkFrame(self, fg_color="#121212", corner_radius=0)
+        self.content_frame = ctk.CTkFrame(self, fg_color="#F5F5F5", corner_radius=0)
         self.content_frame.grid(row=0, column=1, sticky="nsew")
         
         # Create panels (hidden initially)

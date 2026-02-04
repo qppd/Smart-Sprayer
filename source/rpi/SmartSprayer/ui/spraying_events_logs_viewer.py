@@ -38,7 +38,7 @@ class SprayingEventsLogsViewerPanel(ctk.CTkFrame):
         title.pack(pady=(10, 20))
         
         # Controls
-        controls_frame = ctk.CTkFrame(self, fg_color="#1E1E1E", corner_radius=15)
+        controls_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
         controls_frame.pack(fill="x", padx=20, pady=10)
         
         controls_inner = ctk.CTkFrame(controls_frame, fg_color="transparent")
@@ -105,7 +105,7 @@ class SprayingEventsLogsViewerPanel(ctk.CTkFrame):
         clear_btn.pack(side="left", padx=5)
         
         # Log display
-        log_frame = ctk.CTkFrame(self, fg_color="#1E1E1E", corner_radius=15)
+        log_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
         log_frame.pack(fill="both", expand=True, padx=20, pady=10)
         
         log_title = ctk.CTkLabel(
@@ -120,8 +120,8 @@ class SprayingEventsLogsViewerPanel(ctk.CTkFrame):
         self.log_textbox = ctk.CTkTextbox(
             log_frame,
             font=ctk.CTkFont(family="Consolas", size=12),
-            fg_color="#0D0D0D",
-            text_color="#00FF00",
+            fg_color="#FAFAFA",
+            text_color="#1B5E20",
             wrap="word"
         )
         self.log_textbox.pack(fill="both", expand=True, padx=15, pady=(0, 15))
@@ -131,7 +131,7 @@ class SprayingEventsLogsViewerPanel(ctk.CTkFrame):
             self,
             text="Ready",
             font=ctk.CTkFont(size=12),
-            text_color="#AAAAAA"
+            text_color="#616161"
         )
         self.status_label.pack(pady=5)
     

@@ -36,7 +36,7 @@ class NotificationsPanel(ctk.CTkFrame):
         title.pack(pady=(10, 20))
         
         # System Status Section
-        status_frame = ctk.CTkFrame(self, fg_color="#1E1E1E", corner_radius=15)
+        status_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
         status_frame.pack(fill="x", padx=20, pady=10)
         
         ctk.CTkLabel(
@@ -55,7 +55,7 @@ class NotificationsPanel(ctk.CTkFrame):
         self.system_status_label.pack(pady=15)
         
         # Tank Status Section
-        tank_status_frame = ctk.CTkFrame(self, fg_color="#1E1E1E", corner_radius=15)
+        tank_status_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
         tank_status_frame.pack(fill="x", padx=20, pady=10)
         
         ctk.CTkLabel(
@@ -69,7 +69,7 @@ class NotificationsPanel(ctk.CTkFrame):
         tanks_grid.pack(fill="x", padx=20, pady=10)
         
         # Container 1 status
-        tank1_frame = ctk.CTkFrame(tanks_grid, fg_color="#2B2B2B", corner_radius=10)
+        tank1_frame = ctk.CTkFrame(tanks_grid, fg_color="#E8F5E9", corner_radius=10)
         tank1_frame.pack(side="left", expand=True, fill="both", padx=10, pady=5)
         
         ctk.CTkLabel(
@@ -95,7 +95,7 @@ class NotificationsPanel(ctk.CTkFrame):
         self.tank1_indicator.pack(pady=(0, 10))
         
         # Container 2 status
-        tank2_frame = ctk.CTkFrame(tanks_grid, fg_color="#2B2B2B", corner_radius=10)
+        tank2_frame = ctk.CTkFrame(tanks_grid, fg_color="#E8F5E9", corner_radius=10)
         tank2_frame.pack(side="right", expand=True, fill="both", padx=10, pady=5)
         
         ctk.CTkLabel(
@@ -121,7 +121,7 @@ class NotificationsPanel(ctk.CTkFrame):
         self.tank2_indicator.pack(pady=(0, 10))
         
         # Upcoming Schedule Section
-        upcoming_frame = ctk.CTkFrame(self, fg_color="#1E1E1E", corner_radius=15)
+        upcoming_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
         upcoming_frame.pack(fill="both", expand=True, padx=20, pady=10)
         
         ctk.CTkLabel(
@@ -133,13 +133,13 @@ class NotificationsPanel(ctk.CTkFrame):
         
         self.upcoming_list = ctk.CTkScrollableFrame(
             upcoming_frame,
-            fg_color="#2B2B2B",
+            fg_color="#F5F5F5",
             height=200
         )
         self.upcoming_list.pack(fill="both", expand=True, padx=15, pady=(0, 15))
         
         # Recent Activity
-        activity_frame = ctk.CTkFrame(self, fg_color="#1E1E1E", corner_radius=15)
+        activity_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
         activity_frame.pack(fill="both", expand=True, padx=20, pady=10)
         
         ctk.CTkLabel(
@@ -151,7 +151,7 @@ class NotificationsPanel(ctk.CTkFrame):
         
         self.activity_list = ctk.CTkScrollableFrame(
             activity_frame,
-            fg_color="#2B2B2B",
+            fg_color="#F5F5F5",
             height=150
         )
         self.activity_list.pack(fill="both", expand=True, padx=15, pady=(0, 15))
@@ -248,14 +248,14 @@ class NotificationsPanel(ctk.CTkFrame):
                 self.upcoming_list,
                 text="No upcoming schedules",
                 font=ctk.CTkFont(size=14),
-                text_color="#888888"
+                text_color="#616161"
             ).pack(pady=10)
             return
         
         for schedule in upcoming:
             schedule_item = ctk.CTkFrame(
                 self.upcoming_list,
-                fg_color="#1E1E1E",
+                fg_color="#FFFFFF",
                 corner_radius=8
             )
             schedule_item.pack(fill="x", padx=5, pady=5)
@@ -265,7 +265,7 @@ class NotificationsPanel(ctk.CTkFrame):
                 schedule_item,
                 text=date_time_text,
                 font=ctk.CTkFont(size=14, weight="bold"),
-                text_color="#FFFFFF"
+                text_color="#1B5E20"
             ).pack(anchor="w", padx=10, pady=(8, 2))
             
             detail_text = f"{schedule['spray_type']} - {schedule['container']}"
@@ -273,7 +273,7 @@ class NotificationsPanel(ctk.CTkFrame):
                 schedule_item,
                 text=detail_text,
                 font=ctk.CTkFont(size=12),
-                text_color="#AAAAAA"
+                text_color="#616161"
             ).pack(anchor="w", padx=10, pady=(2, 8))
     
     def _update_recent_activity(self):
@@ -290,7 +290,7 @@ class NotificationsPanel(ctk.CTkFrame):
                 self.activity_list,
                 text="No recent activity",
                 font=ctk.CTkFont(size=14),
-                text_color="#888888"
+                text_color="#616161"
             ).pack(pady=10)
             return
         
@@ -300,7 +300,7 @@ class NotificationsPanel(ctk.CTkFrame):
         for item in history:
             activity_item = ctk.CTkFrame(
                 self.activity_list,
-                fg_color="#1E1E1E",
+                fg_color="#FFFFFF",
                 corner_radius=8
             )
             activity_item.pack(fill="x", padx=5, pady=5)
@@ -324,7 +324,7 @@ class NotificationsPanel(ctk.CTkFrame):
                 activity_item,
                 text=detail,
                 font=ctk.CTkFont(size=11),
-                text_color="#AAAAAA"
+                text_color="#616161"
             ).pack(anchor="w", padx=10, pady=(2, 8))
     
     def cleanup(self):

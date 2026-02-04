@@ -37,7 +37,7 @@ class SchedulingPanel(ctk.CTkFrame):
         main_container.pack(fill="both", expand=True, padx=20, pady=10)
         
         # LEFT COLUMN - Schedule Form
-        form_frame = ctk.CTkFrame(main_container, fg_color="#1E1E1E", corner_radius=15)
+        form_frame = ctk.CTkFrame(main_container, fg_color="#FFFFFF", corner_radius=15)
         form_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
         
         form_title = ctk.CTkLabel(
@@ -57,7 +57,7 @@ class SchedulingPanel(ctk.CTkFrame):
             form_scroll,
             text="SELECT DATE:",
             font=ctk.CTkFont(size=16, weight="bold"),
-            text_color="#FFFFFF"
+            text_color="#1B5E20"
         )
         date_label.pack(anchor="w", pady=(10, 5))
         
@@ -86,7 +86,7 @@ class SchedulingPanel(ctk.CTkFrame):
             form_scroll,
             text="SELECT TIME:",
             font=ctk.CTkFont(size=16, weight="bold"),
-            text_color="#FFFFFF"
+            text_color="#1B5E20"
         )
         time_label.pack(anchor="w", pady=(15, 5))
         
@@ -124,7 +124,7 @@ class SchedulingPanel(ctk.CTkFrame):
             form_scroll,
             text="SPRAY TYPE:",
             font=ctk.CTkFont(size=16, weight="bold"),
-            text_color="#FFFFFF"
+            text_color="#1B5E20"
         )
         spray_type_label.pack(anchor="w", pady=(15, 5))
         
@@ -157,7 +157,7 @@ class SchedulingPanel(ctk.CTkFrame):
             form_scroll,
             text="CONTAINER:",
             font=ctk.CTkFont(size=16, weight="bold"),
-            text_color="#FFFFFF"
+            text_color="#1B5E20"
         )
         container_label.pack(anchor="w", pady=(15, 5))
         
@@ -190,7 +190,7 @@ class SchedulingPanel(ctk.CTkFrame):
             form_scroll,
             text="SPRAY VOLUME (mL):",
             font=ctk.CTkFont(size=16, weight="bold"),
-            text_color="#FFFFFF"
+            text_color="#1B5E20"
         )
         volume_label.pack(anchor="w", pady=(15, 5))
         
@@ -220,7 +220,7 @@ class SchedulingPanel(ctk.CTkFrame):
             form_scroll,
             text="Duration: Calculated based on pump rate (5L/min)",
             font=ctk.CTkFont(size=12),
-            text_color="#888888"
+            text_color="#616161"
         )
         self.duration_info_label.pack(anchor="w", pady=(2, 0))
         
@@ -229,7 +229,7 @@ class SchedulingPanel(ctk.CTkFrame):
             form_scroll,
             text="RECURRING (Optional):",
             font=ctk.CTkFont(size=16, weight="bold"),
-            text_color="#FFFFFF"
+            text_color="#1B5E20"
         )
         recurring_label.pack(anchor="w", pady=(15, 5))
         
@@ -245,7 +245,7 @@ class SchedulingPanel(ctk.CTkFrame):
         )
         recurring_check.pack(anchor="w", pady=5)
         
-        self.recurring_frame = ctk.CTkFrame(form_scroll, fg_color="#2B2B2B", corner_radius=10)
+        self.recurring_frame = ctk.CTkFrame(form_scroll, fg_color="#E8F5E9", corner_radius=10)
         
         interval_label = ctk.CTkLabel(
             self.recurring_frame,
@@ -304,7 +304,7 @@ class SchedulingPanel(ctk.CTkFrame):
         clear_btn.pack(fill="x", pady=5)
         
         # RIGHT COLUMN - Schedule List
-        list_frame = ctk.CTkFrame(main_container, fg_color="#1E1E1E", corner_radius=15)
+        list_frame = ctk.CTkFrame(main_container, fg_color="#FFFFFF", corner_radius=15)
         list_frame.pack(side="right", fill="both", expand=True, padx=(10, 0))
         
         list_title = ctk.CTkLabel(
@@ -316,7 +316,7 @@ class SchedulingPanel(ctk.CTkFrame):
         list_title.pack(pady=15)
         
         # Schedule list
-        self.schedule_list = ctk.CTkScrollableFrame(list_frame, fg_color="#2B2B2B")
+        self.schedule_list = ctk.CTkScrollableFrame(list_frame, fg_color="#F5F5F5")
         self.schedule_list.pack(fill="both", expand=True, padx=15, pady=(0, 10))
         
         # Action buttons
@@ -482,7 +482,7 @@ class SchedulingPanel(ctk.CTkFrame):
                 self.schedule_list,
                 text="No active schedules",
                 font=ctk.CTkFont(size=14),
-                text_color="#888888"
+                text_color="#616161"
             )
             no_schedule_label.pack(pady=20)
             return
@@ -496,7 +496,7 @@ class SchedulingPanel(ctk.CTkFrame):
     
     def _create_schedule_card(self, schedule):
         """Create a card widget for a schedule"""
-        card = ctk.CTkFrame(self.schedule_list, fg_color="#1E1E1E", corner_radius=10)
+        card = ctk.CTkFrame(self.schedule_list, fg_color="#FFFFFF", corner_radius=10)
         card.pack(fill="x", padx=5, pady=5)
         
         # Header with date/time
@@ -532,7 +532,7 @@ class SchedulingPanel(ctk.CTkFrame):
             content,
             text=info_text,
             font=ctk.CTkFont(size=12),
-            text_color="#CCCCCC",
+            text_color="#424242",
             justify="left"
         ).pack(anchor="w", pady=5)
         

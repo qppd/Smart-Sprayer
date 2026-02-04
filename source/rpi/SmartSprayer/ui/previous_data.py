@@ -28,7 +28,7 @@ class PreviousDataPanel(ctk.CTkFrame):
         title.pack(pady=(10, 20))
         
         # Controls frame
-        controls_frame = ctk.CTkFrame(self, fg_color="#1E1E1E", corner_radius=15)
+        controls_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
         controls_frame.pack(fill="x", padx=20, pady=10)
         
         controls_inner = ctk.CTkFrame(controls_frame, fg_color="transparent")
@@ -103,7 +103,7 @@ class PreviousDataPanel(ctk.CTkFrame):
         export_btn.pack(side="left", padx=5)
         
         # Statistics frame
-        stats_frame = ctk.CTkFrame(self, fg_color="#1E1E1E", corner_radius=15)
+        stats_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
         stats_frame.pack(fill="x", padx=20, pady=10)
         
         ctk.CTkLabel(
@@ -117,14 +117,14 @@ class PreviousDataPanel(ctk.CTkFrame):
         stats_grid.pack(fill="x", padx=20, pady=(0, 15))
         
         # Total sprays
-        total_frame = ctk.CTkFrame(stats_grid, fg_color="#2B2B2B", corner_radius=10)
+        total_frame = ctk.CTkFrame(stats_grid, fg_color="#E8F5E9", corner_radius=10)
         total_frame.pack(side="left", expand=True, fill="both", padx=5)
         
         ctk.CTkLabel(
             total_frame,
             text="Total Sprays",
             font=ctk.CTkFont(size=14),
-            text_color="#AAAAAA"
+            text_color="#616161"
         ).pack(pady=(10, 5))
         
         self.total_count_label = ctk.CTkLabel(
@@ -136,14 +136,14 @@ class PreviousDataPanel(ctk.CTkFrame):
         self.total_count_label.pack(pady=(5, 10))
         
         # Fertilizer count
-        fert_frame = ctk.CTkFrame(stats_grid, fg_color="#2B2B2B", corner_radius=10)
+        fert_frame = ctk.CTkFrame(stats_grid, fg_color="#E8F5E9", corner_radius=10)
         fert_frame.pack(side="left", expand=True, fill="both", padx=5)
         
         ctk.CTkLabel(
             fert_frame,
             text="Fertilizer",
             font=ctk.CTkFont(size=14),
-            text_color="#AAAAAA"
+            text_color="#616161"
         ).pack(pady=(10, 5))
         
         self.fert_count_label = ctk.CTkLabel(
@@ -155,14 +155,14 @@ class PreviousDataPanel(ctk.CTkFrame):
         self.fert_count_label.pack(pady=(5, 10))
         
         # Pesticide count
-        pest_frame = ctk.CTkFrame(stats_grid, fg_color="#2B2B2B", corner_radius=10)
+        pest_frame = ctk.CTkFrame(stats_grid, fg_color="#E8F5E9", corner_radius=10)
         pest_frame.pack(side="left", expand=True, fill="both", padx=5)
         
         ctk.CTkLabel(
             pest_frame,
             text="Pesticide",
             font=ctk.CTkFont(size=14),
-            text_color="#AAAAAA"
+            text_color="#616161"
         ).pack(pady=(10, 5))
         
         self.pest_count_label = ctk.CTkLabel(
@@ -174,7 +174,7 @@ class PreviousDataPanel(ctk.CTkFrame):
         self.pest_count_label.pack(pady=(5, 10))
         
         # Data list
-        data_frame = ctk.CTkFrame(self, fg_color="#1E1E1E", corner_radius=15)
+        data_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
         data_frame.pack(fill="both", expand=True, padx=20, pady=10)
         
         ctk.CTkLabel(
@@ -186,7 +186,7 @@ class PreviousDataPanel(ctk.CTkFrame):
         
         self.data_list = ctk.CTkScrollableFrame(
             data_frame,
-            fg_color="#2B2B2B"
+            fg_color="#F5F5F5"
         )
         self.data_list.pack(fill="both", expand=True, padx=15, pady=(0, 15))
     
@@ -220,7 +220,7 @@ class PreviousDataPanel(ctk.CTkFrame):
                 self.data_list,
                 text="No spray history available",
                 font=ctk.CTkFont(size=14),
-                text_color="#888888"
+                text_color="#616161"
             )
             no_data_label.pack(pady=20)
             return
@@ -233,7 +233,7 @@ class PreviousDataPanel(ctk.CTkFrame):
     
     def _create_history_card(self, item):
         """Create a card for history item"""
-        card = ctk.CTkFrame(self.data_list, fg_color="#1E1E1E", corner_radius=10)
+        card = ctk.CTkFrame(self.data_list, fg_color="#FFFFFF", corner_radius=10)
         card.pack(fill="x", padx=5, pady=5)
         
         # Header
@@ -246,7 +246,7 @@ class PreviousDataPanel(ctk.CTkFrame):
             header,
             text=date_time,
             font=ctk.CTkFont(size=16, weight="bold"),
-            text_color="#FFFFFF"
+            text_color="#1B5E20"
         )
         date_label.pack(side="left")
         
@@ -276,7 +276,7 @@ class PreviousDataPanel(ctk.CTkFrame):
             details,
             text=container_text,
             font=ctk.CTkFont(size=13),
-            text_color="#CCCCCC"
+            text_color="#616161"
         ).pack(side="left", padx=5)
         
         # Volume
@@ -286,7 +286,7 @@ class PreviousDataPanel(ctk.CTkFrame):
             details,
             text=volume_text,
             font=ctk.CTkFont(size=13),
-            text_color="#CCCCCC"
+            text_color="#616161"
         ).pack(side="left", padx=5)
         
         # Duration
@@ -296,7 +296,7 @@ class PreviousDataPanel(ctk.CTkFrame):
             details,
             text=duration_text,
             font=ctk.CTkFont(size=13),
-            text_color="#CCCCCC"
+            text_color="#616161"
         ).pack(side="left", padx=5)
         
         # Completed time
@@ -312,7 +312,7 @@ class PreviousDataPanel(ctk.CTkFrame):
             details,
             text=completed_text,
             font=ctk.CTkFont(size=13),
-            text_color="#AAAAAA"
+            text_color="#757575"
         ).pack(side="right", padx=5)
     
     def _export_data(self):

@@ -36,7 +36,7 @@ class DashboardPanel(ctk.CTkFrame):
         title.pack(pady=(10, 20))
         
         # Top container - Tank Levels
-        tank_frame = ctk.CTkFrame(self, fg_color="#1E1E1E", corner_radius=15)
+        tank_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
         tank_frame.pack(fill="x", padx=20, pady=10)
         
         tank_title = ctk.CTkLabel(
@@ -52,14 +52,14 @@ class DashboardPanel(ctk.CTkFrame):
         tanks_container.pack(fill="x", padx=20, pady=10)
         
         # Container 1
-        container1_frame = ctk.CTkFrame(tanks_container, fg_color="#2B2B2B", corner_radius=10)
+        container1_frame = ctk.CTkFrame(tanks_container, fg_color="#E8F5E9", corner_radius=10)
         container1_frame.pack(side="left", expand=True, fill="both", padx=10, pady=10)
         
         ctk.CTkLabel(
             container1_frame,
             text="CONTAINER 1",
             font=ctk.CTkFont(size=18, weight="bold"),
-            text_color="#FFFFFF"
+            text_color="#1B5E20"
         ).pack(pady=10)
         
         self.tank1_progress = ctk.CTkProgressBar(
@@ -84,19 +84,19 @@ class DashboardPanel(ctk.CTkFrame):
             container1_frame,
             text="80 Liters",
             font=ctk.CTkFont(size=14),
-            text_color="#AAAAAA"
+            text_color="#616161"
         )
         self.tank1_liters.pack(pady=(0, 10))
         
         # Container 2
-        container2_frame = ctk.CTkFrame(tanks_container, fg_color="#2B2B2B", corner_radius=10)
+        container2_frame = ctk.CTkFrame(tanks_container, fg_color="#E8F5E9", corner_radius=10)
         container2_frame.pack(side="right", expand=True, fill="both", padx=10, pady=10)
         
         ctk.CTkLabel(
             container2_frame,
             text="CONTAINER 2",
             font=ctk.CTkFont(size=18, weight="bold"),
-            text_color="#FFFFFF"
+            text_color="#1B5E20"
         ).pack(pady=10)
         
         self.tank2_progress = ctk.CTkProgressBar(
@@ -121,12 +121,12 @@ class DashboardPanel(ctk.CTkFrame):
             container2_frame,
             text="50 Liters",
             font=ctk.CTkFont(size=14),
-            text_color="#AAAAAA"
+            text_color="#616161"
         )
         self.tank2_liters.pack(pady=(0, 10))
         
         # System Status
-        status_frame = ctk.CTkFrame(self, fg_color="#1E1E1E", corner_radius=15)
+        status_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
         status_frame.pack(fill="x", padx=20, pady=10)
         
         status_title = ctk.CTkLabel(
@@ -146,7 +146,7 @@ class DashboardPanel(ctk.CTkFrame):
         self.status_label.pack(pady=20)
         
         # Next Schedule Info
-        next_schedule_frame = ctk.CTkFrame(self, fg_color="#1E1E1E", corner_radius=15)
+        next_schedule_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
         next_schedule_frame.pack(fill="both", expand=True, padx=20, pady=10)
         
         next_title = ctk.CTkLabel(
@@ -160,7 +160,8 @@ class DashboardPanel(ctk.CTkFrame):
         self.next_schedule_info = ctk.CTkTextbox(
             next_schedule_frame,
             font=ctk.CTkFont(size=16),
-            fg_color="#2B2B2B",
+            fg_color="#F5F5F5",
+            text_color="#212121",
             height=150
         )
         self.next_schedule_info.pack(fill="both", expand=True, padx=20, pady=(0, 20))
@@ -179,7 +180,7 @@ class DashboardPanel(ctk.CTkFrame):
             self,
             text="",
             font=ctk.CTkFont(size=14),
-            text_color="#AAAAAA"
+            text_color="#616161"
         )
         self.datetime_label.pack(pady=10)
     
