@@ -3,7 +3,6 @@
 
 # GUI Framework
 customtkinter>=5.2.0
-tkcalendar>=1.6.1
 
 # Data handling
 requests>=2.31.0

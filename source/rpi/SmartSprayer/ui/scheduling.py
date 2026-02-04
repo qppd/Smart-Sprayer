@@ -3,7 +3,6 @@
 
 import customtkinter as ctk
 from datetime import datetime, timedelta
-from tkcalendar import Calendar
 from tkinter import messagebox
 import uuid
 
@@ -68,25 +67,36 @@ class SchedulingPanel(ctk.CTkFrame):
         )
         date_label.pack(anchor="w", pady=(10, 5))
         
-        self.date_entry = ctk.CTkEntry(
-            form_scroll,
-            placeholder_text="Click 'Pick Date' button",
-            font=ctk.CTkFont(size=14),
-            height=40,
-            state="readonly"
-        )
-        self.date_entry.pack(fill="x", pady=5)
+        date_container = ctk.CTkFrame(form_scroll, fg_color="transparent")
+        date_container.pack(fill="x", pady=5)
         
-        pick_date_btn = ctk.CTkButton(
-            form_scroll,
-            text="📅 Pick Date",
-            command=self._open_calendar,
+        current_year = datetime.now().year
+        self.year_cb = ctk.CTkComboBox(
+            date_container,
+            values=[str(y) for y in range(current_year, current_year + 2)],
             font=ctk.CTkFont(size=14),
-            height=40,
-            fg_color="#2196F3",
-            hover_color="#1976D2"
+            width=80
         )
-        pick_date_btn.pack(fill="x", pady=5)
+        self.year_cb.set(str(current_year))
+        self.year_cb.pack(side="left", padx=5)
+        
+        self.month_cb = ctk.CTkComboBox(
+            date_container,
+            values=[f"{i:02d}" for i in range(1, 13)],
+            font=ctk.CTkFont(size=14),
+            width=70
+        )
+        self.month_cb.set(f"{datetime.now().month:02d}")
+        self.month_cb.pack(side="left", padx=5)
+        
+        self.day_cb = ctk.CTkComboBox(
+            date_container,
+            values=[f"{i:02d}" for i in range(1, 32)],
+            font=ctk.CTkFont(size=14),
+            width=70
+        )
+        self.day_cb.set(f"{datetime.now().day:02d}")
+        self.day_cb.pack(side="left", padx=5)
         
         # Time Selection
         time_label = ctk.CTkLabel(
@@ -359,42 +369,6 @@ class SchedulingPanel(ctk.CTkFrame):
         else:
             self.recurring_frame.pack_forget()
     
-    def _open_calendar(self):
-        """Open calendar popup for date selection"""
-        # Create popup window
-        cal_window = ctk.CTkToplevel(self)
-        cal_window.title("Select Date")
-        cal_window.geometry("400x450")
-        cal_window.transient(self)
-        cal_window.grab_set()
-        
-        # Calendar widget
-        cal = Calendar(
-            cal_window,
-            selectmode='day',
-            date_pattern='yyyy-mm-dd',
-            mindate=datetime.now().date(),
-            font=("Arial", 12)
-        )
-        cal.pack(pady=20, padx=20, fill="both", expand=True)
-        
-        def select_date():
-            selected = cal.get_date()
-            self.date_entry.configure(state="normal")
-            self.date_entry.delete(0, "end")
-            self.date_entry.insert(0, selected)
-            self.date_entry.configure(state="readonly")
-            cal_window.destroy()
-        
-        select_btn = ctk.CTkButton(
-            cal_window,
-            text="Select",
-            command=select_date,
-            font=ctk.CTkFont(size=14),
-            height=40
-        )
-        select_btn.pack(pady=10)
-    
     def _create_schedule(self):
         """Create new schedule(s)"""
         # Safety check for widget initialization
@@ -403,10 +377,10 @@ class SchedulingPanel(ctk.CTkFrame):
             return
         
         # Validate inputs
-        date = self.date_entry.get()
-        if not date:
-            messagebox.showerror("Error", "Please select a date")
-            return
+        year = self.year_cb.get()
+        month = self.month_cb.get()
+        day = self.day_cb.get()
+        date = f"{year}-{month}-{day}"
         
         hour = self.hour_spinbox.get()
         minute = self.minute_spinbox.get()
@@ -595,36 +569,21 @@ class SchedulingPanel(ctk.CTkFrame):
         # Date
         ctk.CTkLabel(dialog, text="New Date:", font=ctk.CTkFont(size=14)).pack(pady=5)
         
-        new_date_entry = ctk.CTkEntry(dialog, font=ctk.CTkFont(size=14), height=35, state="readonly")
-        new_date_entry.pack(fill="x", padx=20, pady=5)
+        date_frame = ctk.CTkFrame(dialog, fg_color="transparent")
+        date_frame.pack(pady=5)
         
-        def pick_new_date():
-            cal_win = ctk.CTkToplevel(dialog)
-            cal_win.title("Select Date")
-            cal_win.geometry("400x450")
-            cal_win.transient(dialog)
-            cal_win.grab_set()
-            
-            cal = Calendar(cal_win, selectmode='day', date_pattern='yyyy-mm-dd',
-                          mindate=datetime.now().date(), font=("Arial", 12))
-            cal.pack(pady=20, padx=20, fill="both", expand=True)
-            
-            def select():
-                selected = cal.get_date()
-                new_date_entry.configure(state="normal")
-                new_date_entry.delete(0, "end")
-                new_date_entry.insert(0, selected)
-                new_date_entry.configure(state="readonly")
-                cal_win.destroy()
-            
-            ctk.CTkButton(cal_win, text="Select", command=select, height=40).pack(pady=10)
+        current_year = datetime.now().year
+        new_year = ctk.CTkComboBox(date_frame, values=[str(y) for y in range(current_year, current_year + 2)], width=80)
+        new_year.set(schedule['date'].split('-')[0])
+        new_year.pack(side="left", padx=5)
         
-        ctk.CTkButton(
-            dialog,
-            text="📅 Pick Date",
-            command=pick_new_date,
-            height=35
-        ).pack(fill="x", padx=20, pady=5)
+        new_month = ctk.CTkComboBox(date_frame, values=[f"{i:02d}" for i in range(1, 13)], width=70)
+        new_month.set(schedule['date'].split('-')[1])
+        new_month.pack(side="left", padx=5)
+        
+        new_day = ctk.CTkComboBox(date_frame, values=[f"{i:02d}" for i in range(1, 32)], width=70)
+        new_day.set(schedule['date'].split('-')[2])
+        new_day.pack(side="left", padx=5)
         
         # Time
         ctk.CTkLabel(dialog, text="New Time:", font=ctk.CTkFont(size=14)).pack(pady=5)
@@ -643,10 +602,7 @@ class SchedulingPanel(ctk.CTkFrame):
         new_minute.pack(side="left", padx=5)
         
         def confirm_reschedule():
-            new_date = new_date_entry.get()
-            if not new_date:
-                messagebox.showerror("Error", "Please select a date")
-                return
+            new_date = f"{new_year.get()}-{new_month.get()}-{new_day.get()}"
             
             new_time = f"{new_hour.get()}:{new_minute.get()}"
             

@@ -12,7 +12,7 @@ sys.path.insert(0, current_dir)
 # Check for required packages
 def check_dependencies():
     """Check if required packages are installed"""
-    required = ['customtkinter', 'tkcalendar']
+    required = ['customtkinter']
     missing = []
     
     for package in required:
