@@ -87,8 +87,10 @@ class ESP32Hardware(HardwareInterface):
         # Parse response: "Distance 1: 45 cm" or "[SR04] ... Dist=45cm ..."
         if response:
             try:
-                # Filter out command echoes
-                lines = [line for line in response.split('\n') if line and not line.startswith('get-')]
+                # Filter out command echoes and acknowledgments
+                lines = [line for line in response.split('\n') if line and 
+                        not line.startswith('get-') and 
+                        not line.startswith('[CMD]')]
                 if not lines:
                     return 0.0
                 
@@ -126,8 +128,10 @@ class ESP32Hardware(HardwareInterface):
         
         if response:
             try:
-                # Filter out command echoes
-                lines = [line for line in response.split('\n') if line and not line.startswith('get-')]
+                # Filter out command echoes and acknowledgments
+                lines = [line for line in response.split('\n') if line and 
+                        not line.startswith('get-') and 
+                        not line.startswith('[CMD]')]
                 if not lines:
                     return 0.0
                 
@@ -280,8 +284,10 @@ class ESP32Hardware(HardwareInterface):
         levels = {'tank1': 0.0, 'tank2': 0.0}
         if response:
             try:
-                # Filter out command echoes
-                lines = [line for line in response.split('\n') if line and not line.startswith('get-')]
+                # Filter out command echoes and acknowledgments
+                lines = [line for line in response.split('\n') if line and 
+                        not line.startswith('get-') and 
+                        not line.startswith('[CMD]')]
                 if not lines:
                     return levels
                 
