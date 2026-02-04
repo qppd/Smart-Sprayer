@@ -160,10 +160,14 @@ class NotificationsPanel(ctk.CTkFrame):
         """Background update loop"""
         while self.running:
             try:
-                self._update_system_status()
-                self._update_tank_status()
-                self._update_upcoming_schedules()
-                self._update_recent_activity()
+                # Schedule UI updates on main thread
+                try:
+                    self.after(0, self._update_system_status)
+                    self.after(0, self._update_tank_status)
+                    self.after(0, self._update_upcoming_schedules)
+                    self.after(0, self._update_recent_activity)
+                except:
+                    pass  # Widget might be destroyed
                 time.sleep(3)
             except Exception as e:
                 print(f"Notifications update error: {e}")

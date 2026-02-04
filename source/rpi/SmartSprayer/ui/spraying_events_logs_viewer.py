@@ -145,7 +145,11 @@ class SprayingEventsLogsViewerPanel(ctk.CTkFrame):
         """Auto-refresh loop"""
         while self.running:
             if self.auto_refresh:
-                self.refresh_spraying_events_logs()
+                # Schedule UI update on main thread
+                try:
+                    self.after(0, self.refresh_spraying_events_logs)
+                except:
+                    pass  # Widget might be destroyed
             time.sleep(5)  # Refresh every 5 seconds
     
     def refresh_spraying_events_logs(self):

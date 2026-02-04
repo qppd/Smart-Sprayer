@@ -188,9 +188,13 @@ class DashboardPanel(ctk.CTkFrame):
         """Background update loop"""
         while self.running:
             try:
-                self._update_tank_levels()
-                self._update_next_schedule()
-                self._update_datetime()
+                # Schedule UI updates on main thread
+                try:
+                    self.after(0, self._update_tank_levels)
+                    self.after(0, self._update_next_schedule)
+                    self.after(0, self._update_datetime)
+                except:
+                    pass  # Widget might be destroyed
                 time.sleep(2)  # Update every 2 seconds
             except Exception as e:
                 print(f"Dashboard update error: {e}")
