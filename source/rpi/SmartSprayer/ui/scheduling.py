@@ -18,8 +18,15 @@ class SchedulingPanel(ctk.CTkFrame):
         
         self.configure(fg_color="transparent")
         
-        self._create_widgets()
-        self.refresh_schedule_list()
+        # Initialize critical attributes to prevent AttributeError if widget creation fails
+        self.date_entry = None
+        
+        try:
+            self._create_widgets()
+            self.refresh_schedule_list()
+        except Exception as e:
+            self.logger.log_error(f"SchedulingPanel initialization error: {e}")
+            print(f"[UI] Error initializing SchedulingPanel: {e}")
     
     def _create_widgets(self):
         """Create scheduling widgets"""
@@ -390,6 +397,11 @@ class SchedulingPanel(ctk.CTkFrame):
     
     def _create_schedule(self):
         """Create new schedule(s)"""
+        # Safety check for widget initialization
+        if self.date_entry is None:
+            messagebox.showerror("Error", "Scheduling panel not properly initialized. Please restart the application.")
+            return
+        
         # Validate inputs
         date = self.date_entry.get()
         if not date:

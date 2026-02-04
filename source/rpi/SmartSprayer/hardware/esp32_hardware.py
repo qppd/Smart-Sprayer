@@ -84,16 +84,33 @@ class ESP32Hardware(HardwareInterface):
         command = f"get-distance{sensor_num}"
         response = self._send_command(command)
         
-        # Parse response: "Distance 1: 45 cm"
+        # Parse response: "Distance 1: 45 cm" or "[SR04] ... Dist=45cm ..."
         if response:
             try:
-                # Extract number from response
-                parts = response.split(":")
-                if len(parts) > 1:
-                    distance_str = parts[1].strip().split()[0]  # Get first number
-                    return float(distance_str)
+                # Filter out command echoes
+                lines = [line for line in response.split('\n') if line and not line.startswith('get-')]
+                if not lines:
+                    return 0.0
+                
+                response = ' '.join(lines)
+                
+                # Try to extract distance from various formats
+                # Format 1: "Distance 1: 45 cm"
+                if ":" in response:
+                    parts = response.split(":")
+                    if len(parts) > 1:
+                        distance_str = parts[1].strip().split()[0]
+                        return float(distance_str)
+                
+                # Format 2: "Dist=45cm"
+                if "Dist=" in response:
+                    parts = response.split("Dist=")
+                    if len(parts) > 1:
+                        distance_str = parts[1].split()[0].replace("cm", "")
+                        return float(distance_str)
             except Exception as e:
                 print(f"[ESP32] Error parsing distance response: {e}")
+                print(f"[ESP32] Response was: {response}")
         
         return 0.0
     
@@ -109,24 +126,37 @@ class ESP32Hardware(HardwareInterface):
         
         if response:
             try:
+                # Filter out command echoes
+                lines = [line for line in response.split('\n') if line and not line.startswith('get-')]
+                if not lines:
+                    return 0.0
+                
+                response = ' '.join(lines)
+                
                 # Try to parse percentage from response (ESP32 calculates it)
                 if "%" in response:
-                    # Extract percentage value
+                    # Extract percentage value from various formats
+                    # Format 1: "(85.0%)" or "85.0%"
                     for part in response.split():
                         if "%" in part:
                             percentage_str = part.replace("(", "").replace(")", "").replace("%", "")
+                            # Handle "Tank1=100.00%" format
+                            if "=" in percentage_str:
+                                percentage_str = percentage_str.split("=")[1]
                             return max(0.0, min(100.0, float(percentage_str)))
                 
                 # Fallback: calculate from distance if percentage not found
                 distance = self.read_distance(sensor_num)
-                # 25cm = 100%, 50cm = 0%
-                # Percentage = ((50 - distance) / (50 - 25)) * 100
-                CONTAINER_EMPTY_DISTANCE = 50.0
-                CONTAINER_FULL_DISTANCE = 25.0
-                percentage = ((CONTAINER_EMPTY_DISTANCE - distance) / (CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE)) * 100
-                return max(0.0, min(100.0, percentage))
+                if distance > 0:
+                    # 25cm = 100%, 50cm = 0%
+                    # Percentage = ((50 - distance) / (50 - 25)) * 100
+                    CONTAINER_EMPTY_DISTANCE = 50.0
+                    CONTAINER_FULL_DISTANCE = 25.0
+                    percentage = ((CONTAINER_EMPTY_DISTANCE - distance) / (CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE)) * 100
+                    return max(0.0, min(100.0, percentage))
             except Exception as e:
                 print(f"[ESP32] Error parsing level response: {e}")
+                print(f"[ESP32] Response was: {response}")
         
         return 0.0
     
@@ -248,17 +278,28 @@ class ESP32Hardware(HardwareInterface):
         response = self._send_command("get-levels")
         
         levels = {'tank1': 0.0, 'tank2': 0.0}
-        if response and "[LEVELS]" in response:
+        if response:
             try:
+                # Filter out command echoes
+                lines = [line for line in response.split('\n') if line and not line.startswith('get-')]
+                if not lines:
+                    return levels
+                
+                response = ' '.join(lines)
+                
                 # Parse: [LEVELS] Tank1=85.0% Tank2=90.0%
-                parts = response.split("[LEVELS]")[1].strip().split()
-                for part in parts:
-                    if "Tank1=" in part:
-                        levels['tank1'] = float(part.split("=")[1].replace("%", ""))
-                    elif "Tank2=" in part:
-                        levels['tank2'] = float(part.split("=")[1].replace("%", ""))
+                if "[LEVELS]" in response:
+                    parts = response.split("[LEVELS]")[1].strip().split()
+                    for part in parts:
+                        if "Tank1=" in part:
+                            value_str = part.split("=")[1].replace("%", "")
+                            levels['tank1'] = float(value_str)
+                        elif "Tank2=" in part:
+                            value_str = part.split("=")[1].replace("%", "")
+                            levels['tank2'] = float(value_str)
             except Exception as e:
                 print(f"[ESP32] Error parsing tank levels: {e}")
+                print(f"[ESP32] Response was: {response}")
         
         return levels
     
