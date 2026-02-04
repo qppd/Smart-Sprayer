@@ -443,9 +443,15 @@ class SchedulingPanel(ctk.CTkFrame):
     
     def _clear_form(self):
         """Clear form fields"""
-        self.date_entry.configure(state="normal")
-        self.date_entry.delete(0, "end")
-        self.date_entry.configure(state="readonly")
+        # Reset date to current date
+        current_year = datetime.now().year
+        current_month = datetime.now().month
+        current_day = datetime.now().day
+        
+        self.year_cb.set(str(current_year))
+        self.month_cb.set(f"{current_month:02d}")
+        self.day_cb.set(f"{current_day:02d}")
+        
         self.hour_spinbox.set("08")
         self.minute_spinbox.set("00")
         self.spray_type_var.set("Fertilizer")
