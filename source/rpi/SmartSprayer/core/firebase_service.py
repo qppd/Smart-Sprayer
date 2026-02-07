@@ -99,21 +99,43 @@ class FirebaseService:
             print("✓ Firebase initialized successfully")
             
             # Set initial device status
-            try:
-                self.db.child("devices").child(self.device_id).child("status").update({
+            result = self._safe_firebase_operation(
+                lambda: self.db.child("devices").child(self.device_id).child("status").update({
                     "connected": True,
                     "last_seen": datetime.now().isoformat(),
                     "version": "2.0"
-                })
+                }),
+                "device status update"
+            )
+            if result is not None:
                 print(f"✓ Device status updated: {self.device_id}")
-            except Exception as status_error:
-                print(f"Warning: Could not update device status: {status_error}")
+            else:
+                print("Warning: Could not update device status (OpenSSL compatibility issue)")
             
         except Exception as e:
             print(f"✗ Firebase initialization failed: {e}")
             import traceback
             traceback.print_exc()
             self.connected = False
+    
+    def _safe_firebase_operation(self, operation_func, operation_name="Firebase operation"):
+        """Execute Firebase operation with OpenSSL error handling"""
+        if not self.connected:
+            return None
+        
+        try:
+            return operation_func()
+        except AttributeError as attr_error:
+            if "OpenSSL.crypto" in str(attr_error) and "sign" in str(attr_error):
+                print(f"Warning: OpenSSL compatibility issue during {operation_name}")
+                print("This is a known issue with pyrebase4 and newer OpenSSL versions")
+                return None
+            else:
+                print(f"Warning: {operation_name} failed: {attr_error}")
+                return None
+        except Exception as e:
+            print(f"Warning: {operation_name} failed: {e}")
+            return None
     
     def enable_sync(self):
         """Enable background synchronization"""
@@ -299,31 +321,29 @@ class FirebaseService:
         if not self.connected:
             return False
         
-        try:
-            status_data = status.copy()
-            status_data['last_update'] = datetime.now().isoformat()
-            
-            self.db.child("devices").child(self.device_id).child("status").set(status_data)
-            return True
-        except Exception as e:
-            print(f"Error updating device status: {e}")
-            return False
+        status_data = status.copy()
+        status_data['last_update'] = datetime.now().isoformat()
+        
+        result = self._safe_firebase_operation(
+            lambda: self.db.child("devices").child(self.device_id).child("status").set(status_data),
+            "device status update"
+        )
+        return result is not None
     
     def update_tank_levels(self, tank1_percent: float, tank2_percent: float) -> bool:
         """Update tank levels in Firebase"""
         if not self.connected:
             return False
         
-        try:
-            self.db.child("devices").child(self.device_id).child("status").update({
+        result = self._safe_firebase_operation(
+            lambda: self.db.child("devices").child(self.device_id).child("status").update({
                 'tank1_level': tank1_percent,
                 'tank2_level': tank2_percent,
                 'last_update': datetime.now().isoformat()
-            })
-            return True
-        except Exception as e:
-            print(f"Error updating tank levels: {e}")
-            return False
+            }),
+            "tank levels update"
+        )
+        return result is not None
     
     # Weather Data (stored by RPI)
     def upload_weather_data(self, weather_data: Dict) -> bool:
