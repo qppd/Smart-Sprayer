@@ -10,7 +10,13 @@
 import serial
 import time
 import threading
+import sys
+import os
 from hardware.hardware_interface import HardwareInterface
+
+# Import container configuration
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from PINS_CONFIG import CONTAINER_EMPTY_DISTANCE, CONTAINER_FULL_DISTANCE, CONTAINER_CAPACITY_LITERS
 
 class ESP32Hardware(HardwareInterface):
     """Hardware implementation that communicates with ESP32 via USB serial"""
@@ -119,9 +125,9 @@ class ESP32Hardware(HardwareInterface):
     def get_tank_level_percentage(self, sensor_num=1):
         """Get tank level as percentage via ESP32
         
-        Tank configuration:
-        - 25cm distance = 100% FULL (liquid close to sensor)
-        - 50cm distance = 0% EMPTY (liquid far from sensor)
+        Tank configuration (from PINS_CONFIG.py):
+        - 22cm distance = 100% FULL (liquid close to sensor, 16L)
+        - 70cm distance = 0% EMPTY (liquid far from sensor, 0L)
         """
         command = "get-level" if sensor_num == 1 else f"get-distance{sensor_num}"
         response = self._send_command(command)
@@ -152,10 +158,8 @@ class ESP32Hardware(HardwareInterface):
                 # Fallback: calculate from distance if percentage not found
                 distance = self.read_distance(sensor_num)
                 if distance > 0:
-                    # 25cm = 100%, 50cm = 0%
-                    # Percentage = ((50 - distance) / (50 - 25)) * 100
-                    CONTAINER_EMPTY_DISTANCE = 50.0
-                    CONTAINER_FULL_DISTANCE = 25.0
+                    # Use configured values from PINS_CONFIG.py
+                    # Smaller distance = more full (liquid closer to sensor)
                     percentage = ((CONTAINER_EMPTY_DISTANCE - distance) / (CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE)) * 100
                     return max(0.0, min(100.0, percentage))
             except Exception as e:

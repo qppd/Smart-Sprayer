@@ -38,11 +38,11 @@ long readDistance2() {
 }
 
 // Container level calculation functions
-// Distance 25cm = Full (100%), Distance 50cm = Empty (0%)
+// Distance 22cm = Full (100%, 16L), Distance 70cm = Empty (0%, 0L)
 float calculateFillPercentage(long distance) {
   // Invert the logic: smaller distance = more full
-  // 25cm = 100%, 50cm = 0%
-  float usableRange = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE;  // 50 - 25 = 25cm
+  // 22cm = 100%, 70cm = 0%
+  float usableRange = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE;  // 70 - 22 = 48cm
   float currentLevel = CONTAINER_EMPTY_DISTANCE - distance;  // How much above empty
   
   float percentage = (currentLevel / usableRange) * 100.0;

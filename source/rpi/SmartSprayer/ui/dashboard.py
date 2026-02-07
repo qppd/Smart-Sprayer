@@ -309,7 +309,9 @@ class DashboardPanel(ctk.CTkFrame):
                 # Update Container 1
                 self.tank1_progress.set(level1 / 100)
                 self.tank1_label.configure(text=f"{level1:.1f}%")
-                self.tank1_liters.configure(text=f"{level1:.0f} Liters")
+                # Calculate actual liters based on 16L capacity
+                liters1 = (level1 / 100) * 16.0
+                self.tank1_liters.configure(text=f"{liters1:.1f} Liters")
                 
                 # Set color based on level
                 if level1 > 50:
@@ -325,7 +327,9 @@ class DashboardPanel(ctk.CTkFrame):
                 # Update Container 2
                 self.tank2_progress.set(level2 / 100)
                 self.tank2_label.configure(text=f"{level2:.1f}%")
-                self.tank2_liters.configure(text=f"{level2:.0f} Liters")
+                # Calculate actual liters based on 16L capacity
+                liters2 = (level2 / 100) * 16.0
+                self.tank2_liters.configure(text=f"{liters2:.1f} Liters")
                 
                 if level2 > 50:
                     color2 = "#4CAF50"

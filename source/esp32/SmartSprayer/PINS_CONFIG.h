@@ -28,10 +28,11 @@
 
 // Container Level Configuration
 // Ultrasonic measures from top of container
-// 25cm distance = Full (liquid at top)
-// 50cm distance = Empty (liquid at bottom)
-#define CONTAINER_EMPTY_DISTANCE 50.0  // Distance when tank is empty (cm)
-#define CONTAINER_FULL_DISTANCE 25.0   // Distance when tank is full (cm)
+// 22cm distance = Full (liquid at top, 16L)
+// 70cm distance = Empty (liquid at bottom, 0L)
+#define CONTAINER_EMPTY_DISTANCE 70.0  // Distance when tank is empty (cm)
+#define CONTAINER_FULL_DISTANCE 22.0   // Distance when tank is full (cm)
+#define CONTAINER_CAPACITY_LITERS 16.0 // Tank capacity in liters
 
 // Pump Configuration
 #define PUMP_FLOW_RATE_ML_PER_MIN 5000.0  // 5 Liters per minute = 5000 mL/min
