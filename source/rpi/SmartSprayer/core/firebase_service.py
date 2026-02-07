@@ -8,12 +8,30 @@ import time
 from datetime import datetime
 from typing import Dict, List, Optional, Callable
 import json
+import sys
+import os
+
+# Add parent directory to path to ensure firebase_credentials can be imported
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_parent_dir = os.path.dirname(_current_dir)
+if _parent_dir not in sys.path:
+    sys.path.insert(0, _parent_dir)
 
 try:
     from firebase_credentials import FIREBASE_CONFIG, FIREBASE_USER
-    FIREBASE_AVAILABLE = True
-except ImportError:
-    print("Warning: firebase_credentials.py not found. Firebase sync disabled.")
+    # Verify that credentials are actually loaded
+    if FIREBASE_CONFIG and FIREBASE_USER:
+        FIREBASE_AVAILABLE = True
+    else:
+        print("Warning: Firebase credentials are empty or None")
+        FIREBASE_AVAILABLE = False
+except ImportError as e:
+    print(f"Warning: firebase_credentials.py not found - {e}")
+    FIREBASE_AVAILABLE = False
+    FIREBASE_CONFIG = None
+    FIREBASE_USER = None
+except Exception as e:
+    print(f"Warning: Error loading Firebase credentials - {e}")
     FIREBASE_AVAILABLE = False
     FIREBASE_CONFIG = None
     FIREBASE_USER = None

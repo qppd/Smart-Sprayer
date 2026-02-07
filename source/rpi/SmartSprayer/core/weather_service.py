@@ -4,16 +4,38 @@
 import requests
 from typing import Dict, Optional
 from datetime import datetime
+import sys
+import os
+
+# Add parent directory to path to ensure firebase_credentials can be imported
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_parent_dir = os.path.dirname(_current_dir)
+if _parent_dir not in sys.path:
+    sys.path.insert(0, _parent_dir)
 
 try:
-    from firebase_credentials import WEATHER_API_KEY, WEATHER_API_URL, WEATHER_FORECAST_URL
-    WEATHER_AVAILABLE = True
-except ImportError:
-    print("Warning: Weather API credentials not found")
+    from firebase_credentials import WEATHER_API_KEY, WEATHER_API_URL, WEATHER_FORECAST_URL, WEATHER_LOCATION
+    # Verify that credentials are actually loaded (not None or empty)
+    if WEATHER_API_KEY and WEATHER_API_URL and WEATHER_FORECAST_URL:
+        WEATHER_AVAILABLE = True
+    else:
+        print("Warning: Weather API credentials are empty or None")
+        WEATHER_AVAILABLE = False
+        WEATHER_LOCATION = None
+except ImportError as e:
+    print(f"Warning: Weather API credentials not found - {e}")
     WEATHER_AVAILABLE = False
     WEATHER_API_KEY = None
     WEATHER_API_URL = None
     WEATHER_FORECAST_URL = None
+    WEATHER_LOCATION = None
+except Exception as e:
+    print(f"Warning: Error loading Weather API credentials - {e}")
+    WEATHER_AVAILABLE = False
+    WEATHER_API_KEY = None
+    WEATHER_API_URL = None
+    WEATHER_FORECAST_URL = None
+    WEATHER_LOCATION = None
 
 
 class WeatherService:
@@ -166,4 +188,11 @@ def get_weather_service() -> WeatherService:
     global _weather_service
     if _weather_service is None:
         _weather_service = WeatherService()
+        # Log status
+        if _weather_service.available:
+            print("✓ Weather service initialized successfully")
+            print(f"  API Key: {WEATHER_API_KEY[:20]}..." if WEATHER_API_KEY else "  API Key: None")
+            print(f"  Location: {WEATHER_LOCATION if WEATHER_LOCATION else 'Not specified'}")
+        else:
+            print("✗ Weather service initialized but API not available")
     return _weather_service
