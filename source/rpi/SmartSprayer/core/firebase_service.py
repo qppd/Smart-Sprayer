@@ -2,7 +2,21 @@
 # Firebase integration service for Smart Sprayer
 # Handles all Firebase operations for schedules, history, and system status
 
-import pyrebase
+# Try importing pyrebase4 first (what's installed on RPI), then fall back to pyrebase
+try:
+    import pyrebase4 as pyrebase
+    PYREBASE_AVAILABLE = True
+    print("✓ Using pyrebase4")
+except ImportError:
+    try:
+        import pyrebase
+        PYREBASE_AVAILABLE = True
+        print("✓ Using pyrebase")
+    except ImportError:
+        pyrebase = None
+        PYREBASE_AVAILABLE = False
+        print("✗ Neither pyrebase4 nor pyrebase is installed")
+
 import threading
 import time
 from datetime import datetime
@@ -20,10 +34,13 @@ if _parent_dir not in sys.path:
 try:
     from firebase_credentials import FIREBASE_CONFIG, FIREBASE_USER
     # Verify that credentials are actually loaded
-    if FIREBASE_CONFIG and FIREBASE_USER:
+    if FIREBASE_CONFIG and FIREBASE_USER and PYREBASE_AVAILABLE:
         FIREBASE_AVAILABLE = True
     else:
-        print("Warning: Firebase credentials are empty or None")
+        if not PYREBASE_AVAILABLE:
+            print("Warning: Pyrebase not available - install with: pip install Pyrebase4")
+        elif not FIREBASE_CONFIG or not FIREBASE_USER:
+            print("Warning: Firebase credentials are empty or None")
         FIREBASE_AVAILABLE = False
 except ImportError as e:
     print(f"Warning: firebase_credentials.py not found - {e}")
@@ -61,26 +78,48 @@ class FirebaseService:
             self._initialize_firebase()
     
     def _initialize_firebase(self):
-        """Initialize Firebase connection"""
+        """Initialize Firebase connection - following RoboSort working pattern"""
         try:
-            # Initialize Pyrebase
+            if not pyrebase:
+                raise ImportError("Pyrebase not available")
+            
+            print("Initializing Firebase...")
+            print(f"  API Key: {FIREBASE_CONFIG.get('apiKey', 'N/A')[:20]}...")
+            print(f"  Database URL: {FIREBASE_CONFIG.get('databaseURL', 'N/A')}")
+            
+            # Initialize Pyrebase - same as RoboSort
             self.firebase = pyrebase.initialize_app(FIREBASE_CONFIG)
             self.db = self.firebase.database()
             self.auth = self.firebase.auth()
+            print("✓ Firebase app initialized")
             
-            # Authenticate if credentials provided
+            # Authenticate if credentials provided - same as RoboSort
             if FIREBASE_USER and FIREBASE_USER.get('email') and FIREBASE_USER.get('password'):
+                print(f"Authenticating as: {FIREBASE_USER['email']}")
                 self.user = self.auth.sign_in_with_email_and_password(
                     FIREBASE_USER['email'],
                     FIREBASE_USER['password']
                 )
-                print(f"Firebase authenticated as: {FIREBASE_USER['email']}")
+                print(f"✓ Firebase authenticated as: {FIREBASE_USER['email']}")
             
             self.connected = True
-            print("Firebase initialized successfully")
+            print("✓ Firebase initialized successfully")
+            
+            # Set initial device status
+            try:
+                self.db.child("devices").child(self.device_id).child("status").update({
+                    "connected": True,
+                    "last_seen": datetime.now().isoformat(),
+                    "version": "2.0"
+                })
+                print(f"✓ Device status updated: {self.device_id}")
+            except Exception as status_error:
+                print(f"Warning: Could not update device status: {status_error}")
             
         except Exception as e:
-            print(f"Firebase initialization failed: {e}")
+            print(f"✗ Firebase initialization failed: {e}")
+            import traceback
+            traceback.print_exc()
             self.connected = False
     
     def enable_sync(self):
