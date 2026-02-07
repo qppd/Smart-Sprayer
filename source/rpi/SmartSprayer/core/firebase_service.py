@@ -3,20 +3,8 @@
 # Handles all Firebase operations for schedules, history, and system status
 
 # Try importing pyrebase4 first (what's installed on RPI), then fall back to pyrebase
-try:
-    import pyrebase4 as pyrebase
-    PYREBASE_AVAILABLE = True
-    print("✓ Using pyrebase4")
-except ImportError:
-    try:
-        import pyrebase
-        PYREBASE_AVAILABLE = True
-        print("✓ Using pyrebase")
-    except ImportError:
-        pyrebase = None
-        PYREBASE_AVAILABLE = False
-        print("✗ Neither pyrebase4 nor pyrebase is installed")
 
+import pyrebase
 import threading
 import time
 from datetime import datetime
