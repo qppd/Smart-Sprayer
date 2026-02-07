@@ -4,7 +4,12 @@
 
 # Try importing pyrebase4 first (what's installed on RPI), then fall back to pyrebase
 
-import pyrebase
+try:
+    import pyrebase
+    PYREBASE_AVAILABLE = True
+except ImportError:
+    PYREBASE_AVAILABLE = False
+    print("Warning: Pyrebase not available - install with: pip install Pyrebase4")
 import threading
 import time
 from datetime import datetime
