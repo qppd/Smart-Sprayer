@@ -16,19 +16,7 @@ print("=" * 60)
 
 # Test 1: Check if pyrebase is available
 print("\n1. Testing pyrebase import...")
-try:
-    import pyrebase4 as pyrebase
-    print("   ✓ pyrebase4 imported successfully")
-    pyrebase_version = "pyrebase4"
-except ImportError:
-    try:
-        import pyrebase
-        print("   ✓ pyrebase imported successfully")
-        pyrebase_version = "pyrebase"
-    except ImportError:
-        print("   ✗ Neither pyrebase4 nor pyrebase is installed")
-        print("   Install with: pip install Pyrebase4")
-        sys.exit(1)
+import pyrebase
 
 # Test 2: Check if credentials are available
 print("\n2. Testing credentials import...")
