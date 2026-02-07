@@ -5,6 +5,7 @@ import customtkinter as ctk
 from datetime import datetime
 import threading
 import time
+from core.weather_service import get_weather_service
 
 class DashboardPanel(ctk.CTkFrame):
     """Dashboard panel showing system overview"""
@@ -13,6 +14,7 @@ class DashboardPanel(ctk.CTkFrame):
         super().__init__(parent)
         self.hardware = hardware
         self.scheduler = scheduler
+        self.weather_service = get_weather_service()
         
         self.configure(fg_color="transparent")
         
@@ -125,6 +127,96 @@ class DashboardPanel(ctk.CTkFrame):
         )
         self.tank2_liters.pack(pady=(0, 10))
         
+        # Weather Information Panel
+        weather_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
+        weather_frame.pack(fill="x", padx=20, pady=10)
+        
+        weather_title = ctk.CTkLabel(
+            weather_frame,
+            text="🌤 CURRENT WEATHER",
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color="#4CAF50"
+        )
+        weather_title.pack(pady=10)
+        
+        # Weather content container
+        weather_content = ctk.CTkFrame(weather_frame, fg_color="transparent")
+        weather_content.pack(fill="x", padx=20, pady=10)
+        
+        # Left side - Main weather info
+        weather_left = ctk.CTkFrame(weather_content, fg_color="#E3F2FD", corner_radius=10)
+        weather_left.pack(side="left", expand=True, fill="both", padx=(0, 10))
+        
+        self.weather_condition = ctk.CTkLabel(
+            weather_left,
+            text="Loading...",
+            font=ctk.CTkFont(size=18, weight="bold"),
+            text_color="#1976D2"
+        )
+        self.weather_condition.pack(pady=(15, 5))
+        
+        self.weather_temp = ctk.CTkLabel(
+            weather_left,
+            text="--°C",
+            font=ctk.CTkFont(size=32, weight="bold"),
+            text_color="#0D47A1"
+        )
+        self.weather_temp.pack(pady=5)
+        
+        self.weather_feels_like = ctk.CTkLabel(
+            weather_left,
+            text="Feels like: --°C",
+            font=ctk.CTkFont(size=14),
+            text_color="#616161"
+        )
+        self.weather_feels_like.pack(pady=(0, 15))
+        
+        # Right side - Additional info
+        weather_right = ctk.CTkFrame(weather_content, fg_color="#F3E5F5", corner_radius=10)
+        weather_right.pack(side="right", expand=True, fill="both", padx=(10, 0))
+        
+        self.weather_humidity = ctk.CTkLabel(
+            weather_right,
+            text="💧 Humidity: --%",
+            font=ctk.CTkFont(size=14),
+            text_color="#7B1FA2"
+        )
+        self.weather_humidity.pack(pady=(15, 5))
+        
+        self.weather_wind = ctk.CTkLabel(
+            weather_right,
+            text="💨 Wind: -- kph",
+            font=ctk.CTkFont(size=14),
+            text_color="#7B1FA2"
+        )
+        self.weather_wind.pack(pady=5)
+        
+        self.weather_rain = ctk.CTkLabel(
+            weather_right,
+            text="🌧 Rain: -- mm",
+            font=ctk.CTkFont(size=14),
+            text_color="#7B1FA2"
+        )
+        self.weather_rain.pack(pady=5)
+        
+        self.weather_uv = ctk.CTkLabel(
+            weather_right,
+            text="☀ UV Index: --",
+            font=ctk.CTkFont(size=14),
+            text_color="#7B1FA2"
+        )
+        self.weather_uv.pack(pady=(5, 15))
+        
+        # Weather update timestamp
+        self.weather_updated = ctk.CTkLabel(
+            weather_frame,
+            text="Updated: Never",
+            font=ctk.CTkFont(size=12),
+            text_color="#9E9E9E"
+        )
+        self.weather_updated.pack(pady=(0, 10))
+        
+        # 
         # System Status
         status_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
         status_frame.pack(fill="x", padx=20, pady=10)
@@ -193,6 +285,7 @@ class DashboardPanel(ctk.CTkFrame):
                     self.after(0, self._update_tank_levels)
                     self.after(0, self._update_next_schedule)
                     self.after(0, self._update_datetime)
+                    self.after(0, self._update_weather)  # Update weather display
                 except:
                     pass  # Widget might be destroyed
                 time.sleep(2)  # Update every 2 seconds
@@ -289,6 +382,84 @@ class DashboardPanel(ctk.CTkFrame):
         now = datetime.now()
         dt_str = now.strftime("%A, %B %d, %Y - %I:%M:%S %p")
         self.datetime_label.configure(text=dt_str)
+    
+    def _update_weather(self):
+        """Update weather display with hourly cached data"""
+        if not self.weather_service or not self.weather_service.available:
+            # Weather not available
+            self.weather_condition.configure(text="Weather service unavailable")
+            self.weather_temp.configure(text="--°C")
+            self.weather_feels_like.configure(text="Feels like: --°C")
+            self.weather_humidity.configure(text="💧 Humidity: --%")
+            self.weather_wind.configure(text="💨 Wind: -- kph")
+            self.weather_rain.configure(text="🌧 Rain: -- mm")
+            self.weather_uv.configure(text="☀ UV Index: --")
+            self.weather_updated.configure(text="Weather API not configured")
+            return
+        
+        try:
+            # Get cached weather data (updates hourly automatically)
+            weather = self.weather_service.get_current_weather_cached()
+            
+            if weather:
+                # Update main weather info
+                condition = weather.get('condition', 'Unknown')
+                temp_c = weather.get('temperature_c', 0)
+                feels_like = weather.get('feels_like_c', 0)
+                humidity = weather.get('humidity', 0)
+                wind = weather.get('wind_kph', 0)
+                rain = weather.get('precip_mm', 0)
+                uv = weather.get('uv', 0)
+                
+                self.weather_condition.configure(text=condition)
+                self.weather_temp.configure(text=f"{temp_c:.1f}°C")
+                self.weather_feels_like.configure(text=f"Feels like: {feels_like:.1f}°C")
+                
+                # Update additional info
+                self.weather_humidity.configure(text=f"💧 Humidity: {humidity}%")
+                self.weather_wind.configure(text=f"💨 Wind: {wind:.1f} kph")
+                
+                # Color code rain indicator
+                if rain > 0:
+                    self.weather_rain.configure(
+                        text=f"🌧 Rain: {rain:.1f} mm",
+                        text_color="#F44336"  # Red if raining
+                    )
+                else:
+                    self.weather_rain.configure(
+                        text=f"🌧 Rain: {rain:.1f} mm",
+                        text_color="#7B1FA2"  # Normal color
+                    )
+                
+                # Color code UV index
+                if uv >= 8:
+                    uv_color = "#D32F2F"  # Very high - red
+                elif uv >= 6:
+                    uv_color = "#FF6F00"  # High - orange
+                elif uv >= 3:
+                    uv_color = "#FBC02D"  # Moderate - yellow
+                else:
+                    uv_color = "#388E3C"  # Low - green
+                
+                self.weather_uv.configure(
+                    text=f"☀ UV Index: {uv:.0f}",
+                    text_color=uv_color
+                )
+                
+                # Update timestamp
+                cache_age = self.weather_service.get_cache_age()
+                if cache_age:
+                    self.weather_updated.configure(text=f"Updated: {cache_age}")
+                else:
+                    self.weather_updated.configure(text="Updated: Never")
+            else:
+                # Failed to get weather data
+                self.weather_condition.configure(text="Unable to fetch weather")
+                self.weather_temp.configure(text="--°C")
+                self.weather_updated.configure(text="Update failed")
+                
+        except Exception as e:
+            print(f"Error updating weather display: {e}")
     
     def cleanup(self):
         """Cleanup resources"""

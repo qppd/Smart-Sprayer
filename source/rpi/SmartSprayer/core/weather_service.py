@@ -48,6 +48,11 @@ class WeatherService:
         self.available = WEATHER_AVAILABLE and self.api_key and self.api_url
         self.last_check = None
         self.last_result = None
+        
+        # Hourly cache for dashboard display
+        self.cached_weather = None
+        self.cache_timestamp = None
+        self.last_cache_hour = None
     
     def check_weather_for_rain(self) -> bool:
         """
@@ -178,6 +183,56 @@ class WeatherService:
         except Exception as e:
             print(f"Forecast check failed: {e}")
             return False
+    
+    def should_update_cache(self) -> bool:
+        """Check if cache should be updated (every hour on the hour)"""
+        now = datetime.now()
+        current_hour = now.hour
+        
+        # Update if no cache exists or if we've moved to a new hour
+        if self.last_cache_hour is None or current_hour != self.last_cache_hour:
+            return True
+        return False
+    
+    def get_current_weather_cached(self) -> Optional[Dict]:
+        """
+        Get current weather data with hourly caching
+        Updates only at the top of each hour (7am, 8am, 9am, etc.)
+        """
+        if not self.available:
+            return None
+        
+        # Check if we need to update the cache
+        if self.should_update_cache():
+            weather_data = self.get_weather_data()
+            if weather_data:
+                self.cached_weather = weather_data
+                self.cache_timestamp = datetime.now()
+                self.last_cache_hour = self.cache_timestamp.hour
+                print(f"Weather cache updated at {self.cache_timestamp.strftime('%I:%M %p')}")
+        
+        return self.cached_weather
+    
+    def get_cache_age(self) -> Optional[str]:
+        """Get the age of the cached data in human-readable format"""
+        if self.cache_timestamp is None:
+            return None
+        
+        delta = datetime.now() - self.cache_timestamp
+        minutes = int(delta.total_seconds() / 60)
+        
+        if minutes < 1:
+            return "Just now"
+        elif minutes == 1:
+            return "1 minute ago"
+        elif minutes < 60:
+            return f"{minutes} minutes ago"
+        else:
+            hours = minutes // 60
+            if hours == 1:
+                return "1 hour ago"
+            else:
+                return f"{hours} hours ago"
 
 
 # Global weather service instance
