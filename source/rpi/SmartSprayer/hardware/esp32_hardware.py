@@ -142,8 +142,8 @@ class ESP32Hardware(HardwareInterface):
 
             response = "\n".join(response_lines).strip() if response_lines else None
             
-            # Debug print for distance-related commands (but not framed)
-            if any(cmd in command for cmd in ['get-distance', 'get-level', 'get-status']) and not command.startswith('<'):
+            # Debug print for non-ultrasonic commands only
+            if any(cmd in command for cmd in ['get-status']) and not command.startswith('<'):
                 print(f"[ESP32 DEBUG] Command: '{command}' -> Response: '{response}'")
             
             return response
@@ -388,20 +388,22 @@ class ESP32Hardware(HardwareInterface):
                     # Only add keys for valid readings (pct >= 0)
                     if data['pct1'] >= 0:
                         levels['tank1'] = max(0.0, min(100.0, data['pct1']))
-                        print(f"[FRAME] Tank1: {data['dist1']}cm = {levels['tank1']:.1f}%")
+                        # print(f"[FRAME] Tank1: {data['dist1']}cm = {levels['tank1']:.1f}%")
                     else:
-                        print(f"[FRAME] Tank1: INVALID ({data['dist1']}cm)")
+                        # print(f"[FRAME] Tank1: INVALID ({data['dist1']}cm)")
+                        pass
                     
                     if data['pct2'] >= 0:
                         levels['tank2'] = max(0.0, min(100.0, data['pct2']))
-                        print(f"[FRAME] Tank2: {data['dist2']}cm = {levels['tank2']:.1f}%")
+                        # print(f"[FRAME] Tank2: {data['dist2']}cm = {levels['tank2']:.1f}%")
                     else:
-                        print(f"[FRAME] Tank2: INVALID ({data['dist2']}cm)")
+                        # print(f"[FRAME] Tank2: INVALID ({data['dist2']}cm)")
+                        pass
                     
                     return levels
                 else:
                     # Framed protocol failed, fall back to old protocol
-                    print("[FRAME] Invalid or no framed response, falling back to old protocol")
+                    # print("[FRAME] Invalid or no framed response, falling back to old protocol")
                     self.use_framed_protocol = False
         
         # Fallback to old protocol
@@ -414,11 +416,11 @@ class ESP32Hardware(HardwareInterface):
                         not line.startswith('get-') and 
                         not line.startswith('[CMD]')]
                 if not lines:
-                    print(f"[RPI DEBUG] get_both_tank_levels: No valid lines after filtering")
-                    return levels
+                    # print(f"[RPI DEBUG] get_both_tank_levels: No valid lines after filtering")
+                    pass
                 
                 response = ' '.join(lines)
-                print(f"[RPI DEBUG] get_both_tank_levels: Filtered response: '{response}'")
+                # print(f"[RPI DEBUG] get_both_tank_levels: Filtered response: '{response}'")
 
                 # Parse: can be either tagged ([LEVELS] Tank1=.. Tank2=..) or untagged (debug output still contains Tank1=/Tank2=)
                 parse_text = response
@@ -426,43 +428,43 @@ class ESP32Hardware(HardwareInterface):
                     parse_text = response.split("[LEVELS]", 1)[1].strip()
 
                 parts = parse_text.split()
-                print(f"[RPI DEBUG] get_both_tank_levels: Parsing parts: {parts}")
+                # print(f"[RPI DEBUG] get_both_tank_levels: Parsing parts: {parts}")
                 for part in parts:
                     if "Tank1=" in part:
                         value_str = part.split("=", 1)[1].replace("%", "")
-                        print(f"[RPI DEBUG] get_both_tank_levels: Tank1 value_str: '{value_str}'")
+                        # print(f"[RPI DEBUG] get_both_tank_levels: Tank1 value_str: '{value_str}'")
                         if value_str.upper() == "INVALID":
-                            print(f"[RPI DEBUG] get_both_tank_levels: Tank1 is INVALID, not setting key")
+                            # print(f"[RPI DEBUG] get_both_tank_levels: Tank1 is INVALID, not setting key")
                             continue
                         try:
                             value = float(value_str)
                         except ValueError:
-                            print(f"[RPI DEBUG] get_both_tank_levels: Tank1 ValueError for '{value_str}'")
+                            # print(f"[RPI DEBUG] get_both_tank_levels: Tank1 ValueError for '{value_str}'")
                             continue
                         if value < 0:
-                            print(f"[RPI DEBUG] get_both_tank_levels: Tank1 negative ({value}), not setting key")
+                            # print(f"[RPI DEBUG] get_both_tank_levels: Tank1 negative ({value}), not setting key")
                             continue
                         levels['tank1'] = max(0.0, min(100.0, value))
-                        print(f"[RPI DEBUG] get_both_tank_levels: Tank1 set to: {levels['tank1']}%")
+                        # print(f"[RPI DEBUG] get_both_tank_levels: Tank1 set to: {levels['tank1']}%")
 
                     elif "Tank2=" in part:
                         value_str = part.split("=", 1)[1].replace("%", "")
-                        print(f"[RPI DEBUG] get_both_tank_levels: Tank2 value_str: '{value_str}'")
+                        # print(f"[RPI DEBUG] get_both_tank_levels: Tank2 value_str: '{value_str}'")
                         if value_str.upper() == "INVALID":
-                            print(f"[RPI DEBUG] get_both_tank_levels: Tank2 is INVALID, not setting key")
+                            # print(f"[RPI DEBUG] get_both_tank_levels: Tank2 is INVALID, not setting key")
                             continue
                         try:
                             value = float(value_str)
                         except ValueError:
-                            print(f"[RPI DEBUG] get_both_tank_levels: Tank2 ValueError for '{value_str}'")
+                            # print(f"[RPI DEBUG] get_both_tank_levels: Tank2 ValueError for '{value_str}'")
                             continue
                         if value < 0:
-                            print(f"[RPI DEBUG] get_both_tank_levels: Tank2 negative ({value}), not setting key")
+                            # print(f"[RPI DEBUG] get_both_tank_levels: Tank2 negative ({value}), not setting key")
                             continue
                         levels['tank2'] = max(0.0, min(100.0, value))
-                        print(f"[RPI DEBUG] get_both_tank_levels: Tank2 set to: {levels['tank2']}%")
+                        # print(f"[RPI DEBUG] get_both_tank_levels: Tank2 set to: {levels['tank2']}%")
                 
-                print(f"[RPI DEBUG] get_both_tank_levels: Final levels dict: {levels}")
+                # print(f"[RPI DEBUG] get_both_tank_levels: Final levels dict: {levels}")
             except Exception as e:
                 print(f"[ESP32] Error parsing tank levels: {e}")
                 print(f"[ESP32] Response was: {response}")
