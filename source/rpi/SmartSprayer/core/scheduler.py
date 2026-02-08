@@ -5,6 +5,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Callable
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 from core.data_store import get_data_store
 from core.logger import get_logger
 from core.reschedule_logic import get_reschedule_manager
@@ -36,6 +37,13 @@ class Scheduler:
         self.running = False
         self.scheduler_thread = None
         
+        # Thread pool for non-blocking operations
+        self.executor = ThreadPoolExecutor(max_workers=3)
+        
+        # Weather check cache (to avoid repeated API calls)
+        self.weather_cache = {}
+        self.weather_cache_timeout = 300  # 5 minutes
+        
         # Callbacks for UI updates
         self.on_schedule_due_callback = None
         self.on_schedule_completed_callback = None
@@ -57,6 +65,8 @@ class Scheduler:
             self.running = False
             if self.scheduler_thread:
                 self.scheduler_thread.join(timeout=2)
+            # Shutdown executor
+            self.executor.shutdown(wait=False)
             self.logger.log_info("Scheduler stopped")
     
     def _scheduler_loop(self):
@@ -88,30 +98,55 @@ class Scheduler:
                     # Schedule is due!
                     self._execute_schedule(schedule)
     
-    def _execute_schedule(self, schedule: Dict):
-        """Execute a spray schedule"""
-        
-        # Check weather before executing
-        if self.weather and self.weather.available:
-            self.logger.log_info("Checking weather before spray...")
-            
+    def _check_weather_async(self, schedule_id: str) -> Dict:
+        """Check weather in a separate thread (non-blocking)"""
+        try:
             # Check current weather
             is_raining = self.weather.check_weather_for_rain()
             
             if is_raining:
-                self.logger.log_warning(f"Rain detected! Checking reschedule count for schedule {schedule['id']}")
-                self._handle_weather_reschedule(schedule)
-                return
+                return {'safe': False, 'reason': 'rain', 'is_raining': True}
             
             # Check forecast for next 24 hours
             rain_forecast = self.weather.check_forecast_for_rain(hours_ahead=24)
             
             if rain_forecast:
-                self.logger.log_warning(f"Rain expected in forecast! Checking reschedule count for schedule {schedule['id']}")
-                self._handle_weather_reschedule(schedule)
-                return
+                return {'safe': False, 'reason': 'forecast', 'rain_forecast': True}
             
-            self.logger.log_info("Weather check passed - safe to spray")
+            return {'safe': True}
+        except Exception as e:
+            self.logger.log_error(f"Weather check error: {e}")
+            # On error, assume safe to spray (don't block)
+            return {'safe': True, 'error': str(e)}
+    
+    def _execute_schedule(self, schedule: Dict):
+        """Execute a spray schedule (non-blocking weather check)"""
+        
+        # Check weather before executing (with timeout)
+        if self.weather and self.weather.available:
+            self.logger.log_info("Checking weather before spray...")
+            
+            try:
+                # Run weather check in separate thread with 15-second timeout
+                future = self.executor.submit(self._check_weather_async, schedule['id'])
+                weather_result = future.result(timeout=15)
+                
+                if not weather_result.get('safe', True):
+                    reason = weather_result.get('reason', 'unknown')
+                    self.logger.log_warning(
+                        f"Weather unsuitable ({reason})! Rescheduling schedule {schedule['id']}"
+                    )
+                    self._handle_weather_reschedule(schedule)
+                    return
+                
+                self.logger.log_info("Weather check passed - safe to spray")
+                
+            except FuturesTimeoutError:
+                self.logger.log_warning("Weather check timeout - proceeding with spray")
+                # Timeout: proceed with spray to avoid blocking
+            except Exception as e:
+                self.logger.log_error(f"Weather check failed: {e} - proceeding with spray")
+                # Error: proceed with spray to avoid blocking
         
         self.logger.log_spray_executed(schedule)
         
@@ -138,37 +173,67 @@ class Scheduler:
                 f"{volume_ml}mL for {spray_duration:.1f} seconds"
             )
             
-            # Execute spray via ESP32
+            # Execute spray via ESP32 (non-blocking)
             if self.hardware:
                 # Use ESP32's spray command (ESP32 handles relay, SMS, buzzer)
-                self.hardware.spray(relay_num, spray_duration, volume_ml)
+                # Run in separate thread to avoid blocking scheduler
+                def spray_task():
+                    try:
+                        self.hardware.spray(relay_num, spray_duration, volume_ml)
+                        # Mark as completed after spray
+                        self.data_store.update_schedule(schedule['id'], {
+                            'status': 'completed',
+                            'completed_at': datetime.now().isoformat()
+                        })
+                        
+                        # Add to history
+                        self.data_store.add_to_history({
+                            'date': schedule['date'],
+                            'time': schedule['time'],
+                            'spray_type': spray_type,
+                            'container': container,
+                            'volume_ml': volume_ml,
+                            'duration': spray_duration,
+                            'schedule_id': schedule['id']
+                        })
+                        
+                        self.logger.log_spray_completed(schedule['id'], spray_duration)
+                        
+                        if self.on_schedule_completed_callback:
+                            self.on_schedule_completed_callback(schedule)
+                    except Exception as e:
+                        self.logger.log_error(f"Spray execution error: {e}")
+                        self.data_store.update_schedule(schedule['id'], {
+                            'status': 'failed',
+                            'error': str(e)
+                        })
                 
-                # Wait for spray to complete (ESP32 is blocking during spray)
-                # Add a small buffer for SMS sending
-                import time
-                time.sleep(spray_duration + 2)
-            
-            # Mark as completed
-            self.data_store.update_schedule(schedule['id'], {
-                'status': 'completed',
-                'completed_at': datetime.now().isoformat()
-            })
-            
-            # Add to history
-            self.data_store.add_to_history({
-                'date': schedule['date'],
-                'time': schedule['time'],
-                'spray_type': spray_type,
-                'container': container,
-                'volume_ml': volume_ml,
-                'duration': spray_duration,
-                'schedule_id': schedule['id']
-            })
-            
-            self.logger.log_spray_completed(schedule['id'], spray_duration)
-            
-            if self.on_schedule_completed_callback:
-                self.on_schedule_completed_callback(schedule)
+                # Execute spray in background thread
+                self.executor.submit(spray_task)
+                
+                # Return immediately (don't block scheduler)
+                return
+            else:
+                # No hardware - mock mode, mark as completed immediately
+                self.logger.log_warning("No hardware connected - mock execution")
+                self.data_store.update_schedule(schedule['id'], {
+                    'status': 'completed',
+                    'completed_at': datetime.now().isoformat()
+                })
+                
+                # Add to history
+                self.data_store.add_to_history({
+                    'date': schedule['date'],
+                    'time': schedule['time'],
+                    'spray_type': spray_type,
+                    'container': container,
+                    'volume_ml': volume_ml,
+                    'duration': spray_duration,
+                    'schedule_id': schedule['id']
+                })
+                
+                if self.on_schedule_completed_callback:
+                    self.on_schedule_completed_callback(schedule)
         
         except Exception as e:
             self.logger.log_error(f"Error executing schedule {schedule['id']}: {e}")
@@ -176,6 +241,7 @@ class Scheduler:
                 'status': 'failed',
                 'error': str(e)
             })
+
     
     def _handle_weather_reschedule(self, schedule: Dict):
         """
