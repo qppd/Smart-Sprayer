@@ -57,16 +57,28 @@ class ESP32Hardware(HardwareInterface):
         try:
             # Send command
             self.serial_connection.write(f"{command}\n".encode())
-            time.sleep(0.1)
-            
-            # Read response
-            response = ""
-            while self.serial_connection.in_waiting > 0:
-                line = self.serial_connection.readline().decode('utf-8', errors='ignore').strip()
-                if line:
-                    response += line + "\n"
-            
-            response = response.strip() if response else None
+            # Read response (some commands take time and return multi-line output)
+            response_lines = []
+            deadline = time.monotonic() + max(0.5, float(self.timeout))
+            last_data_time = None
+            idle_grace_seconds = 0.15
+
+            while time.monotonic() < deadline:
+                if self.serial_connection.in_waiting > 0:
+                    raw = self.serial_connection.readline().decode('utf-8', errors='ignore').strip()
+                    if raw:
+                        response_lines.append(raw)
+                        last_data_time = time.monotonic()
+                    continue
+
+                # No data available right now
+                if response_lines and last_data_time is not None:
+                    if (time.monotonic() - last_data_time) >= idle_grace_seconds:
+                        break
+
+                time.sleep(0.01)
+
+            response = "\n".join(response_lines).strip() if response_lines else None
             
             # Debug print for distance-related commands
             if any(cmd in command for cmd in ['get-distance', 'get-level', 'get-levels', 'get-status']):
@@ -135,69 +147,14 @@ class ESP32Hardware(HardwareInterface):
         - 22cm distance = 100% FULL (liquid close to sensor, 16L)
         - 50cm distance = 0% EMPTY (liquid far from sensor, 0L)
         """
-        command = "get-level" if sensor_num == 1 else f"get-distance{sensor_num}"
-        response = self._send_command(command)
-        
-        if response:
-            try:
-                # Filter out command echoes and acknowledgments
-                lines = [line for line in response.split('\n') if line and 
-                        not line.startswith('get-') and 
-                        not line.startswith('[CMD]')]
-                if not lines:
-                    print(f"[RPI DEBUG] get_tank_level_percentage({sensor_num}): No valid lines after filtering")
-                    return 0.0
-                
-                response = ' '.join(lines)
-                print(f"[RPI DEBUG] get_tank_level_percentage({sensor_num}): Filtered response: '{response}'")
-                
-                # Try to parse percentage from response (ESP32 calculates it)
-                if "%" in response:
-                    # Extract percentage value from various formats
-                    # Format 1: "(85.0%)" or "85.0%"
-                    for part in response.split():
-                        if "%" in part:
-                            percentage_str = part.replace("(", "").replace(")", "").replace("%", "")
-                            # Handle "Tank1=100.00%" format
-                            if "=" in percentage_str:
-                                percentage_str = percentage_str.split("=")[1]
-                            
-                            print(f"[RPI DEBUG] get_tank_level_percentage({sensor_num}): Extracted percentage_str: '{percentage_str}'")
-                            
-                            # Check if reading is INVALID before converting to float
-                            if percentage_str == "INVALID" or percentage_str.upper() == "INVALID":
-                                print(f"[RPI DEBUG] get_tank_level_percentage({sensor_num}): INVALID reading detected, returning None")
-                                return None  # Return None to keep previous value displayed
-                            
-                            percentage = float(percentage_str)
-                            
-                            # Filter out invalid readings (-1.0 from ESP32)
-                            if percentage < 0:
-                                print(f"[RPI DEBUG] get_tank_level_percentage({sensor_num}): Negative percentage ({percentage}), returning None")
-                                return None  # Return None to keep previous value displayed
-                            
-                            final_percentage = max(0.0, min(100.0, percentage))
-                            print(f"[RPI DEBUG] get_tank_level_percentage({sensor_num}): Final percentage: {final_percentage}%")
-                            return final_percentage
-                
-                # Fallback: calculate from distance if percentage not found
-                distance = self.read_distance(sensor_num)
-                if distance > 0:
-                    # Use configured values from PINS_CONFIG.py
-                    # Smaller distance = more full (liquid closer to sensor)
-                    if distance <= CONTAINER_FULL_DISTANCE:
-                        return 100.0
-                    elif distance >= CONTAINER_EMPTY_DISTANCE:
-                        return 0.0
-                    else:
-                        # Interpolate between 22cm (100%) and 50cm (0%)
-                        percentage = ((CONTAINER_EMPTY_DISTANCE - distance) / (CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE)) * 100
-                        return max(0.0, min(100.0, percentage))
-            except Exception as e:
-                print(f"[ESP32] Error parsing level response: {e}")
-                print(f"[ESP32] Response was: {response}")
-        
-        return 0.0
+        # Use get-levels so parsing is consistent for both tanks.
+        # This also avoids accidentally grabbing Tank2's percentage when Tank1 is INVALID.
+        levels = self.get_both_tank_levels()
+
+        key = 'tank1' if sensor_num == 1 else 'tank2'
+        if key in levels:
+            return levels[key]
+        return None
     
     def buzzer_on(self):
         """Turn buzzer ON via ESP32"""
@@ -336,40 +293,48 @@ class ESP32Hardware(HardwareInterface):
                 
                 response = ' '.join(lines)
                 print(f"[RPI DEBUG] get_both_tank_levels: Filtered response: '{response}'")
-                
-                # Parse: [LEVELS] Tank1=85.0% Tank2=90.0% or Tank1=INVALID Tank2=INVALID
+
+                # Parse: can be either tagged ([LEVELS] Tank1=.. Tank2=..) or untagged (debug output still contains Tank1=/Tank2=)
+                parse_text = response
                 if "[LEVELS]" in response:
-                    parts = response.split("[LEVELS]")[1].strip().split()
-                    print(f"[RPI DEBUG] get_both_tank_levels: Parsing parts: {parts}")
-                    for part in parts:
-                        if "Tank1=" in part:
-                            value_str = part.split("=")[1].replace("%", "")
-                            print(f"[RPI DEBUG] get_both_tank_levels: Tank1 value_str: '{value_str}'")
-                            # Check if reading is INVALID before converting to float
-                            if value_str.upper() != "INVALID":
-                                try:
-                                    levels['tank1'] = float(value_str)
-                                    print(f"[RPI DEBUG] get_both_tank_levels: Tank1 set to: {levels['tank1']}%")
-                                except ValueError:
-                                    print(f"[RPI DEBUG] get_both_tank_levels: Tank1 ValueError for '{value_str}'")
-                                    pass  # Skip invalid values, keep previous display
-                            # If INVALID: don't set the key, caller will keep previous value
-                            else:
-                                print(f"[RPI DEBUG] get_both_tank_levels: Tank1 is INVALID, not setting key")
-                        elif "Tank2=" in part:
-                            value_str = part.split("=")[1].replace("%", "")
-                            print(f"[RPI DEBUG] get_both_tank_levels: Tank2 value_str: '{value_str}'")
-                            # Check if reading is INVALID before converting to float
-                            if value_str.upper() != "INVALID":
-                                try:
-                                    levels['tank2'] = float(value_str)
-                                    print(f"[RPI DEBUG] get_both_tank_levels: Tank2 set to: {levels['tank2']}%")
-                                except ValueError:
-                                    print(f"[RPI DEBUG] get_both_tank_levels: Tank2 ValueError for '{value_str}'")
-                                    pass  # Skip invalid values, keep previous display
-                            # If INVALID: don't set the key, caller will keep previous value
-                            else:
-                                print(f"[RPI DEBUG] get_both_tank_levels: Tank2 is INVALID, not setting key")
+                    parse_text = response.split("[LEVELS]", 1)[1].strip()
+
+                parts = parse_text.split()
+                print(f"[RPI DEBUG] get_both_tank_levels: Parsing parts: {parts}")
+                for part in parts:
+                    if "Tank1=" in part:
+                        value_str = part.split("=", 1)[1].replace("%", "")
+                        print(f"[RPI DEBUG] get_both_tank_levels: Tank1 value_str: '{value_str}'")
+                        if value_str.upper() == "INVALID":
+                            print(f"[RPI DEBUG] get_both_tank_levels: Tank1 is INVALID, not setting key")
+                            continue
+                        try:
+                            value = float(value_str)
+                        except ValueError:
+                            print(f"[RPI DEBUG] get_both_tank_levels: Tank1 ValueError for '{value_str}'")
+                            continue
+                        if value < 0:
+                            print(f"[RPI DEBUG] get_both_tank_levels: Tank1 negative ({value}), not setting key")
+                            continue
+                        levels['tank1'] = max(0.0, min(100.0, value))
+                        print(f"[RPI DEBUG] get_both_tank_levels: Tank1 set to: {levels['tank1']}%")
+
+                    elif "Tank2=" in part:
+                        value_str = part.split("=", 1)[1].replace("%", "")
+                        print(f"[RPI DEBUG] get_both_tank_levels: Tank2 value_str: '{value_str}'")
+                        if value_str.upper() == "INVALID":
+                            print(f"[RPI DEBUG] get_both_tank_levels: Tank2 is INVALID, not setting key")
+                            continue
+                        try:
+                            value = float(value_str)
+                        except ValueError:
+                            print(f"[RPI DEBUG] get_both_tank_levels: Tank2 ValueError for '{value_str}'")
+                            continue
+                        if value < 0:
+                            print(f"[RPI DEBUG] get_both_tank_levels: Tank2 negative ({value}), not setting key")
+                            continue
+                        levels['tank2'] = max(0.0, min(100.0, value))
+                        print(f"[RPI DEBUG] get_both_tank_levels: Tank2 set to: {levels['tank2']}%")
                 
                 print(f"[RPI DEBUG] get_both_tank_levels: Final levels dict: {levels}")
             except Exception as e:
