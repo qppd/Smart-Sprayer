@@ -153,6 +153,11 @@ class ESP32Hardware(HardwareInterface):
                             # Handle "Tank1=100.00%" format
                             if "=" in percentage_str:
                                 percentage_str = percentage_str.split("=")[1]
+                            
+                            # Check if reading is INVALID before converting to float
+                            if percentage_str == "INVALID" or percentage_str.upper() == "INVALID":
+                                return 0.0  # Return 0% for invalid readings
+                            
                             percentage = float(percentage_str)
                             
                             # Filter out invalid readings (-1.0 from ESP32)
@@ -309,16 +314,30 @@ class ESP32Hardware(HardwareInterface):
                 
                 response = ' '.join(lines)
                 
-                # Parse: [LEVELS] Tank1=85.0% Tank2=90.0%
+                # Parse: [LEVELS] Tank1=85.0% Tank2=90.0% or Tank1=INVALID Tank2=INVALID
                 if "[LEVELS]" in response:
                     parts = response.split("[LEVELS]")[1].strip().split()
                     for part in parts:
                         if "Tank1=" in part:
                             value_str = part.split("=")[1].replace("%", "")
-                            levels['tank1'] = float(value_str)
+                            # Check if reading is INVALID before converting to float
+                            if value_str.upper() != "INVALID":
+                                try:
+                                    levels['tank1'] = float(value_str)
+                                except ValueError:
+                                    levels['tank1'] = 0.0
+                            else:
+                                levels['tank1'] = 0.0  # INVALID reading = 0%
                         elif "Tank2=" in part:
                             value_str = part.split("=")[1].replace("%", "")
-                            levels['tank2'] = float(value_str)
+                            # Check if reading is INVALID before converting to float
+                            if value_str.upper() != "INVALID":
+                                try:
+                                    levels['tank2'] = float(value_str)
+                                except ValueError:
+                                    levels['tank2'] = 0.0
+                            else:
+                                levels['tank2'] = 0.0  # INVALID reading = 0%
             except Exception as e:
                 print(f"[ESP32] Error parsing tank levels: {e}")
                 print(f"[ESP32] Response was: {response}")
