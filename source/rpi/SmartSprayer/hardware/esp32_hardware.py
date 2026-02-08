@@ -127,7 +127,7 @@ class ESP32Hardware(HardwareInterface):
         
         Tank configuration (from PINS_CONFIG.py):
         - 22cm distance = 100% FULL (liquid close to sensor, 16L)
-        - 80cm distance = 0% EMPTY (liquid far from sensor, 0L)
+        - 50cm distance = 0% EMPTY (liquid far from sensor, 0L)
         """
         command = "get-level" if sensor_num == 1 else f"get-distance{sensor_num}"
         response = self._send_command(command)
@@ -176,7 +176,7 @@ class ESP32Hardware(HardwareInterface):
                     elif distance >= CONTAINER_EMPTY_DISTANCE:
                         return 0.0
                     else:
-                        # Interpolate between 22cm (100%) and 80cm (0%)
+                        # Interpolate between 22cm (100%) and 50cm (0%)
                         percentage = ((CONTAINER_EMPTY_DISTANCE - distance) / (CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE)) * 100
                         return max(0.0, min(100.0, percentage))
             except Exception as e:

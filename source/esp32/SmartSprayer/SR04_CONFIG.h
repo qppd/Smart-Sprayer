@@ -78,7 +78,7 @@ long readDistanceReliable(int sensorNum = 1, int maxAttempts = 3) {
 }
 
 // Container level calculation functions
-// Distance 22cm = Full (100%, 16L), Distance 80cm = Empty (0%, 0L)
+// Distance 22cm = Full (100%, 16L), Distance 50cm = Empty (0%, 0L)
 float calculateFillPercentage(long distance) {
   // Handle invalid readings (0cm or out of range)
   if (distance <= 0 || distance > CONTAINER_EMPTY_DISTANCE + 10) {
@@ -90,14 +90,14 @@ float calculateFillPercentage(long distance) {
     return 100.0;
   }
   
-  // If distance >= 80cm: tank is empty (0%)
+  // If distance >= 50cm: tank is empty (0%)
   if (distance >= CONTAINER_EMPTY_DISTANCE) {
     return 0.0;
   }
   
-  // For distances between 22-80cm: interpolate percentage
-  // 22cm = 100%, 80cm = 0%
-  float usableRange = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE;  // 80 - 22 = 58cm
+  // For distances between 22-50cm: interpolate percentage
+  // 22cm = 100%, 50cm = 0%
+  float usableRange = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE;  // 50 - 22 = 28cm
   float currentLevel = CONTAINER_EMPTY_DISTANCE - distance;  // How much above empty
   
   float percentage = (currentLevel / usableRange) * 100.0;
