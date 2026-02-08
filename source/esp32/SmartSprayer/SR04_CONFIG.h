@@ -20,6 +20,9 @@ int sensor2Index = 0;
 bool sensor1BufferFilled = false;
 bool sensor2BufferFilled = false;
 
+// Function prototypes
+long calculateMovingAverage(int sensorNum);
+
 void initSR04() {
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
