@@ -267,8 +267,22 @@ void loop() {
       long dist1 = readDistanceReliable(1, 3);
       long dist2 = readDistanceReliable(2, 3);
       
+      // Debug prints
+      Serial.print("[DEBUG] Dist1=");
+      Serial.print(dist1);
+      Serial.print("cm Dist2=");
+      Serial.print(dist2);
+      Serial.print("cm ");
+      
       float pct1 = (dist1 > 0) ? calculateFillPercentage(dist1) : -1.0;
       float pct2 = (dist2 > 0) ? calculateFillPercentage(dist2) : -1.0;
+      
+      // Debug prints
+      Serial.print("Pct1=");
+      Serial.print(pct1);
+      Serial.print(" Pct2=");
+      Serial.print(pct2);
+      Serial.print(" ");
       
       // Only show valid readings
       if (pct1 >= 0) {
