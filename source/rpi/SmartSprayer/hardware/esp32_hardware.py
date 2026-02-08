@@ -166,8 +166,9 @@ class ESP32Hardware(HardwareInterface):
             # Send frame
             self.serial_connection.write(f"{frame}\n".encode())
             
-            # Read framed response
-            deadline = time.monotonic() + max(0.5, float(self.timeout))
+            # Read framed response with SHORT timeout (UI-friendly)
+            # Reduced from 1 second to 0.15 seconds to prevent UI lag
+            deadline = time.monotonic() + 0.15
             
             while time.monotonic() < deadline:
                 if self.serial_connection.in_waiting > 0:
@@ -176,7 +177,8 @@ class ESP32Hardware(HardwareInterface):
                         return line
                 time.sleep(0.01)
             
-            print(f"[FRAME TIMEOUT] No framed response for: {frame}")
+            # Don't print timeout message every time - too spammy
+            # print(f"[FRAME TIMEOUT] No framed response for: {frame}")
             return None
         except Exception as e:
             print(f"[ESP32] Error sending framed command '{command}': {e}")
@@ -374,7 +376,7 @@ class ESP32Hardware(HardwareInterface):
         """
         levels = {}  # Don't initialize with default values
         
-        # Try framed protocol first
+        # Try framed protocol first (but only once - if it fails, disable it)
         if self.use_framed_protocol:
             response = self._send_framed_command("GET_LEVELS")
             
@@ -402,8 +404,8 @@ class ESP32Hardware(HardwareInterface):
                     
                     return levels
                 else:
-                    # Framed protocol failed, fall back to old protocol
-                    # print("[FRAME] Invalid or no framed response, falling back to old protocol")
+                    # Framed protocol failed, permanently disable it to avoid future timeouts
+                    print("[FRAME] ESP32 not responding to framed protocol - disabling for this session")
                     self.use_framed_protocol = False
         
         # Fallback to old protocol
