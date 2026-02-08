@@ -127,7 +127,7 @@ class ESP32Hardware(HardwareInterface):
         
         Tank configuration (from PINS_CONFIG.py):
         - 22cm distance = 100% FULL (liquid close to sensor, 16L)
-        - 70cm distance = 0% EMPTY (liquid far from sensor, 0L)
+        - 80cm distance = 0% EMPTY (liquid far from sensor, 0L)
         """
         command = "get-level" if sensor_num == 1 else f"get-distance{sensor_num}"
         response = self._send_command(command)
@@ -153,15 +153,27 @@ class ESP32Hardware(HardwareInterface):
                             # Handle "Tank1=100.00%" format
                             if "=" in percentage_str:
                                 percentage_str = percentage_str.split("=")[1]
-                            return max(0.0, min(100.0, float(percentage_str)))
+                            percentage = float(percentage_str)
+                            
+                            # Filter out invalid readings (-1.0 from ESP32)
+                            if percentage < 0:
+                                return 0.0  # Return 0% for invalid readings
+                            
+                            return max(0.0, min(100.0, percentage))
                 
                 # Fallback: calculate from distance if percentage not found
                 distance = self.read_distance(sensor_num)
                 if distance > 0:
                     # Use configured values from PINS_CONFIG.py
                     # Smaller distance = more full (liquid closer to sensor)
-                    percentage = ((CONTAINER_EMPTY_DISTANCE - distance) / (CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE)) * 100
-                    return max(0.0, min(100.0, percentage))
+                    if distance <= CONTAINER_FULL_DISTANCE:
+                        return 100.0
+                    elif distance >= CONTAINER_EMPTY_DISTANCE:
+                        return 0.0
+                    else:
+                        # Interpolate between 22cm (100%) and 80cm (0%)
+                        percentage = ((CONTAINER_EMPTY_DISTANCE - distance) / (CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE)) * 100
+                        return max(0.0, min(100.0, percentage))
             except Exception as e:
                 print(f"[ESP32] Error parsing level response: {e}")
                 print(f"[ESP32] Response was: {response}")

@@ -90,14 +90,22 @@ void loop() {
       checkNetwork();
     } else if (command == "get-distance1") {
       Serial.print("[SR04] Reading Sensor 1... ");
-      long dist = readDistance();
-      Serial.print(dist);
-      Serial.println(" cm");
+      long dist = readDistanceReliable(1, 3);  // Use reliable reading with 3 attempts
+      if (dist > 0) {
+        Serial.print(dist);
+        Serial.println(" cm");
+      } else {
+        Serial.println("Invalid reading (filtered out)");
+      }
     } else if (command == "get-distance2") {
       Serial.print("[SR04] Reading Sensor 2... ");
-      long dist = readDistance2();
-      Serial.print(dist);
-      Serial.println(" cm");
+      long dist = readDistanceReliable(2, 3);  // Use reliable reading with 3 attempts
+      if (dist > 0) {
+        Serial.print(dist);
+        Serial.println(" cm");
+      } else {
+        Serial.println("Invalid reading (filtered out)");
+      }
     } else if (command == "buzzer-on") {
       Serial.print("[BUZZER] Turning ON... ");
       buzzerOn();
@@ -175,10 +183,10 @@ void loop() {
       int year = myRTC.year;
       if (year > 2096) year = (year - 2096) + 2000;
       
-      long dist1 = readDistance();
-      long dist2 = readDistance2();
-      float pct1 = calculateFillPercentage(dist1);
-      float pct2 = calculateFillPercentage(dist2);
+      long dist1 = readDistanceReliable(1, 3);
+      long dist2 = readDistanceReliable(2, 3);
+      float pct1 = (dist1 > 0) ? calculateFillPercentage(dist1) : -1.0;
+      float pct2 = (dist2 > 0) ? calculateFillPercentage(dist2) : -1.0;
       
       Serial.print("[STATUS] Time=");
       Serial.print(year);
@@ -198,10 +206,20 @@ void loop() {
       if (myRTC.seconds < 10) Serial.print("0");
       Serial.print(myRTC.seconds);
       Serial.print(" Tank1=");
-      Serial.print(pct1);
-      Serial.print("% Tank2=");
-      Serial.print(pct2);
-      Serial.print("% Recipients=");
+      if (pct1 >= 0) {
+        Serial.print(pct1);
+        Serial.print("%");
+      } else {
+        Serial.print("INVALID");
+      }
+      Serial.print(" Tank2=");
+      if (pct2 >= 0) {
+        Serial.print(pct2);
+        Serial.print("%");
+      } else {
+        Serial.print("INVALID");
+      }
+      Serial.print(" Recipients=");
       Serial.println(numRecipients);
     } else if (command.startsWith("sync-recipients_")) {
       // Format: sync-recipients_NUM1,NUM2,NUM3
@@ -225,27 +243,49 @@ void loop() {
       Serial.println(numRecipients);
     } else if (command == "get-level") {
       Serial.print("[SR04] Reading tank level... ");
-      long dist = readDistance();
-      float level = calculateFillLevel(dist);
-      float percentage = calculateFillPercentage(dist);
-      Serial.print("Dist=");
-      Serial.print(dist);
-      Serial.print("cm Fill=");
-      Serial.print(level);
-      Serial.print("cm (");
-      Serial.print(percentage);
-      Serial.println("%)");
+      long dist = readDistanceReliable(1, 3);  // Use reliable reading with 3 attempts
+      if (dist > 0) {
+        float level = calculateFillLevel(dist);
+        float percentage = calculateFillPercentage(dist);
+        if (percentage >= 0) {  // Valid percentage (not -1 for invalid readings)
+          Serial.print("Dist=");
+          Serial.print(dist);
+          Serial.print("cm Fill=");
+          Serial.print(level);
+          Serial.print("cm (");
+          Serial.print(percentage);
+          Serial.println("%)");
+        } else {
+          Serial.println("Invalid reading (filtered out)");
+        }
+      } else {
+        Serial.println("Invalid reading (filtered out)");
+      }
     } else if (command == "get-levels") {
       // Get both tank levels for RPI
-      long dist1 = readDistance();
-      long dist2 = readDistance2();
-      float pct1 = calculateFillPercentage(dist1);
-      float pct2 = calculateFillPercentage(dist2);
-      Serial.print("[LEVELS] Tank1=");
-      Serial.print(pct1);
-      Serial.print("% Tank2=");
-      Serial.print(pct2);
-      Serial.println("%");
+      Serial.print("[LEVELS] ");
+      long dist1 = readDistanceReliable(1, 3);
+      long dist2 = readDistanceReliable(2, 3);
+      
+      float pct1 = (dist1 > 0) ? calculateFillPercentage(dist1) : -1.0;
+      float pct2 = (dist2 > 0) ? calculateFillPercentage(dist2) : -1.0;
+      
+      // Only show valid readings
+      if (pct1 >= 0) {
+        Serial.print("Tank1=");
+        Serial.print(pct1);
+        Serial.print("% ");
+      } else {
+        Serial.print("Tank1=INVALID ");
+      }
+      
+      if (pct2 >= 0) {
+        Serial.print("Tank2=");
+        Serial.print(pct2);
+        Serial.println("%");
+      } else {
+        Serial.println("Tank2=INVALID");
+      }
     } else if (command.startsWith("spray_")) {
       // Format: spray_RELAY_DURATION_VOLUME
       // Example: spray_1_60_5000 (Relay 1, 60 seconds, 5000mL)
