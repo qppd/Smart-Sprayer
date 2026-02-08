@@ -16,6 +16,10 @@ class DashboardPanel(ctk.CTkFrame):
         self.scheduler = scheduler
         self.weather_service = get_weather_service()
         
+        # Track last known good tank levels
+        self.last_tank1_level = 0.0
+        self.last_tank2_level = 0.0
+        
         self.configure(fg_color="transparent")
         
         # Create dashboard layout
@@ -293,30 +297,42 @@ class DashboardPanel(ctk.CTkFrame):
                 print(f"Dashboard update error: {e}")
     
     def _update_tank_levels(self):
-        """Update tank level displays using ESP32"""
+        """Update tank level displays using ESP32
+        
+        Only updates display when valid readings are received.
+        Invalid readings (None or missing keys) keep previous display values.
+        """
         if self.hardware:
             try:
                 # Use efficient bulk read if connected
                 if hasattr(self.hardware, 'get_both_tank_levels') and self.hardware.connected:
                     levels = self.hardware.get_both_tank_levels()
-                    level1 = levels.get('tank1', 0.0)
-                    level2 = levels.get('tank2', 0.0)
+                    # Only update if we got a valid reading (key exists in dict)
+                    if 'tank1' in levels:
+                        self.last_tank1_level = levels['tank1']
+                    if 'tank2' in levels:
+                        self.last_tank2_level = levels['tank2']
                 else:
                     # Fallback to individual reads
-                    level1 = self.hardware.get_tank_level_percentage(1)
-                    level2 = self.hardware.get_tank_level_percentage(2)
+                    level1_reading = self.hardware.get_tank_level_percentage(1)
+                    level2_reading = self.hardware.get_tank_level_percentage(2)
+                    # Only update if valid (not None)
+                    if level1_reading is not None:
+                        self.last_tank1_level = level1_reading
+                    if level2_reading is not None:
+                        self.last_tank2_level = level2_reading
                 
-                # Update Container 1
-                self.tank1_progress.set(level1 / 100)
-                self.tank1_label.configure(text=f"{level1:.1f}%")
+                # Update Container 1 display with last known good value
+                self.tank1_progress.set(self.last_tank1_level / 100)
+                self.tank1_label.configure(text=f"{self.last_tank1_level:.1f}%")
                 # Calculate actual liters based on 16L capacity
-                liters1 = (level1 / 100) * 16.0
+                liters1 = (self.last_tank1_level / 100) * 16.0
                 self.tank1_liters.configure(text=f"{liters1:.1f} Liters")
                 
                 # Set color based on level
-                if level1 > 50:
+                if self.last_tank1_level > 50:
                     color1 = "#4CAF50"  # Green
-                elif level1 > 20:
+                elif self.last_tank1_level > 20:
                     color1 = "#FF9800"  # Orange
                 else:
                     color1 = "#F44336"  # Red
@@ -324,16 +340,16 @@ class DashboardPanel(ctk.CTkFrame):
                 self.tank1_progress.configure(progress_color=color1)
                 self.tank1_label.configure(text_color=color1)
                 
-                # Update Container 2
-                self.tank2_progress.set(level2 / 100)
-                self.tank2_label.configure(text=f"{level2:.1f}%")
+                # Update Container 2 display with last known good value
+                self.tank2_progress.set(self.last_tank2_level / 100)
+                self.tank2_label.configure(text=f"{self.last_tank2_level:.1f}%")
                 # Calculate actual liters based on 16L capacity
-                liters2 = (level2 / 100) * 16.0
+                liters2 = (self.last_tank2_level / 100) * 16.0
                 self.tank2_liters.configure(text=f"{liters2:.1f} Liters")
                 
-                if level2 > 50:
+                if self.last_tank2_level > 50:
                     color2 = "#4CAF50"
-                elif level2 > 20:
+                elif self.last_tank2_level > 20:
                     color2 = "#FF9800"
                 else:
                     color2 = "#F44336"

@@ -156,13 +156,13 @@ class ESP32Hardware(HardwareInterface):
                             
                             # Check if reading is INVALID before converting to float
                             if percentage_str == "INVALID" or percentage_str.upper() == "INVALID":
-                                return 0.0  # Return 0% for invalid readings
+                                return None  # Return None to keep previous value displayed
                             
                             percentage = float(percentage_str)
                             
                             # Filter out invalid readings (-1.0 from ESP32)
                             if percentage < 0:
-                                return 0.0  # Return 0% for invalid readings
+                                return None  # Return None to keep previous value displayed
                             
                             return max(0.0, min(100.0, percentage))
                 
@@ -299,10 +299,15 @@ class ESP32Hardware(HardwareInterface):
         return None
     
     def get_both_tank_levels(self):
-        """Get both tank levels as percentages"""
+        """Get both tank levels as percentages
+        
+        Returns dict with tank levels. Keys only present if valid reading obtained.
+        If a tank has INVALID reading, its key won't be in the returned dict,
+        allowing UI to keep displaying the previous value.
+        """
         response = self._send_command("get-levels")
         
-        levels = {'tank1': 0.0, 'tank2': 0.0}
+        levels = {}  # Don't initialize with default values
         if response:
             try:
                 # Filter out command echoes and acknowledgments
@@ -325,9 +330,8 @@ class ESP32Hardware(HardwareInterface):
                                 try:
                                     levels['tank1'] = float(value_str)
                                 except ValueError:
-                                    levels['tank1'] = 0.0
-                            else:
-                                levels['tank1'] = 0.0  # INVALID reading = 0%
+                                    pass  # Skip invalid values, keep previous display
+                            # If INVALID: don't set the key, caller will keep previous value
                         elif "Tank2=" in part:
                             value_str = part.split("=")[1].replace("%", "")
                             # Check if reading is INVALID before converting to float
@@ -335,9 +339,8 @@ class ESP32Hardware(HardwareInterface):
                                 try:
                                     levels['tank2'] = float(value_str)
                                 except ValueError:
-                                    levels['tank2'] = 0.0
-                            else:
-                                levels['tank2'] = 0.0  # INVALID reading = 0%
+                                    pass  # Skip invalid values, keep previous display
+                            # If INVALID: don't set the key, caller will keep previous value
             except Exception as e:
                 print(f"[ESP32] Error parsing tank levels: {e}")
                 print(f"[ESP32] Response was: {response}")

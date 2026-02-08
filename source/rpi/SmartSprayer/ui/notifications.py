@@ -15,6 +15,10 @@ class NotificationsPanel(ctk.CTkFrame):
         self.data_store = data_store
         self.hardware = hardware
         
+        # Track last known good tank levels
+        self.last_tank1_level = 0.0
+        self.last_tank2_level = 0.0
+        
         self.configure(fg_color="transparent")
         
         self._create_widgets()
@@ -201,16 +205,24 @@ class NotificationsPanel(ctk.CTkFrame):
             )
     
     def _update_tank_status(self):
-        """Update tank status displays"""
+        """Update tank status displays
+        
+        Only updates display when valid readings are received.
+        Invalid readings (None) keep previous display values.
+        """
         if self.hardware:
             # Container 1
-            level1 = self.hardware.get_tank_level_percentage(1)
-            self.tank1_status.configure(text=f"{level1:.0f}% Full")
+            level1_reading = self.hardware.get_tank_level_percentage(1)
+            if level1_reading is not None:
+                self.last_tank1_level = level1_reading
             
-            if level1 > 50:
+            # Use last known good value for display
+            self.tank1_status.configure(text=f"{self.last_tank1_level:.0f}% Full")
+            
+            if self.last_tank1_level > 50:
                 self.tank1_status.configure(text_color="#4CAF50")
                 self.tank1_indicator.configure(text="✓ OK", text_color="#4CAF50")
-            elif level1 > 20:
+            elif self.last_tank1_level > 20:
                 self.tank1_status.configure(text_color="#FF9800")
                 self.tank1_indicator.configure(text="⚠ Low", text_color="#FF9800")
             else:
@@ -218,13 +230,17 @@ class NotificationsPanel(ctk.CTkFrame):
                 self.tank1_indicator.configure(text="✕ Critical", text_color="#F44336")
             
             # Container 2
-            level2 = self.hardware.get_tank_level_percentage(2)
-            self.tank2_status.configure(text=f"{level2:.0f}% Full")
+            level2_reading = self.hardware.get_tank_level_percentage(2)
+            if level2_reading is not None:
+                self.last_tank2_level = level2_reading
             
-            if level2 > 50:
+            # Use last known good value for display
+            self.tank2_status.configure(text=f"{self.last_tank2_level:.0f}% Full")
+            
+            if self.last_tank2_level > 50:
                 self.tank2_status.configure(text_color="#4CAF50")
                 self.tank2_indicator.configure(text="✓ OK", text_color="#4CAF50")
-            elif level2 > 20:
+            elif self.last_tank2_level > 20:
                 self.tank2_status.configure(text_color="#FF9800")
                 self.tank2_indicator.configure(text="⚠ Low", text_color="#FF9800")
             else:
