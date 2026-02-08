@@ -9,11 +9,28 @@ const int echoPin = ECHO_PIN;
 const int trig2Pin = TRIG2_PIN;
 const int echo2Pin = ECHO2_PIN;
 
+// Moving average filter configuration
+#define MOVING_AVG_WINDOW 5
+
+// Moving average buffers for smooth readings
+long sensor1Buffer[MOVING_AVG_WINDOW] = {0};
+long sensor2Buffer[MOVING_AVG_WINDOW] = {0};
+int sensor1Index = 0;
+int sensor2Index = 0;
+bool sensor1BufferFilled = false;
+bool sensor2BufferFilled = false;
+
 void initSR04() {
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
   pinMode(trig2Pin, OUTPUT);
   pinMode(echo2Pin, INPUT);
+  
+  // Initialize buffers with invalid readings
+  for (int i = 0; i < MOVING_AVG_WINDOW; i++) {
+    sensor1Buffer[i] = 0;
+    sensor2Buffer[i] = 0;
+  }
 }
 
 long readDistance() {
@@ -69,24 +86,67 @@ long readDistanceReliable(int sensorNum = 1, int maxAttempts = 3) {
       }
     }
     
-    // Return median value
-    return readings[validCount / 2];
+    // Get median value
+    long median = readings[validCount / 2];
+    
+    // Add to moving average buffer
+    if (sensorNum == 1) {
+      sensor1Buffer[sensor1Index] = median;
+      sensor1Index = (sensor1Index + 1) % MOVING_AVG_WINDOW;
+      if (sensor1Index == 0) sensor1BufferFilled = true;
+    } else {
+      sensor2Buffer[sensor2Index] = median;
+      sensor2Index = (sensor2Index + 1) % MOVING_AVG_WINDOW;
+      if (sensor2Index == 0) sensor2BufferFilled = true;
+    }
+    
+    // Calculate moving average
+    return calculateMovingAverage(sensorNum);
   }
   
   // If all readings were invalid, return 0 (will be filtered out)
   return 0;
 }
 
-// Container level calculation functions
-// Distance 22cm = Full (100%, 16L), Distance 50cm = Empty (0%, 0L)
-float calculateFillPercentage(long distance) {
-  // Handle invalid readings (0cm or out of range)
-  if (distance <= 0 || distance > CONTAINER_EMPTY_DISTANCE + 10) {
-    return -1.0; // Invalid reading, will be filtered out
+// Calculate moving average from buffer
+long calculateMovingAverage(int sensorNum) {
+  long* buffer = (sensorNum == 1) ? sensor1Buffer : sensor2Buffer;
+  bool bufferFilled = (sensorNum == 1) ? sensor1BufferFilled : sensor2BufferFilled;
+  
+  long sum = 0;
+  int count = bufferFilled ? MOVING_AVG_WINDOW : 
+              ((sensorNum == 1) ? sensor1Index : sensor2Index);
+  
+  // If no readings yet, return 0
+  if (count == 0) return 0;
+  
+  // Sum valid readings in buffer
+  int validCount = 0;
+  for (int i = 0; i < count; i++) {
+    if (buffer[i] > 0) {  // Skip invalid readings (0)
+      sum += buffer[i];
+      validCount++;
+    }
   }
   
-  // If distance <= 22cm: tank is full (100%)
-  if (distance <= CONTAINER_FULL_DISTANCE) {
+  // Return average of valid readings
+  return (validCount > 0) ? (sum / validCount) : 0;
+}
+
+// Container level calculation functions
+// Rules:
+// - 0 cm = INVALID reading (sensor error)
+// - 1-22 cm = FULL (100%, 16L)
+// - 22-50 cm = Proportional (0-100%)
+// - >50 cm = EMPTY (0%, 0L)
+float calculateFillPercentage(long distance) {
+  // Handle invalid readings (0cm = sensor error)
+  if (distance <= 0) {
+    return -1.0; // Invalid reading marker
+  }
+  
+  // If distance 1-22cm: tank is full (100%)
+  if (distance > 0 && distance <= CONTAINER_FULL_DISTANCE) {
     return 100.0;
   }
   

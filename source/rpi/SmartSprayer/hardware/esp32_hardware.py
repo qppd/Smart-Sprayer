@@ -18,6 +18,67 @@ from hardware.hardware_interface import HardwareInterface
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PINS_CONFIG import CONTAINER_EMPTY_DISTANCE, CONTAINER_FULL_DISTANCE, CONTAINER_CAPACITY_LITERS
 
+# ============================================
+# FRAMED PROTOCOL FUNCTIONS
+# ============================================
+
+def calculate_checksum(data: str) -> int:
+    """Calculate XOR checksum for framed protocol"""
+    checksum = 0
+    for char in data:
+        checksum ^= ord(char)
+    return checksum
+
+def validate_frame(frame: str) -> tuple:
+    """
+    Validate and parse framed response
+    Returns: (valid, command, data_dict)
+    """
+    if not frame or not frame.startswith('<') or not frame.endswith('>'):
+        return (False, None, None)
+    
+    # Remove < and >
+    content = frame[1:-1]
+    
+    # Split by colons
+    parts = content.split(':')
+    if len(parts) != 3:
+        return (False, None, None)
+    
+    command, data, checksum_str = parts
+    
+    # Validate checksum
+    try:
+        received_checksum = int(checksum_str, 16)
+        payload = f"{command}:{data}"
+        calculated_checksum = calculate_checksum(payload)
+        
+        if received_checksum != calculated_checksum:
+            print(f"[FRAME ERROR] Checksum mismatch: expected {calculated_checksum:X}, got {received_checksum:X}")
+            return (False, None, None)
+    except ValueError:
+        print(f"[FRAME ERROR] Invalid checksum format: {checksum_str}")
+        return (False, None, None)
+    
+    # Parse data based on command
+    if command == "LEVELS":
+        # Format: dist1,pct1,dist2,pct2
+        data_parts = data.split(',')
+        if len(data_parts) == 4:
+            try:
+                data_dict = {
+                    'dist1': int(data_parts[0]),
+                    'pct1': float(data_parts[1]),
+                    'dist2': int(data_parts[2]),
+                    'pct2': float(data_parts[3])
+                }
+                return (True, command, data_dict)
+            except ValueError as e:
+                print(f"[FRAME ERROR] Failed to parse LEVELS data: {e}")
+                return (False, None, None)
+    
+    return (False, None, None)
+
 class ESP32Hardware(HardwareInterface):
     """Hardware implementation that communicates with ESP32 via USB serial"""
     
@@ -28,6 +89,7 @@ class ESP32Hardware(HardwareInterface):
         self.timeout = timeout
         self.serial_connection = None
         self.connected = False
+        self.use_framed_protocol = True  # Try framed protocol first
         
         # Try to connect to ESP32
         self._connect()
@@ -80,13 +142,44 @@ class ESP32Hardware(HardwareInterface):
 
             response = "\n".join(response_lines).strip() if response_lines else None
             
-            # Debug print for distance-related commands
-            if any(cmd in command for cmd in ['get-distance', 'get-level', 'get-levels', 'get-status']):
+            # Debug print for distance-related commands (but not framed)
+            if any(cmd in command for cmd in ['get-distance', 'get-level', 'get-status']) and not command.startswith('<'):
                 print(f"[ESP32 DEBUG] Command: '{command}' -> Response: '{response}'")
             
             return response
         except Exception as e:
             print(f"[ESP32] Error sending command '{command}': {e}")
+            return None
+    
+    def _send_framed_command(self, command: str, data: str = "") -> str:
+        """Send framed command with checksum and return response"""
+        if not self.connected or not self.serial_connection:
+            print(f"[ESP32] Not connected. Framed command '{command}' not sent.")
+            return None
+        
+        try:
+            # Build frame
+            payload = f"{command}:{data}"
+            checksum = calculate_checksum(payload)
+            frame = f"<{payload}:{checksum:X}>"
+            
+            # Send frame
+            self.serial_connection.write(f"{frame}\n".encode())
+            
+            # Read framed response
+            deadline = time.monotonic() + max(0.5, float(self.timeout))
+            
+            while time.monotonic() < deadline:
+                if self.serial_connection.in_waiting > 0:
+                    line = self.serial_connection.readline().decode('utf-8', errors='ignore').strip()
+                    if line.startswith('<') and line.endswith('>'):
+                        return line
+                time.sleep(0.01)
+            
+            print(f"[FRAME TIMEOUT] No framed response for: {frame}")
+            return None
+        except Exception as e:
+            print(f"[ESP32] Error sending framed command '{command}': {e}")
             return None
     
     def relay_on(self, relay_num=1):
@@ -274,13 +367,46 @@ class ESP32Hardware(HardwareInterface):
     def get_both_tank_levels(self):
         """Get both tank levels as percentages
         
+        Uses framed protocol (GET_LEVELS) with fallback to old protocol.
         Returns dict with tank levels. Keys only present if valid reading obtained.
         If a tank has INVALID reading, its key won't be in the returned dict,
         allowing UI to keep displaying the previous value.
         """
+        levels = {}  # Don't initialize with default values
+        
+        # Try framed protocol first
+        if self.use_framed_protocol:
+            response = self._send_framed_command("GET_LEVELS")
+            
+            if response:
+                valid, command, data = validate_frame(response)
+                
+                if valid and command == "LEVELS":
+                    # Successfully got framed response
+                    # data = {'dist1': int, 'pct1': float, 'dist2': int, 'pct2': float}
+                    
+                    # Only add keys for valid readings (pct >= 0)
+                    if data['pct1'] >= 0:
+                        levels['tank1'] = max(0.0, min(100.0, data['pct1']))
+                        print(f"[FRAME] Tank1: {data['dist1']}cm = {levels['tank1']:.1f}%")
+                    else:
+                        print(f"[FRAME] Tank1: INVALID ({data['dist1']}cm)")
+                    
+                    if data['pct2'] >= 0:
+                        levels['tank2'] = max(0.0, min(100.0, data['pct2']))
+                        print(f"[FRAME] Tank2: {data['dist2']}cm = {levels['tank2']:.1f}%")
+                    else:
+                        print(f"[FRAME] Tank2: INVALID ({data['dist2']}cm)")
+                    
+                    return levels
+                else:
+                    # Framed protocol failed, fall back to old protocol
+                    print("[FRAME] Invalid or no framed response, falling back to old protocol")
+                    self.use_framed_protocol = False
+        
+        # Fallback to old protocol
         response = self._send_command("get-levels")
         
-        levels = {}  # Don't initialize with default values
         if response:
             try:
                 # Filter out command echoes and acknowledgments

@@ -5,6 +5,71 @@
 #include "RTC_CONFIG.h"
 #include "SR04_CONFIG.h"
 
+// ============================================
+// FRAMED PROTOCOL FUNCTIONS
+// ============================================
+
+// Calculate XOR checksum for framed protocol
+uint8_t calculateChecksum(const String& data) {
+  uint8_t checksum = 0;
+  for (unsigned int i = 0; i < data.length(); i++) {
+    checksum ^= data[i];
+  }
+  return checksum;
+}
+
+// Send framed response with checksum
+void sendFramedResponse(const String& command, const String& data) {
+  String payload = command + ":" + data;
+  uint8_t checksum = calculateChecksum(payload);
+  
+  Serial.print("<");
+  Serial.print(payload);
+  Serial.print(":");
+  Serial.print(checksum, HEX);
+  Serial.println(">");
+}
+
+// Check if command is a framed command (starts with <)
+bool isFramedCommand(const String& cmd) {
+  return cmd.startsWith("<") && cmd.endsWith(">");
+}
+
+// Parse framed command and validate checksum
+bool parseFramedCommand(const String& frame, String& command, String& data) {
+  // Remove < and >
+  String content = frame.substring(1, frame.length() - 1);
+  
+  // Find last colon (before checksum)
+  int lastColon = content.lastIndexOf(':');
+  if (lastColon < 0) return false;
+  
+  // Extract checksum
+  String checksumStr = content.substring(lastColon + 1);
+  String payload = content.substring(0, lastColon);
+  
+  // Validate checksum
+  uint8_t receivedChecksum = strtol(checksumStr.c_str(), NULL, 16);
+  uint8_t calculatedChecksum = calculateChecksum(payload);
+  
+  if (receivedChecksum != calculatedChecksum) {
+    Serial.println("[ERROR] Checksum mismatch");
+    return false;
+  }
+  
+  // Parse command and data
+  int firstColon = payload.indexOf(':');
+  if (firstColon < 0) {
+    command = payload;
+    data = "";
+  } else {
+    command = payload.substring(0, firstColon);
+    data = payload.substring(firstColon + 1);
+  }
+  
+  return true;
+}
+
 void setup() {
   Serial.begin(9600);
   delay(1000);
@@ -56,6 +121,33 @@ void loop() {
     String command = Serial.readStringUntil('\n');
     command.trim();
     
+    // Check if this is a framed command
+    if (isFramedCommand(command)) {
+      String cmd, data;
+      if (parseFramedCommand(command, cmd, data)) {
+        // Handle framed commands
+        if (cmd == "GET_LEVELS") {
+          // Get both tank levels with moving average filtering
+          long dist1 = readDistanceReliable(1, 3);
+          long dist2 = readDistanceReliable(2, 3);
+          
+          float pct1 = (dist1 > 0) ? calculateFillPercentage(dist1) : -1.0;
+          float pct2 = (dist2 > 0) ? calculateFillPercentage(dist2) : -1.0;
+          
+          // Build response data: dist1,pct1,dist2,pct2
+          String responseData = String(dist1) + "," + String(pct1, 2) + "," + 
+                               String(dist2) + "," + String(pct2, 2);
+          
+          sendFramedResponse("LEVELS", responseData);
+        } else {
+          Serial.print("[ERROR] Unknown framed command: ");
+          Serial.println(cmd);
+        }
+      }
+      return; // Don't process as regular command
+    }
+    
+    // Regular (non-framed) command processing for backward compatibility
     Serial.print("[CMD] Received: ");
     Serial.println(command);
     
