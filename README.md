@@ -252,6 +252,21 @@ Refer to the wiring diagrams in the `wiring/` directory for complete circuit con
 - [Smart-Sprayer.fzz](wiring/Smart-Sprayer.fzz) - Fritzing diagram file
 - ![Smart-Sprayer Wiring Diagram](wiring/Smart-Sprayer.png)
 
+#### 3D Design Models
+The `model/` directory contains 3D design files and reference images for the Smart-Sprayer hardware enclosure:
+
+**Board Case (Main Enclosure)**
+- [Smart_Sprayer_Board_Case.stl](model/Smart_Sprayer_Board_Case.stl) - 3D model of the main board case for 3D printing
+- ![Smart_Sprayer_Board_Case.png](model/Smart_Sprayer_Board_Case.png) - Reference image of the board case design
+
+**Case Cover**
+- [Smart_Sprayer_Board_Case_Cover.stl](model/Smart_Sprayer_Board_Case_Cover.stl) - 3D model of the case cover/lid
+- ![Smart_Sprayer_Board_Case_Cover.png](model/Smart_Sprayer_Board_Case_Cover.png) - Reference image of the case cover
+
+**Full Assembly Views**
+- ![Smart_Sprayer_Full_View.png](model/Smart_Sprayer_Full_View.png) - Complete assembled system showing all components integrated in the enclosure with proper cable routing and sensor placement
+- ![Smart_Sprayer_Full_View_2.png](model/Smart_Sprayer_Full_View_2.png) - Alternative angle of the assembled system demonstrating full device configuration and component visibility
+
 #### Assembly Instructions
 1. Connect the ultrasonic sensor to GPIO 12 (Trig) and GPIO 13 (Echo)
 2. Wire the relay module to GPIO 4 and GPIO 5
@@ -442,7 +457,12 @@ Smart-Sprayer/
 ├── diagram/
 │   └── [circuit diagrams and schematics]
 ├── model/
-│   └── [AI/ML models for spray optimization]
+│   ├── SmartSprayer_Board_Case.stl
+│   ├── Smart_Sprayer_Board_Case.png
+│   ├── Smart_Sprayer_Board_Case_Cover.stl
+│   ├── Smart_Sprayer_Board_Case_Cover.png
+│   ├── Smart_Sprayer_Full_View.png
+│   └── Smart_Sprayer_Full_View_2.png
 ├── source/
 │   └── esp32/
 │       └── SmartSprayer/
