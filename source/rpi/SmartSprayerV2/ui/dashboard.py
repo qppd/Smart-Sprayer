@@ -634,94 +634,93 @@ class DashboardPanel(ctk.CTkFrame):
         forecast_section = ctk.CTkFrame(
             self.weather_card,
             fg_color="#FFF8E1",
-            corner_radius=14,
+            corner_radius=10,
             border_width=1,
             border_color="#FFE082",
         )
-        forecast_section.pack(fill="x", padx=16, pady=(10, 16))
+        forecast_section.pack(fill="x", padx=12, pady=(6, 10))
 
+        # Header row: rain GIF on left + title text on right
+        forecast_header = ctk.CTkFrame(forecast_section, fg_color="transparent")
+        forecast_header.pack(fill="x", padx=8, pady=(6, 2))
 
-        # Rain forecast title
-        ctk.CTkLabel(
-            forecast_section,
-            text="📅  RAIN FORECAST",
-            font=ctk.CTkFont(size=14, weight="bold"),
-            text_color="#E65100",
-        ).pack(pady=(10, 0))
-
-        # Cloud rain GIF icon
-        self.forecast_icon_label = ctk.CTkLabel(forecast_section, text="")
-        self.forecast_icon_label.pack(pady=(0, 6))
-        self._forecast_anim = AnimatedGIF(self.forecast_icon_label, _icon("rainy.gif"), size=(60, 60))
+        self.forecast_icon_label = ctk.CTkLabel(forecast_header, text="", width=34, height=34)
+        self.forecast_icon_label.pack(side="left", padx=(2, 6))
+        self._forecast_anim = AnimatedGIF(self.forecast_icon_label, _icon("rainy.gif"), size=(34, 34))
         if self._forecast_anim.loaded:
             self._forecast_anim.start()
-        else:
-            self.forecast_icon_label.configure(text="🌧️", font=("Arial", 36))
+
+        ctk.CTkLabel(
+            forecast_header,
+            text="RAIN FORECAST",
+            font=ctk.CTkFont(size=12, weight="bold"),
+            text_color="#E65100",
+        ).pack(side="left")
 
         forecast_row = ctk.CTkFrame(forecast_section, fg_color="transparent")
-        forecast_row.pack(fill="x", padx=10, pady=(0, 6))
+        forecast_row.pack(fill="x", padx=8, pady=(0, 4))
 
         # TODAY box
         today_box = ctk.CTkFrame(
-            forecast_row, fg_color="#FFFDE7", corner_radius=10,
+            forecast_row, fg_color="#FFFDE7", corner_radius=8,
             border_width=1, border_color="#FFE082",
         )
-        today_box.pack(side="left", expand=True, fill="both", padx=(0, 6), pady=4)
+        today_box.pack(side="left", expand=True, fill="both", padx=(0, 4), pady=2)
 
         ctk.CTkLabel(
             today_box, text="TODAY",
-            font=ctk.CTkFont(size=11, weight="bold"),
+            font=ctk.CTkFont(size=10, weight="bold"),
             text_color="#795548",
-        ).pack(pady=(8, 2))
+        ).pack(pady=(5, 1))
 
         self.forecast_today_chance = ctk.CTkLabel(
             today_box, text="--%",
-            font=ctk.CTkFont(size=22, weight="bold"),
+            font=ctk.CTkFont(size=17, weight="bold"),
             text_color="#4CAF50",
         )
         self.forecast_today_chance.pack()
 
         self.forecast_today_precip = ctk.CTkLabel(
-            today_box, text="-- mm expected",
-            font=ctk.CTkFont(size=12),
+            today_box, text="-- mm",
+            font=ctk.CTkFont(size=10),
             text_color="#616161",
         )
-        self.forecast_today_precip.pack(pady=(0, 8))
+        self.forecast_today_precip.pack(pady=(0, 5))
 
         # TOMORROW box
         tomorrow_box = ctk.CTkFrame(
-            forecast_row, fg_color="#FFFDE7", corner_radius=10,
+            forecast_row, fg_color="#FFFDE7", corner_radius=8,
             border_width=1, border_color="#FFE082",
         )
-        tomorrow_box.pack(side="left", expand=True, fill="both", padx=(6, 0), pady=4)
+        tomorrow_box.pack(side="left", expand=True, fill="both", padx=(4, 0), pady=2)
 
         ctk.CTkLabel(
             tomorrow_box, text="TOMORROW",
-            font=ctk.CTkFont(size=11, weight="bold"),
+            font=ctk.CTkFont(size=10, weight="bold"),
             text_color="#795548",
-        ).pack(pady=(8, 2))
+        ).pack(pady=(5, 1))
 
         self.forecast_tomorrow_chance = ctk.CTkLabel(
             tomorrow_box, text="--%",
-            font=ctk.CTkFont(size=22, weight="bold"),
+            font=ctk.CTkFont(size=17, weight="bold"),
             text_color="#4CAF50",
         )
         self.forecast_tomorrow_chance.pack()
 
         self.forecast_tomorrow_precip = ctk.CTkLabel(
-            tomorrow_box, text="-- mm expected",
-            font=ctk.CTkFont(size=12),
+            tomorrow_box, text="-- mm",
+            font=ctk.CTkFont(size=10),
             text_color="#616161",
         )
-        self.forecast_tomorrow_precip.pack(pady=(0, 8))
+        self.forecast_tomorrow_precip.pack(pady=(0, 5))
 
         # Alert banner
         self.forecast_alert = ctk.CTkLabel(
             forecast_section, text="",
-            font=ctk.CTkFont(size=13, weight="bold"),
+            font=ctk.CTkFont(size=11, weight="bold"),
             text_color="#E65100",
         )
-        self.forecast_alert.pack(pady=(0, 10))
+        self.forecast_alert.pack(pady=(0, 6))
 
         self._play_weather_gif("cloudy")
 
@@ -1000,13 +999,13 @@ class DashboardPanel(ctk.CTkFrame):
             text=f"{today_chance}%",
             text_color=chance_color(today_chance),
         )
-        self.forecast_today_precip.configure(text=f"{today_precip:.1f} mm expected")
+        self.forecast_today_precip.configure(text=f"{today_precip:.1f} mm")
 
         self.forecast_tomorrow_chance.configure(
             text=f"{tomorrow_chance}%",
             text_color=chance_color(tomorrow_chance),
         )
-        self.forecast_tomorrow_precip.configure(text=f"{tomorrow_precip:.1f} mm expected")
+        self.forecast_tomorrow_precip.configure(text=f"{tomorrow_precip:.1f} mm")
 
         max_chance = max(today_chance, tomorrow_chance)
         if max_chance >= 70:
@@ -1086,3 +1085,5 @@ class DashboardPanel(ctk.CTkFrame):
         self.running = False
         if self._current_anim:
             self._current_anim.stop()
+        if hasattr(self, "_forecast_anim") and self._forecast_anim:
+            self._forecast_anim.stop()
