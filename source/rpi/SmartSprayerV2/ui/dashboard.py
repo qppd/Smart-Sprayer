@@ -776,10 +776,13 @@ class DashboardPanel(ctk.CTkFrame):
         """
         while self.running:
             # --- Hardware tank levels ---
+            # Call get_both_tank_levels() ONCE to avoid sending 'get-levels' twice
+            # on the same serial port (which causes port conflict / no-data errors).
             if self.hardware:
                 try:
-                    t1 = self.hardware.get_tank1_level()
-                    t2 = self.hardware.get_tank2_level()
+                    levels = self.hardware.get_both_tank_levels()
+                    t1 = levels.get('tank1')
+                    t2 = levels.get('tank2')
                     if t1 is not None:
                         self._raw_t1 = t1
                     if t2 is not None:

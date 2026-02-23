@@ -25,6 +25,18 @@ class HardwareInterface:
     
     def get_tank_level_percentage(self, sensor_num=1):
         raise NotImplementedError
+
+    def get_both_tank_levels(self):
+        """Return dict with keys 'tank1' and/or 'tank2' as float percentages.
+        Default implementation calls get_tank_level_percentage for each sensor."""
+        levels = {}
+        t1 = self.get_tank_level_percentage(1)
+        if t1 is not None:
+            levels['tank1'] = t1
+        t2 = self.get_tank_level_percentage(2)
+        if t2 is not None:
+            levels['tank2'] = t2
+        return levels
     
     # Buzzer
     def buzzer_on(self):
