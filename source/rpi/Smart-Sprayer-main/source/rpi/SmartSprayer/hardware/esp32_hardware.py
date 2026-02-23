@@ -251,6 +251,14 @@ class ESP32Hardware(HardwareInterface):
             return levels[key]
         return None
     
+    def get_tank1_level(self):
+        """Get tank 1 level as percentage"""
+        return self.get_tank_level_percentage(1)
+    
+    def get_tank2_level(self):
+        """Get tank 2 level as percentage"""
+        return self.get_tank_level_percentage(2)
+    
     def buzzer_on(self):
         """Turn buzzer ON via ESP32"""
         response = self._send_command("buzzer-on")
@@ -287,11 +295,14 @@ class ESP32Hardware(HardwareInterface):
         return response
     
     def send_sms(self, number, message):
-        """Send SMS via ESP32 GSM module"""
-        # Note: This requires extending ESP32 firmware to accept SMS parameters
-        # For now, use the basic command
-        response = self._send_command("send-sms")
-        print(f"[ESP32] SMS command sent")
+        """Send SMS via ESP32 GSM module using send-sms-custom command"""
+        if not self.connected:
+            print("[ESP32] Not connected. Cannot send SMS.")
+            return None
+        # Use the custom SMS command: send-sms-custom_{number}_{message}
+        command = f"send-sms-custom_{number}_{message}"
+        response = self._send_command(command)
+        print(f"[ESP32] SMS sent to {number}")
         return response
     
     def send_sms_to_all(self, message):
@@ -516,7 +527,9 @@ class ESP32Hardware(HardwareInterface):
         
         print(f"[ESP32] Bulk synced {len(phone_numbers)} recipients")
         return response
-
+    
+    def cleanup(self):
+        """Cleanup serial connection"""
         if self.serial_connection and self.connected:
             self.serial_connection.close()
             print("[ESP32] Serial connection closed")

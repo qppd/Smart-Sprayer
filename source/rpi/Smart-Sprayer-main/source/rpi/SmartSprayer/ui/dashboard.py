@@ -128,6 +128,11 @@ class DashboardPanel(ctk.CTkFrame):
         self.last_tank2_level = 0.0
         self.update_counter   = 0
 
+        # Tank low-level SMS alert state (prevents repeated SMS)
+        self._tank1_low_alert_sent = False
+        self._tank2_low_alert_sent = False
+        self._TANK_LOW_THRESHOLD = 10.0  # percentage
+
         self.configure(fg_color=BG)
 
         self._current_anim: AnimatedGIF | None = None
@@ -746,6 +751,10 @@ class DashboardPanel(ctk.CTkFrame):
             t1 = self.hardware.get_tank1_level()
             t2 = self.hardware.get_tank2_level()
 
+            # Check tank low-level SMS alerts
+            self._check_tank_low_level_sms(1, t1)
+            self._check_tank_low_level_sms(2, t2)
+
             for level, prog, lbl, lit, badge in [
                 (t1, self.tank1_progress, self.tank1_label, self.tank1_liters, self.tank1_status),
                 (t2, self.tank2_progress, self.tank2_label, self.tank2_liters, self.tank2_status),
@@ -802,7 +811,7 @@ class DashboardPanel(ctk.CTkFrame):
         temp       = weather.get("temperature_c", 0)
         wind_ms    = weather.get("wind_kph", 0) / 3.6
         humidity   = weather.get("humidity", 0)
-        feels_like = weather.get("feelslike_c", temp)
+        feels_like = weather.get("feels_like_c", temp)
         temp_min   = weather.get("mintemp_c", temp - 2)
         temp_max   = weather.get("maxtemp_c", temp + 2)
 
@@ -817,6 +826,61 @@ class DashboardPanel(ctk.CTkFrame):
         self.weather_humidity.configure(text=f"{humidity}%")
         self.weather_feels_like.configure(text=f"Feels like {feels_like:.0f}°C")
         self.weather_uv.configure(text=f"{temp_min:.0f}° / {temp_max:.0f}°")
+
+    # ======================================================
+    def _check_tank_low_level_sms(self, tank_num, level):
+        """Check if a tank has reached low level and send SMS alert once"""
+        if level is None:
+            return
+
+        if tank_num == 1:
+            alert_sent = self._tank1_low_alert_sent
+        else:
+            alert_sent = self._tank2_low_alert_sent
+
+        if level <= self._TANK_LOW_THRESHOLD and not alert_sent:
+            # Tank just dropped to or below threshold — send SMS
+            self._send_tank_low_sms(tank_num, level)
+            if tank_num == 1:
+                self._tank1_low_alert_sent = True
+            else:
+                self._tank2_low_alert_sent = True
+        elif level > self._TANK_LOW_THRESHOLD and alert_sent:
+            # Tank recovered above threshold — reset alert so it can fire again
+            if tank_num == 1:
+                self._tank1_low_alert_sent = False
+            else:
+                self._tank2_low_alert_sent = False
+
+    def _send_tank_low_sms(self, tank_num, level):
+        """Send SMS alert for low tank level in a background thread"""
+        def _do_send():
+            try:
+                from core.data_store import get_recipients
+                recipients = get_recipients()
+                if not recipients:
+                    print(f"[SMS] No recipients configured — skipping tank {tank_num} low alert")
+                    return
+
+                liters = (level / 100.0) * 16.0
+                message = (
+                    f"ALERT: Container {tank_num} is critically low! "
+                    f"Level: {level:.1f}% ({liters:.1f}L remaining). "
+                    f"Please refill soon."
+                )
+
+                if self.hardware and self.hardware.connected:
+                    for r in recipients:
+                        phone = r.get('phone', '')
+                        if phone:
+                            self.hardware.send_sms(phone, message)
+                            print(f"[SMS] Tank {tank_num} low alert sent to {phone}")
+                else:
+                    print(f"[SMS] Hardware not connected — could not send tank {tank_num} low alert")
+            except Exception as e:
+                print(f"[SMS] Error sending tank low alert: {e}")
+
+        threading.Thread(target=_do_send, daemon=True).start()
 
     # ======================================================
     def cleanup(self):

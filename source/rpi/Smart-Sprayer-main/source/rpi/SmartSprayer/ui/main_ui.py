@@ -87,7 +87,7 @@ class SmartSprayerUI(ctk.CTk):
         left = ctk.CTkFrame(self.topbar, fg_color="transparent")
         left.grid(row=0, column=0, sticky="w", padx=24, pady=18)
 
-        logo_path = r"C:\Users\zaira felicidario\Downloads\Smart-Sprayer-main\Smart-Sprayer-main\source\rpi\SmartSprayer\ui\assets\logo.png"
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "logo.png")
 
         self.logo_img = None
 
@@ -133,7 +133,7 @@ class SmartSprayerUI(ctk.CTk):
         self.nav_indicators = {}
 
         # Load navigation icons
-        icons_path = r"C:\Users\zaira felicidario\Downloads\Smart-Sprayer-main\Smart-Sprayer-main\source\rpi\SmartSprayer\ui\assets\icons"
+        icons_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "icons")
         
         nav_items = [
             ("Dashboard", "dashboard", "dashboard.png"),
@@ -307,5 +307,5 @@ def main():
     app.mainloop()
 
 
-if __name__ == "_main_":
+if __name__ == "__main__":
     main()

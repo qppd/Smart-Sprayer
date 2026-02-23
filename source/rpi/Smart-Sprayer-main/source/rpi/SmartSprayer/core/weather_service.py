@@ -101,16 +101,22 @@ class WeatherService:
             return False  # Assume safe to spray if check fails
     
     def get_weather_data(self) -> Optional[Dict]:
-        """Get detailed weather data"""
+        """Get detailed weather data including today's min/max from forecast"""
         if not self.available:
             return None
         
         try:
-            response = requests.get(self.api_url, timeout=10)
+            # Prefer forecast URL to get min/max temps alongside current data
+            url = self.forecast_url if self.forecast_url else self.api_url
+            response = requests.get(url, timeout=10)
             
             if response.status_code == 200:
                 data = response.json()
                 current = data.get('current', {})
+                
+                # Extract today's min/max from forecast if available
+                forecast_days = data.get('forecast', {}).get('forecastday', [])
+                today_day = forecast_days[0].get('day', {}) if forecast_days else {}
                 
                 weather_data = {
                     'temperature_c': current.get('temp_c'),
@@ -122,6 +128,8 @@ class WeatherService:
                     'cloud': current.get('cloud'),
                     'feels_like_c': current.get('feelslike_c'),
                     'uv': current.get('uv'),
+                    'mintemp_c': today_day.get('mintemp_c'),
+                    'maxtemp_c': today_day.get('maxtemp_c'),
                     'timestamp': datetime.now().isoformat()
                 }
                 
