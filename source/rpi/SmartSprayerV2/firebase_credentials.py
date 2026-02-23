@@ -6,8 +6,7 @@ FIREBASE_CONFIG = {
     "apiKey": "AIzaSyB8MpkxNgJHCGGB8MtXne1fkPhspF7lpfw",
     "authDomain": "smart-sprayer-154fa.firebaseapp.com",
     "databaseURL": "https://smart-sprayer-154fa-default-rtdb.firebaseio.com",
-    "storageBucket": "smart-sprayer-154fa.appspot.com",
-    "serviceAccount": "serviceAccountKey.json"  # Optional: for admin SDK features
+    "storageBucket": "smart-sprayer-154fa.appspot.com"
 }
 
 # Firebase Authentication credentials
