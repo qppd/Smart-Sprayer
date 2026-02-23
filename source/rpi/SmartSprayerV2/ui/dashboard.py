@@ -640,12 +640,23 @@ class DashboardPanel(ctk.CTkFrame):
         )
         forecast_section.pack(fill="x", padx=16, pady=(10, 16))
 
+
+        # Rain forecast title
         ctk.CTkLabel(
             forecast_section,
             text="📅  RAIN FORECAST",
             font=ctk.CTkFont(size=14, weight="bold"),
             text_color="#E65100",
-        ).pack(pady=(10, 6))
+        ).pack(pady=(10, 0))
+
+        # Cloud rain GIF icon
+        self.forecast_icon_label = ctk.CTkLabel(forecast_section, text="")
+        self.forecast_icon_label.pack(pady=(0, 6))
+        self._forecast_anim = AnimatedGIF(self.forecast_icon_label, _icon("rainy.gif"), size=(60, 60))
+        if self._forecast_anim.loaded:
+            self._forecast_anim.start()
+        else:
+            self.forecast_icon_label.configure(text="🌧️", font=("Arial", 36))
 
         forecast_row = ctk.CTkFrame(forecast_section, fg_color="transparent")
         forecast_row.pack(fill="x", padx=10, pady=(0, 6))
