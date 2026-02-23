@@ -128,6 +128,12 @@ class DashboardPanel(ctk.CTkFrame):
         self.last_tank2_level = 0.0
         self.update_counter   = 0
 
+        # Thread-safe data caches — written by background thread, read by main thread
+        self._raw_t1:       float | None = None
+        self._raw_t2:       float | None = None
+        self._raw_weather:  dict  | None = None
+        self._raw_forecast: dict  | None = None
+
         # Tank low-level SMS alert state (prevents repeated SMS)
         self._tank1_low_alert_sent = False
         self._tank2_low_alert_sent = False
@@ -141,7 +147,10 @@ class DashboardPanel(ctk.CTkFrame):
         self._create_widgets()
 
         self.running = True
-        threading.Thread(target=self._update_loop, daemon=True).start()
+        # Background thread: ONLY blocking I/O (serial + HTTP). Never calls tkinter.
+        threading.Thread(target=self._fetch_data_loop, daemon=True).start()
+        # Main-thread periodic loop: reads _raw_* caches and updates widgets.
+        self.after(1000, self._update_loop)
 
     # ======================================================
     def _load_static_icons(self):
@@ -617,6 +626,92 @@ class DashboardPanel(ctk.CTkFrame):
         self.weather_humidity = _pill(pills, 1, humidity_img, "💧", "Humidity")
         self.weather_uv       = _pill(pills, 2, temp_img,     "🌡", "Min / Max")
 
+        # ── RAIN FORECAST SECTION ────────────────────────────
+        ctk.CTkFrame(
+            self.weather_card, height=1, fg_color="#D6EEE0", corner_radius=0
+        ).pack(fill="x", padx=0, pady=(12, 0))
+
+        forecast_section = ctk.CTkFrame(
+            self.weather_card,
+            fg_color="#FFF8E1",
+            corner_radius=14,
+            border_width=1,
+            border_color="#FFE082",
+        )
+        forecast_section.pack(fill="x", padx=16, pady=(10, 16))
+
+        ctk.CTkLabel(
+            forecast_section,
+            text="📅  RAIN FORECAST",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color="#E65100",
+        ).pack(pady=(10, 6))
+
+        forecast_row = ctk.CTkFrame(forecast_section, fg_color="transparent")
+        forecast_row.pack(fill="x", padx=10, pady=(0, 6))
+
+        # TODAY box
+        today_box = ctk.CTkFrame(
+            forecast_row, fg_color="#FFFDE7", corner_radius=10,
+            border_width=1, border_color="#FFE082",
+        )
+        today_box.pack(side="left", expand=True, fill="both", padx=(0, 6), pady=4)
+
+        ctk.CTkLabel(
+            today_box, text="TODAY",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color="#795548",
+        ).pack(pady=(8, 2))
+
+        self.forecast_today_chance = ctk.CTkLabel(
+            today_box, text="--%",
+            font=ctk.CTkFont(size=22, weight="bold"),
+            text_color="#4CAF50",
+        )
+        self.forecast_today_chance.pack()
+
+        self.forecast_today_precip = ctk.CTkLabel(
+            today_box, text="-- mm expected",
+            font=ctk.CTkFont(size=12),
+            text_color="#616161",
+        )
+        self.forecast_today_precip.pack(pady=(0, 8))
+
+        # TOMORROW box
+        tomorrow_box = ctk.CTkFrame(
+            forecast_row, fg_color="#FFFDE7", corner_radius=10,
+            border_width=1, border_color="#FFE082",
+        )
+        tomorrow_box.pack(side="left", expand=True, fill="both", padx=(6, 0), pady=4)
+
+        ctk.CTkLabel(
+            tomorrow_box, text="TOMORROW",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color="#795548",
+        ).pack(pady=(8, 2))
+
+        self.forecast_tomorrow_chance = ctk.CTkLabel(
+            tomorrow_box, text="--%",
+            font=ctk.CTkFont(size=22, weight="bold"),
+            text_color="#4CAF50",
+        )
+        self.forecast_tomorrow_chance.pack()
+
+        self.forecast_tomorrow_precip = ctk.CTkLabel(
+            tomorrow_box, text="-- mm expected",
+            font=ctk.CTkFont(size=12),
+            text_color="#616161",
+        )
+        self.forecast_tomorrow_precip.pack(pady=(0, 8))
+
+        # Alert banner
+        self.forecast_alert = ctk.CTkLabel(
+            forecast_section, text="",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color="#E65100",
+        )
+        self.forecast_alert.pack(pady=(0, 10))
+
         self._play_weather_gif("cloudy")
 
     # ======================================================
@@ -661,20 +756,61 @@ class DashboardPanel(ctk.CTkFrame):
         return "partly_cloudy"
 
     # ======================================================
-    # UPDATE LOOP
+    # DATA FETCH LOOP  (background thread — NO tkinter calls)
+    # ======================================================
+
+    def _fetch_data_loop(self):
+        """Background thread: fetches blocking I/O only.
+        Writes results to self._raw_* instance variables.
+        Never calls any tkinter / widget methods.
+        """
+        while self.running:
+            # --- Hardware tank levels ---
+            if self.hardware:
+                try:
+                    t1 = self.hardware.get_tank1_level()
+                    t2 = self.hardware.get_tank2_level()
+                    if t1 is not None:
+                        self._raw_t1 = t1
+                    if t2 is not None:
+                        self._raw_t2 = t2
+                except Exception:
+                    pass
+
+            # --- Weather (cached hourly; usually returns instantly) ---
+            if self.weather_service and self.weather_service.available:
+                try:
+                    w = self.weather_service.get_current_weather_cached()
+                    if w:
+                        self._raw_weather = w
+                    f = self.weather_service.get_forecast_data_cached()
+                    if f:
+                        self._raw_forecast = f
+                except Exception:
+                    pass
+
+            time.sleep(2)
+
+    # ======================================================
+    # UPDATE LOOP  (main thread — reads _raw_* caches → updates widgets)
     # ======================================================
 
     def _update_loop(self):
-        while self.running:
-            try:
-                self.update_counter += 1
-                self.after(0, self._update_tank_levels)
-                self.after(0, self._update_next_schedule)
-                self.after(0, self._update_weather)
-                self.after(0, self._update_debug_counter)
-            except Exception as e:
-                print(f"❌ Error in update loop: {e}")
-            time.sleep(1)
+        """Main-thread periodic UI refresh. No blocking calls — tkinter-safe."""
+        if not self.running:
+            return
+        try:
+            self.update_counter += 1
+            self._update_tank_levels()
+            self._update_next_schedule()
+            self._update_weather()
+            self._update_debug_counter()
+        except Exception as e:
+            print(f"❌ Dashboard UI update error: {e}")
+        try:
+            self.after(1000, self._update_loop)
+        except Exception:
+            pass
 
     def _update_debug_counter(self):
         self.debug_label.configure(text=f"Updates: {self.update_counter}")
@@ -745,16 +881,15 @@ class DashboardPanel(ctk.CTkFrame):
 
     # ======================================================
     def _update_tank_levels(self):
-        if not self.hardware:
-            return
+        """Reads cached tank levels (populated by _fetch_data_loop) — no blocking."""
+        t1 = self._raw_t1
+        t2 = self._raw_t2
+
+        # Check tank low-level SMS alerts
+        self._check_tank_low_level_sms(1, t1)
+        self._check_tank_low_level_sms(2, t2)
+
         try:
-            t1 = self.hardware.get_tank1_level()
-            t2 = self.hardware.get_tank2_level()
-
-            # Check tank low-level SMS alerts
-            self._check_tank_low_level_sms(1, t1)
-            self._check_tank_low_level_sms(2, t2)
-
             for level, prog, lbl, lit, badge in [
                 (t1, self.tank1_progress, self.tank1_label, self.tank1_liters, self.tank1_status),
                 (t2, self.tank2_progress, self.tank2_label, self.tank2_liters, self.tank2_status),
@@ -791,10 +926,8 @@ class DashboardPanel(ctk.CTkFrame):
 
     # ======================================================
     def _update_weather(self):
-        unavailable = (
-            not self.weather_service or not self.weather_service.available
-        )
-        weather = None if unavailable else self.weather_service.get_current_weather_cached()
+        """Reads cached weather data (populated by _fetch_data_loop) — no blocking."""
+        weather = self._raw_weather
 
         if not weather:
             self.weather_condition.configure(text="Weather unavailable", text_color=GREEN)
@@ -826,6 +959,61 @@ class DashboardPanel(ctk.CTkFrame):
         self.weather_humidity.configure(text=f"{humidity}%")
         self.weather_feels_like.configure(text=f"Feels like {feels_like:.0f}°C")
         self.weather_uv.configure(text=f"{temp_min:.0f}° / {temp_max:.0f}°")
+
+        # Update rain forecast section if data is available
+        if self._raw_forecast:
+            self._update_forecast_display(self._raw_forecast)
+
+    # ======================================================
+    def _update_forecast_display(self, forecast: dict):
+        """Update rain forecast labels with color coding (same logic as SmartSprayer V1)."""
+        def chance_color(chance: int) -> str:
+            if chance >= 70:
+                return "#F44336"   # Red — high risk
+            elif chance >= 40:
+                return "#FF9800"   # Orange — moderate
+            elif chance >= 20:
+                return "#FBC02D"   # Yellow — low-moderate
+            else:
+                return "#4CAF50"   # Green — safe
+
+        today    = forecast.get("today",    {})
+        tomorrow = forecast.get("tomorrow", {})
+
+        today_chance    = today.get("chance",    0)
+        today_precip    = today.get("precip_mm", 0.0)
+        tomorrow_chance = tomorrow.get("chance",    0)
+        tomorrow_precip = tomorrow.get("precip_mm", 0.0)
+
+        self.forecast_today_chance.configure(
+            text=f"{today_chance}%",
+            text_color=chance_color(today_chance),
+        )
+        self.forecast_today_precip.configure(text=f"{today_precip:.1f} mm expected")
+
+        self.forecast_tomorrow_chance.configure(
+            text=f"{tomorrow_chance}%",
+            text_color=chance_color(tomorrow_chance),
+        )
+        self.forecast_tomorrow_precip.configure(text=f"{tomorrow_precip:.1f} mm expected")
+
+        max_chance = max(today_chance, tomorrow_chance)
+        if max_chance >= 70:
+            self.forecast_alert.configure(
+                text="⚠ High rain risk! Spraying may be auto-rescheduled.",
+                text_color="#F44336",
+            )
+        elif max_chance >= 40:
+            self.forecast_alert.configure(
+                text="⚡ Moderate rain chance. Monitor forecast.",
+                text_color="#FF9800",
+            )
+        else:
+            self.forecast_alert.configure(
+                text="✔ Low rain risk. Safe to spray.",
+                text_color="#4CAF50",
+            )
+
 
     # ======================================================
     def _check_tank_low_level_sms(self, tank_num, level):

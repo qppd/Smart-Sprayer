@@ -53,6 +53,10 @@ class WeatherService:
         self.cached_weather = None
         self.cache_timestamp = None
         self.last_cache_hour = None
+
+        # Forecast cache
+        self.cached_forecast = None
+        self.last_forecast_cache_hour = None
     
     def check_weather_for_rain(self) -> bool:
         """
@@ -221,6 +225,68 @@ class WeatherService:
         
         return self.cached_weather
     
+    def get_forecast_data(self) -> Optional[Dict]:
+        """
+        Fetch forecast rain data for today and tomorrow.
+        Returns a dict with today/tomorrow forecast info, including chance-of-rain %.
+        """
+        if not self.available or not self.forecast_url:
+            return None
+
+        try:
+            response = requests.get(self.forecast_url, timeout=10)
+
+            if response.status_code == 200:
+                data = response.json()
+                forecast_days = data.get('forecast', {}).get('forecastday', [])
+
+                result = {'timestamp': datetime.now().isoformat()}
+
+                labels = ['today', 'tomorrow']
+                for i, label in enumerate(labels):
+                    if i < len(forecast_days):
+                        day_data = forecast_days[i].get('day', {})
+                        result[label] = {
+                            'chance':    day_data.get('daily_chance_of_rain', 0),
+                            'will_rain': day_data.get('daily_will_it_rain', 0),
+                            'precip_mm': day_data.get('totalprecip_mm', 0.0),
+                            'condition': day_data.get('condition', {}).get('text', 'Unknown'),
+                        }
+                    else:
+                        result[label] = {
+                            'chance': 0, 'will_rain': 0,
+                            'precip_mm': 0.0, 'condition': 'N/A',
+                        }
+
+                return result
+            else:
+                return None
+
+        except Exception as e:
+            print(f"Error fetching forecast data: {e}")
+            return None
+
+    def get_forecast_data_cached(self) -> Optional[Dict]:
+        """
+        Get forecast data with hourly caching.
+        Returns dict with 'today' and 'tomorrow' keys,
+        each containing 'chance' (%), 'precip_mm', 'will_rain', 'condition'.
+        """
+        if not self.available:
+            return None
+
+        now = datetime.now()
+        current_hour = now.hour
+
+        if (self.last_forecast_cache_hour is None or
+                current_hour != self.last_forecast_cache_hour):
+            forecast = self.get_forecast_data()
+            if forecast:
+                self.cached_forecast = forecast
+                self.last_forecast_cache_hour = current_hour
+
+        return self.cached_forecast
+
     def get_cache_age(self) -> Optional[str]:
         """Get the age of the cached data in human-readable format"""
         if self.cache_timestamp is None:

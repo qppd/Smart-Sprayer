@@ -44,7 +44,10 @@ class NotificationsPanel(ctk.CTkFrame):
         self._start_clock()
 
         self.running = True
-        threading.Thread(target=self._update_loop, daemon=True).start()
+        # Background thread: ONLY reads blocking hardware data (serial I/O)
+        threading.Thread(target=self._fetch_hardware_loop, daemon=True).start()
+        # Main-thread periodic loop: no blocking calls, safe to call tkinter
+        self.after(500, self._main_update_loop)
 
     # ══════════════════════════════════════════════════════
     # HELPERS
@@ -432,14 +435,40 @@ class NotificationsPanel(ctk.CTkFrame):
     # UPDATE LOOP
     # ══════════════════════════════════════════════════════
 
-    def _update_loop(self):
+    def _fetch_hardware_loop(self):
+        """Background thread: ONLY reads hardware (blocking serial I/O).
+        Stores results in self.last_tank1/2 instance variables.
+        Never calls any tkinter methods.
+        """
         while self.running:
-            self.after(0, self._update_system)
-            self.after(0, self._update_tanks)
-            self.after(0, self.refresh_recipients)
-            self.after(0, self._refresh_cancelled_schedules)
-            self.after(0, self._refresh_rescheduled_schedules)
-            time.sleep(3)
+            if self.hardware:
+                try:
+                    v1 = self.hardware.get_tank_level_percentage(1)
+                    v2 = self.hardware.get_tank_level_percentage(2)
+                    if v1 is not None:
+                        self.last_tank1 = v1
+                    if v2 is not None:
+                        self.last_tank2 = v2
+                except Exception:
+                    pass
+            time.sleep(5)
+
+    def _main_update_loop(self):
+        """Main-thread periodic UI refresh — no blocking calls, tkinter-safe."""
+        if not self.running:
+            return
+        try:
+            self._update_system()
+            self._update_tanks()
+            self.refresh_recipients()
+            self._refresh_cancelled_schedules()
+            self._refresh_rescheduled_schedules()
+        except Exception as e:
+            print(f"\u274c Notifications update error: {e}")
+        try:
+            self.after(3000, self._main_update_loop)
+        except Exception:
+            pass
 
     def _refresh_cancelled_schedules(self):
         for w in self.cancel.winfo_children():
@@ -476,14 +505,8 @@ class NotificationsPanel(ctk.CTkFrame):
             self.next_spray.configure(text="Next Spray: --")
 
     def _update_tanks(self):
-        if self.hardware:
-            v1 = self.hardware.get_tank_level_percentage(1)
-            v2 = self.hardware.get_tank_level_percentage(2)
-            if v1 is not None:
-                self.last_tank1 = v1
-            if v2 is not None:
-                self.last_tank2 = v2
-
+        # Hardware reads happen in _fetch_hardware_loop (background thread).
+        # Here we only read the cached last_tank1/2 values and update widgets.
         self._apply_tank_ui(
             self.tank1_lbl, self.tank1_status, self.tank1_frame, self.last_tank1
         )
