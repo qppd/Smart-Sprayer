@@ -494,11 +494,42 @@ class MobileNumberScreen(ctk.CTk):
 # ---------------------------------------------------------
 # MAIN
 # ---------------------------------------------------------
+def _send_login_sms(phone: str):
+    """Send a login notification SMS to the registered phone number."""
+    try:
+        from hardware.hardware_interface import get_hardware
+        hw = get_hardware()
+        if hw and hw.connected:
+            from datetime import datetime as _dt
+            timestamp = _dt.now().strftime("%b %d, %Y at %I:%M %p")
+            hw.send_sms(phone,
+                f"Smart Sprayer: Logged in successfully on {timestamp}. "
+                "If this was not you, please check the system.")
+            print(f"✓ Login SMS sent to {phone}")
+    except Exception as e:
+        print(f"⚠️ Login SMS error: {e}")
+
+
 def main():
     show_splash_screen()
     WelcomeScreen().mainloop()
     LoginScreen().mainloop()
-    MobileNumberScreen().mainloop()
+
+    # Check if a phone number is already registered
+    saved_phone = ""
+    try:
+        from core.session import get_phone
+        saved_phone = get_phone() or ""
+    except Exception as e:
+        print(f"⚠️ Session read error: {e}")
+
+    if saved_phone:
+        # Returning user — skip mobile registration, go straight to dashboard
+        # but still send a login notification SMS
+        _send_login_sms(saved_phone)
+    else:
+        # First-time user — show mobile number registration screen
+        MobileNumberScreen().mainloop()
 
     try:
         from ui.main_ui import main as ui_main
