@@ -138,6 +138,7 @@ def show_error_modal(parent, title, message):
     modal = ctk.CTkToplevel(parent)
     modal.overrideredirect(True)
     modal.attributes("-topmost", True)
+    modal.wait_visibility()  # Ensure the window is visible before grabbing
     modal.grab_set()
     modal.configure(fg_color=D.CARD)
 
