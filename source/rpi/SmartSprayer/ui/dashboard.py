@@ -218,7 +218,84 @@ class DashboardPanel(ctk.CTkFrame):
             font=ctk.CTkFont(size=12),
             text_color="#9E9E9E"
         )
-        self.weather_updated.pack(pady=(0, 10))
+        self.weather_updated.pack(pady=(0, 5))
+
+        # Rain Forecast Section
+        forecast_frame = ctk.CTkFrame(weather_frame, fg_color="#FFF8E1", corner_radius=10)
+        forecast_frame.pack(fill="x", padx=20, pady=(0, 10))
+
+        ctk.CTkLabel(
+            forecast_frame,
+            text="📅 RAIN FORECAST",
+            font=ctk.CTkFont(size=14, weight="bold"),
+            text_color="#E65100"
+        ).pack(pady=(8, 4))
+
+        forecast_row = ctk.CTkFrame(forecast_frame, fg_color="transparent")
+        forecast_row.pack(fill="x", padx=10, pady=(0, 5))
+
+        # Today forecast
+        today_box = ctk.CTkFrame(forecast_row, fg_color="#FFFDE7", corner_radius=8)
+        today_box.pack(side="left", expand=True, fill="both", padx=5, pady=4)
+
+        ctk.CTkLabel(
+            today_box,
+            text="TODAY",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color="#795548"
+        ).pack(pady=(6, 2))
+
+        self.forecast_today_chance = ctk.CTkLabel(
+            today_box,
+            text="--%",
+            font=ctk.CTkFont(size=22, weight="bold"),
+            text_color="#4CAF50"
+        )
+        self.forecast_today_chance.pack()
+
+        self.forecast_today_precip = ctk.CTkLabel(
+            today_box,
+            text="-- mm expected",
+            font=ctk.CTkFont(size=12),
+            text_color="#616161"
+        )
+        self.forecast_today_precip.pack(pady=(0, 6))
+
+        # Tomorrow forecast
+        tomorrow_box = ctk.CTkFrame(forecast_row, fg_color="#FFFDE7", corner_radius=8)
+        tomorrow_box.pack(side="left", expand=True, fill="both", padx=5, pady=4)
+
+        ctk.CTkLabel(
+            tomorrow_box,
+            text="TOMORROW",
+            font=ctk.CTkFont(size=11, weight="bold"),
+            text_color="#795548"
+        ).pack(pady=(6, 2))
+
+        self.forecast_tomorrow_chance = ctk.CTkLabel(
+            tomorrow_box,
+            text="--%",
+            font=ctk.CTkFont(size=22, weight="bold"),
+            text_color="#4CAF50"
+        )
+        self.forecast_tomorrow_chance.pack()
+
+        self.forecast_tomorrow_precip = ctk.CTkLabel(
+            tomorrow_box,
+            text="-- mm expected",
+            font=ctk.CTkFont(size=12),
+            text_color="#616161"
+        )
+        self.forecast_tomorrow_precip.pack(pady=(0, 6))
+
+        # Forecast alert banner
+        self.forecast_alert = ctk.CTkLabel(
+            forecast_frame,
+            text="",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            text_color="#E65100"
+        )
+        self.forecast_alert.pack(pady=(0, 8))
         
         # 
         # System Status
@@ -472,6 +549,11 @@ class DashboardPanel(ctk.CTkFrame):
                     self.weather_updated.configure(text=f"Updated: {cache_age}")
                 else:
                     self.weather_updated.configure(text="Updated: Never")
+
+                # Update rain forecast
+                forecast = self.weather_service.get_forecast_data_cached()
+                if forecast:
+                    self._update_forecast_display(forecast)
             else:
                 # Failed to get weather data
                 self.weather_condition.configure(text="Unable to fetch weather")
@@ -481,6 +563,56 @@ class DashboardPanel(ctk.CTkFrame):
         except Exception as e:
             print(f"Error updating weather display: {e}")
     
+    def _update_forecast_display(self, forecast: dict):
+        """Update rain forecast labels with color coding"""
+        def chance_color(chance: int) -> str:
+            if chance >= 70:
+                return "#F44336"  # Red
+            elif chance >= 40:
+                return "#FF9800"  # Orange
+            elif chance >= 20:
+                return "#FBC02D"  # Yellow
+            else:
+                return "#4CAF50"  # Green
+
+        today = forecast.get('today', {})
+        tomorrow = forecast.get('tomorrow', {})
+
+        today_chance = today.get('chance', 0)
+        today_precip = today.get('precip_mm', 0.0)
+        tomorrow_chance = tomorrow.get('chance', 0)
+        tomorrow_precip = tomorrow.get('precip_mm', 0.0)
+
+        self.forecast_today_chance.configure(
+            text=f"{today_chance}%",
+            text_color=chance_color(today_chance)
+        )
+        self.forecast_today_precip.configure(text=f"{today_precip:.1f} mm expected")
+
+        self.forecast_tomorrow_chance.configure(
+            text=f"{tomorrow_chance}%",
+            text_color=chance_color(tomorrow_chance)
+        )
+        self.forecast_tomorrow_precip.configure(text=f"{tomorrow_precip:.1f} mm expected")
+
+        # Alert banner
+        max_chance = max(today_chance, tomorrow_chance)
+        if max_chance >= 70:
+            self.forecast_alert.configure(
+                text=f"⚠ High rain risk! Spraying may be auto-rescheduled.",
+                text_color="#F44336"
+            )
+        elif max_chance >= 40:
+            self.forecast_alert.configure(
+                text=f"⚡ Moderate rain chance. Monitor forecast.",
+                text_color="#FF9800"
+            )
+        else:
+            self.forecast_alert.configure(
+                text="✔ Low rain risk. Safe to spray.",
+                text_color="#4CAF50"
+            )
+
     def cleanup(self):
         """Cleanup resources"""
         self.running = False
