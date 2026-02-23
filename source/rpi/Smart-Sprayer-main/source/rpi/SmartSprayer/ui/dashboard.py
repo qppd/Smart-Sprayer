@@ -1,0 +1,825 @@
+# dashboard.py
+# Dashboard with animated GIF weather icons – modernized design
+
+import customtkinter as ctk
+from datetime import datetime
+import threading
+import time
+from PIL import Image
+import os
+from core.weather_service import get_weather_service
+
+BG    = "#EAF4EF"
+CARD  = "#F2F8F5"
+GREEN = "#2E7D32"
+BLUE  = "#1E88E5"
+
+# Accent strip color (subtle gradient substitute in tk: single hex)
+ACCENT_GREEN = "#81C784"
+ACCENT_BLUE  = "#64B5F6"
+
+# Pill backgrounds
+PILL_GREEN_BG = "#E0F0E3"
+PILL_BLUE_BG  = "#E3F2FD"
+
+# Schedule inner card
+SCHEDULE_INNER = "#E9F5F0"
+
+# ------------------------------------------------------------------
+# Resolve icons path relative to THIS file so it works anywhere
+# ------------------------------------------------------------------
+_UI_DIR    = os.path.dirname(os.path.abspath(__file__))
+_ICONS_DIR = os.path.join(_UI_DIR, "assets", "icons")
+
+
+def _icon(name):
+    return os.path.join(_ICONS_DIR, name)
+
+
+def _load_png(fname, size=(40, 40)):
+    """Load a PNG from the icons directory and return a CTkImage, or None."""
+    path = _icon(fname)
+    if not os.path.exists(path):
+        return None
+    try:
+        img = Image.open(path).convert("RGBA")
+        return ctk.CTkImage(light_image=img, dark_image=img, size=size)
+    except Exception as e:
+        print(f"⚠️  Could not load '{path}': {e}")
+        return None
+
+
+# ==================================================================
+# Animated GIF helper
+# ==================================================================
+class AnimatedGIF:
+    """
+    Loads a GIF and drives frame animation on a given CTkLabel.
+    Falls back gracefully if the file doesn't exist or isn't a GIF.
+    """
+
+    def __init__(self, label: ctk.CTkLabel, path: str, size=(100, 100)):
+        self.label    = label
+        self.size     = size
+        self.frames   = []
+        self.delays   = []
+        self._job     = None
+        self._idx     = 0
+        self._running = False
+        self._load(path)
+
+    def _load(self, path: str):
+        if not os.path.exists(path):
+            return
+        try:
+            gif = Image.open(path)
+            while True:
+                frame = gif.copy().convert("RGBA").resize(self.size, Image.LANCZOS)
+                self.frames.append(
+                    ctk.CTkImage(light_image=frame, dark_image=frame, size=self.size)
+                )
+                delay = gif.info.get("duration", 100)
+                self.delays.append(max(delay, 40))
+                gif.seek(gif.tell() + 1)
+        except EOFError:
+            pass
+        except Exception as e:
+            print(f"⚠️  AnimatedGIF could not load '{path}': {e}")
+
+    def start(self):
+        if not self.frames:
+            return
+        self._running = True
+        self._next_frame()
+
+    def stop(self):
+        self._running = False
+        if self._job:
+            try:
+                self.label.after_cancel(self._job)
+            except Exception:
+                pass
+            self._job = None
+
+    def _next_frame(self):
+        if not self._running or not self.frames:
+            return
+        self.label.configure(image=self.frames[self._idx], text="")
+        delay = self.delays[self._idx]
+        self._idx = (self._idx + 1) % len(self.frames)
+        self._job = self.label.after(delay, self._next_frame)
+
+    @property
+    def loaded(self):
+        return len(self.frames) > 0
+
+
+# ==================================================================
+class DashboardPanel(ctk.CTkFrame):
+
+    def __init__(self, parent, hardware, scheduler):
+        super().__init__(parent)
+
+        self.hardware        = hardware
+        self.scheduler       = scheduler
+        self.weather_service = get_weather_service()
+
+        self.last_tank1_level = 0.0
+        self.last_tank2_level = 0.0
+        self.update_counter   = 0
+
+        self.configure(fg_color=BG)
+
+        self._current_anim: AnimatedGIF | None = None
+
+        self._load_static_icons()
+        self._create_widgets()
+
+        self.running = True
+        threading.Thread(target=self._update_loop, daemon=True).start()
+
+    # ======================================================
+    def _load_static_icons(self):
+        self.static_icons = {}
+        for key, fname in [
+            ("sunny",         "sunny.png"),
+            ("cloudy",        "cloudy.png"),
+            ("rainy",         "rainy.png"),
+            ("partly_cloudy", "partly_cloudy.png"),
+        ]:
+            path = _icon(fname)
+            if os.path.exists(path):
+                try:
+                    img = Image.open(path)
+                    self.static_icons[key] = ctk.CTkImage(
+                        light_image=img, dark_image=img, size=(100, 100)
+                    )
+                except Exception:
+                    pass
+
+    # ======================================================
+    def _card(self, parent, accent_color=None):
+        """
+        Modern card: white-ish surface, rounded corners, soft shadow illusion
+        via a border, and an optional 3-px top accent strip (a thin Frame).
+        """
+        wrapper = ctk.CTkFrame(parent, fg_color="transparent")
+
+        inner = ctk.CTkFrame(
+            wrapper,
+            fg_color=CARD,
+            corner_radius=20,
+            border_width=1,
+            border_color="#D6EEE0",
+        )
+        inner.pack(fill="both", expand=True)
+        # expose inner so callers can pack children into it
+        wrapper._inner = inner
+        return wrapper
+
+    def _card_inner(self, card_wrapper):
+        return card_wrapper._inner
+
+    # ======================================================
+    def _create_widgets(self):
+
+        # ── TOP ROW ──────────────────────────────────────────
+        top = ctk.CTkFrame(self, fg_color="transparent")
+        top.pack(fill="x", padx=20, pady=10)
+
+        # ─── STATUS CARD ────────────────────────────────────
+        status_wrap = self._card(top, accent_color=ACCENT_GREEN)
+        status_wrap.pack(side="left", expand=True, fill="both", padx=(0, 8))
+        status_inner = self._card_inner(status_wrap)
+        status_inner.configure(fg_color=CARD)
+
+        # Status pill (inline indicator row)
+        pill = ctk.CTkFrame(
+            status_inner,
+            fg_color=PILL_GREEN_BG,
+            corner_radius=99,
+        )
+        pill.pack(anchor="w", padx=22, pady=(20, 0))
+
+        pill_inner = ctk.CTkFrame(pill, fg_color="transparent")
+        pill_inner.pack(padx=12, pady=6)
+
+        self._status_dot = ctk.CTkLabel(
+            pill_inner,
+            text="●",
+            font=("Arial", 14),
+            text_color=GREEN,
+            width=18,
+        )
+        self._status_dot.pack(side="left", padx=(0, 4))
+
+        ctk.CTkLabel(
+            pill_inner,
+            text="SYSTEM",
+            font=ctk.CTkFont(size=16, weight="bold"),
+            text_color=GREEN,
+        ).pack(side="left")
+
+        self.status_label = ctk.CTkLabel(
+            status_inner,
+            text="IDLE",
+            font=ctk.CTkFont(size=48, weight="bold"),
+            text_color=GREEN,
+            anchor="w",
+        )
+        self.status_label.pack(anchor="w", padx=22, pady=(8, 0))
+
+        self.countdown_label = ctk.CTkLabel(
+            status_inner,
+            text="Time until spray: --",
+            font=ctk.CTkFont(size=20),
+            text_color=BLUE,
+            anchor="w",
+        )
+        self.countdown_label.pack(anchor="w", padx=22, pady=(4, 0))
+
+        self.debug_label = ctk.CTkLabel(
+            status_inner,
+            text="Updates: 0",
+            font=ctk.CTkFont(size=12),
+            text_color="#9DB8A8",
+            anchor="w",
+        )
+        self.debug_label.pack(anchor="w", padx=22, pady=(6, 20))
+
+        # ─── NEXT SCHEDULE CARD ─────────────────────────────
+        sched_wrap = self._card(top, accent_color=ACCENT_BLUE)
+        sched_wrap.pack(side="left", expand=True, fill="both", padx=(8, 0))
+        sched_inner = self._card_inner(sched_wrap)
+        sched_inner.configure(fg_color=CARD)
+
+        # Header row inside schedule card
+        header = ctk.CTkFrame(sched_inner, fg_color="transparent")
+        header.pack(fill="x", padx=20, pady=(18, 0))
+
+        ctk.CTkLabel(
+            header,
+            text="Next Schedule Spray",
+            font=ctk.CTkFont(size=24, weight="bold"),
+            text_color=GREEN,
+        ).pack(side="left")
+
+        # Bell button with rounded square background
+        bell_bg = ctk.CTkFrame(
+            header,
+            fg_color=PILL_BLUE_BG,
+            corner_radius=12,
+            width=40,
+            height=40,
+        )
+        bell_bg.pack(side="right")
+        bell_bg.pack_propagate(False)
+
+        bell_icon = _load_png("bell.png", size=(24, 24))
+        ctk.CTkLabel(
+            bell_bg,
+            text="" if bell_icon else "🔔",
+            image=bell_icon,
+            font=("Arial", 20),
+        ).place(relx=0.5, rely=0.5, anchor="center")
+
+        # Thin divider below header
+        ctk.CTkFrame(
+            sched_inner, height=1, fg_color="#D6EEE0", corner_radius=0
+        ).pack(fill="x", padx=0, pady=(14, 0))
+
+        # Schedule inner card (tinted panel)
+        self.schedule_item = ctk.CTkFrame(
+            sched_inner,
+            fg_color=SCHEDULE_INNER,
+            corner_radius=14,
+            border_width=1,
+            border_color="#C8E6C9",
+        )
+        self.schedule_item.pack(fill="both", expand=True, padx=16, pady=14)
+
+        # Date row (datetime + badge side by side)
+        date_row = ctk.CTkFrame(self.schedule_item, fg_color="transparent")
+        date_row.pack(fill="x", padx=14, pady=(12, 0))
+
+        self.schedule_datetime = ctk.CTkLabel(
+            date_row,
+            text="No upcoming schedules",
+            font=ctk.CTkFont(size=20, weight="bold"),
+            text_color="#2E7D32",
+            anchor="w",
+        )
+        self.schedule_datetime.pack(side="left")
+
+        self.schedule_type = ctk.CTkLabel(
+            date_row,
+            text="",
+            fg_color="#22C55E",
+            text_color="white",
+            corner_radius=8,
+            font=ctk.CTkFont(size=14, weight="bold"),
+            padx=12,
+            pady=6,
+        )
+        self.schedule_type.pack(side="right")
+
+        # Meta row with icon chips
+        info_row = ctk.CTkFrame(self.schedule_item, fg_color="transparent")
+        info_row.pack(fill="x", padx=14, pady=(10, 14))
+
+        def _meta_chip(parent, emoji, var_attr, default_text):
+            """Tiny rounded chip: icon + value label."""
+            chip = ctk.CTkFrame(
+                parent,
+                fg_color="#E0F0E3",
+                corner_radius=8,
+            )
+            chip.pack(side="left", padx=(0, 10))
+
+            chip_inner = ctk.CTkFrame(chip, fg_color="transparent")
+            chip_inner.pack(padx=8, pady=5)
+
+            ctk.CTkLabel(
+                chip_inner,
+                text=emoji,
+                font=("Arial", 14),
+            ).pack(side="left", padx=(0, 5))
+
+            lbl = ctk.CTkLabel(
+                chip_inner,
+                text=default_text,
+                font=ctk.CTkFont(size=16),
+                text_color="#555",
+            )
+            lbl.pack(side="left")
+            return lbl
+
+        self.schedule_container = _meta_chip(info_row, "📦", None, "Container: --")
+        self.schedule_volume    = _meta_chip(info_row, "💧", None, "Volume: -- ml")
+        self.schedule_duration  = _meta_chip(info_row, "⏱",  None, "Duration: -- s")
+
+        # ── BOTTOM ROW ───────────────────────────────────────
+        bottom = ctk.CTkFrame(self, fg_color="transparent")
+        bottom.pack(fill="both", expand=True, padx=20, pady=10)
+
+        self._build_container(bottom, "Container 1", 1)
+        self._build_container(bottom, "Container 2", 2)
+        self._build_weather(bottom)
+
+    # ======================================================
+    def _build_container(self, parent, title, num):
+
+        wrap = self._card(parent, accent_color=ACCENT_GREEN)
+        wrap.pack(side="left", expand=True, fill="both", padx=(0 if num == 1 else 8, 8))
+        card = self._card_inner(wrap)
+
+        title_row = ctk.CTkFrame(card, fg_color="transparent")
+        title_row.pack(fill="x", padx=20, pady=(22, 0))
+
+        ctk.CTkLabel(
+            title_row, text=title,
+            font=ctk.CTkFont(size=24, weight="bold"),
+            text_color=GREEN,
+        ).pack(side="left")
+
+        status_badge = ctk.CTkLabel(
+            title_row, text="CRITICAL",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            fg_color="#FFEBEE", text_color="#E53935",
+            corner_radius=8, padx=12, pady=6,
+        )
+        status_badge.pack(side="right")
+
+        # Liquid-fill tank canvas
+        import tkinter as tk
+
+        tank_frame = ctk.CTkFrame(card, fg_color="transparent")
+        tank_frame.pack(fill="both", expand=True, padx=20, pady=(14, 0))
+
+        canvas = tk.Canvas(
+            tank_frame,
+            bg="#E8F5EC",
+            highlightthickness=0,
+            bd=0,
+        )
+        canvas.pack(fill="both", expand=True)
+
+        # Store canvas ref for updates
+        canvas._level = 0.0
+        canvas._num   = num
+
+        def _draw_tank(event=None):
+            w = canvas.winfo_width()
+            h = canvas.winfo_height()
+            if w < 2 or h < 2:
+                return
+            canvas.delete("all")
+
+            level = canvas._level  # 0.0 – 1.0
+            r = 16  # corner radius
+
+            # background rounded rect
+            _rounded_rect(canvas, 0, 0, w, h, r, fill="#E8F5EC", outline="")
+
+            # fill — rises from bottom
+            fill_h = h * level
+            if fill_h > 1:
+                fill_color = (
+                    "#E53935" if level < 0.20 else
+                    "#FB8C00" if level < 0.50 else
+                    "#2E7D32"
+                )
+                _rounded_rect(canvas, 0, h - fill_h, w, h, r, fill=fill_color, outline="")
+
+            # percent text
+            pct_color = "white" if fill_h > h * 0.55 else (
+                "#E53935" if level < 0.20 else
+                "#FB8C00" if level < 0.50 else
+                "#2E7D32"
+            )
+            canvas.create_text(
+                w / 2, h / 2 - 14,
+                text=f"{level*100:.0f}%",
+                font=("Arial", 52, "bold"),
+                fill=pct_color,
+            )
+            canvas.create_text(
+                w / 2, h / 2 + 36,
+                text="Tank Level",
+                font=("Arial", 15),
+                fill=pct_color if fill_h > h * 0.55 else "#6A8A7A",
+            )
+
+        def _rounded_rect(cv, x1, y1, x2, y2, r, **kw):
+            pts = [
+                x1+r, y1,  x2-r, y1,
+                x2,   y1,  x2,   y1+r,
+                x2,   y2-r,x2,   y2,
+                x2-r, y2,  x1+r, y2,
+                x1,   y2,  x1,   y2-r,
+                x1,   y1+r,x1,   y1,
+            ]
+            cv.create_polygon(pts, smooth=True, **kw)
+
+        canvas.bind("<Configure>", lambda e: _draw_tank())
+        canvas._draw = _draw_tank
+
+        # dummy CTkProgressBar (hidden, kept for _update_tank_levels API compat)
+        bar = ctk.CTkProgressBar(
+            card, height=0,
+            progress_color="#E53935", fg_color="#D6EEE0",
+        )
+        bar.pack(fill="x", padx=20, pady=0)
+        bar.set(0)
+        bar._canvas = canvas
+
+        # patch set() so canvas updates when bar.set() is called
+        _orig_set = bar.set
+        def _patched_set(value, **kw):
+            _orig_set(value, **kw)
+            canvas._level = value
+            canvas._draw()
+        bar.set = _patched_set
+
+        # percent label ref (CTkLabel kept for configure() calls in update loop)
+        percent = ctk.CTkLabel(card, text="", width=0, height=0, fg_color="transparent")
+        percent._canvas = canvas
+        _orig_conf = percent.configure
+        def _patched_conf(**kw):
+            if "text" in kw:
+                pass  # canvas handles text
+            if "text_color" in kw:
+                pass  # canvas handles color
+        percent.configure = _patched_conf
+
+        liters = ctk.CTkLabel(
+            card, text="0.0 L / 16.0 L",
+            font=ctk.CTkFont(size=22, weight="bold"),
+            text_color="#2E7D32",
+        )
+        liters.pack(anchor="center", pady=(8, 22))
+
+        if num == 1:
+            self.tank1_progress = bar
+            self.tank1_label    = percent
+            self.tank1_liters   = liters
+            self.tank1_status   = status_badge
+        else:
+            self.tank2_progress = bar
+            self.tank2_label    = percent
+            self.tank2_liters   = liters
+            self.tank2_status   = status_badge
+
+    # ======================================================
+    def _build_weather(self, parent):
+
+        wrap = self._card(parent, accent_color="#64B5F6")
+        wrap.pack(side="left", expand=True, fill="both", padx=(8, 0))
+        self.weather_card = self._card_inner(wrap)
+
+        top_section = ctk.CTkFrame(self.weather_card, fg_color="transparent")
+        top_section.pack(fill="x", padx=20, pady=(18, 0))
+
+        ctk.CTkLabel(
+            top_section,
+            text="Current Weather",
+            font=ctk.CTkFont(size=18),
+            text_color=GREEN,
+        ).pack(anchor="w")
+
+        self.weather_condition = ctk.CTkLabel(
+            top_section,
+            text="Loading...",
+            font=ctk.CTkFont(size=26, weight="bold"),
+            text_color=GREEN,
+        )
+        self.weather_condition.pack(anchor="w", pady=(4, 0))
+
+        mid = ctk.CTkFrame(self.weather_card, fg_color="transparent")
+        mid.pack(fill="x", padx=20, pady=(10, 0))
+
+        self.weather_icon = ctk.CTkLabel(mid, text="", width=90, height=90)
+        self.weather_icon.pack(side="left", padx=(0, 14))
+
+        temp_block = ctk.CTkFrame(mid, fg_color="transparent")
+        temp_block.pack(side="left")
+
+        self.weather_temp = ctk.CTkLabel(
+            temp_block,
+            text="--°",
+            font=ctk.CTkFont(size=72, weight="bold"),
+            text_color="#1A1A2E",
+        )
+        self.weather_temp.pack(anchor="w")
+
+        self.weather_feels_like = ctk.CTkLabel(
+            temp_block,
+            text="Feels like --°C",
+            font=ctk.CTkFont(size=18),
+            text_color="#5A7A6A",
+        )
+        self.weather_feels_like.pack(anchor="w")
+
+        ctk.CTkFrame(
+            self.weather_card, height=2, fg_color="#D6EEE0", corner_radius=0
+        ).pack(fill="x", padx=20, pady=(16, 12))
+
+        pills = ctk.CTkFrame(self.weather_card, fg_color="transparent")
+        pills.pack(fill="both", expand=True, padx=16, pady=(0, 18))
+        pills.grid_columnconfigure((0, 1, 2), weight=1)
+        pills.grid_rowconfigure(0, weight=1)
+
+        wind_img     = _load_png("wind.png",        size=(40, 40))
+        humidity_img = _load_png("humidity.png",    size=(40, 40))
+        temp_img     = _load_png("temperature.png", size=(40, 40))
+
+        def _pill(parent, col, img, fallback_emoji, label):
+            box = ctk.CTkFrame(
+                parent,
+                fg_color="#E8F5EC",
+                corner_radius=14,
+                border_width=1,
+                border_color="#C8E6C9",
+            )
+            box.grid(row=0, column=col, sticky="nsew", padx=5)
+
+            inner = ctk.CTkFrame(box, fg_color="transparent")
+            inner.place(relx=0.5, rely=0.5, anchor="center")
+
+            if img:
+                ctk.CTkLabel(inner, text="", image=img).pack(pady=(0, 6))
+            else:
+                ctk.CTkLabel(
+                    inner, text=fallback_emoji, font=("Arial", 28)
+                ).pack(pady=(0, 6))
+
+            val = ctk.CTkLabel(
+                inner, text="--",
+                font=ctk.CTkFont(size=24, weight="bold"),
+                text_color="#1A1A2E",
+            )
+            val.pack()
+
+            ctk.CTkLabel(
+                inner, text=label,
+                font=ctk.CTkFont(size=14),
+                text_color="#6A8A7A",
+            ).pack(pady=(6, 0))
+
+            return val
+
+        self.weather_wind     = _pill(pills, 0, wind_img,     "💨", "Wind")
+        self.weather_humidity = _pill(pills, 1, humidity_img, "💧", "Humidity")
+        self.weather_uv       = _pill(pills, 2, temp_img,     "🌡", "Min / Max")
+
+        self._play_weather_gif("cloudy")
+
+    # ======================================================
+    # GIF ANIMATION
+    # ======================================================
+
+    def _play_weather_gif(self, condition_key: str):
+        if self._current_anim:
+            self._current_anim.stop()
+            self._current_anim = None
+
+        gif_path = _icon(f"{condition_key}.gif")
+        anim = AnimatedGIF(self.weather_icon, gif_path, size=(100, 100))
+
+        if anim.loaded:
+            self._current_anim = anim
+            anim.start()
+        else:
+            static = self.static_icons.get(condition_key)
+            if static:
+                self.weather_icon.configure(image=static, text="")
+            else:
+                fallback = {
+                    "sunny": "☀️", "cloudy": "☁️",
+                    "rainy": "🌧️", "partly_cloudy": "⛅",
+                }
+                self.weather_icon.configure(
+                    image=None,
+                    text=fallback.get(condition_key, "🌤️"),
+                    font=("Arial", 64),
+                )
+
+    # ======================================================
+    def _condition_key(self, condition: str) -> str:
+        c = condition.lower()
+        if "rain" in c or "drizzle" in c or "shower" in c:
+            return "rainy"
+        if "cloud" in c or "overcast" in c:
+            return "cloudy"
+        if "sun" in c or "clear" in c:
+            return "sunny"
+        return "partly_cloudy"
+
+    # ======================================================
+    # UPDATE LOOP
+    # ======================================================
+
+    def _update_loop(self):
+        while self.running:
+            try:
+                self.update_counter += 1
+                self.after(0, self._update_tank_levels)
+                self.after(0, self._update_next_schedule)
+                self.after(0, self._update_weather)
+                self.after(0, self._update_debug_counter)
+            except Exception as e:
+                print(f"❌ Error in update loop: {e}")
+            time.sleep(1)
+
+    def _update_debug_counter(self):
+        self.debug_label.configure(text=f"Updates: {self.update_counter}")
+
+    # ======================================================
+    def _update_next_schedule(self):
+        try:
+            next_schedule = self.scheduler.get_next_schedule()
+        except Exception:
+            next_schedule = None
+
+        if not isinstance(next_schedule, dict) or not next_schedule:
+            self.schedule_datetime.configure(text="No upcoming schedules")
+            self.schedule_container.configure(text="Container: --")
+            self.schedule_volume.configure(text="Volume: -- ml")
+            self.schedule_duration.configure(text="Duration: -- s")
+            self.schedule_type.configure(text="")
+            self.status_label.configure(text="IDLE", text_color=GREEN)
+            self.countdown_label.configure(text="Time until spray: --")
+            return
+
+        date       = next_schedule.get("date", "--")
+        time_      = next_schedule.get("time", "--")
+        container  = next_schedule.get("container", "--")
+        spray_type = next_schedule.get("spray_type", "Spray")
+        volume     = float(next_schedule.get("volume_ml", 0))
+
+        try:
+            target         = datetime.strptime(f"{date} {time_}", "%Y-%m-%d %H:%M")
+            now            = datetime.now()
+            remaining      = (target - now).total_seconds()
+            formatted_date = target.strftime("%b %d, %Y at %I:%M %p")
+        except Exception:
+            formatted_date = f"{date} at {time_}"
+            remaining      = None
+
+        try:
+            duration = self.scheduler.calculate_spray_duration(volume)
+        except Exception:
+            duration = 0
+
+        self.schedule_datetime.configure(text=formatted_date)
+        self.schedule_container.configure(text=f"Container: {container}")
+        self.schedule_volume.configure(text=f"Volume: {volume:.0f} ml")
+        self.schedule_duration.configure(text=f"Duration: {duration:.1f} s")
+
+        color_map = {"fertilizer": "#22C55E", "pesticide": "#EF4444"}
+        self.schedule_type.configure(
+            text=spray_type.upper(),
+            fg_color=color_map.get(spray_type.lower(), "#3B82F6"),
+        )
+
+        if remaining is not None:
+            if remaining <= 0:
+                self.status_label.configure(text="SPRAYING", text_color="#E74C3C")
+                self.countdown_label.configure(text="Spraying now...")
+            else:
+                self.status_label.configure(text="SCHEDULED", text_color=BLUE)
+                h = int(remaining // 3600)
+                m = int((remaining % 3600) // 60)
+                s = int(remaining % 60)
+                self.countdown_label.configure(
+                    text=f"Time until spray: {h:02d}:{m:02d}:{s:02d}"
+                )
+        else:
+            self.status_label.configure(text="SCHEDULED", text_color=BLUE)
+            self.countdown_label.configure(text="Time until spray: --")
+
+    # ======================================================
+    def _update_tank_levels(self):
+        if not self.hardware:
+            return
+        try:
+            t1 = self.hardware.get_tank1_level()
+            t2 = self.hardware.get_tank2_level()
+
+            for level, prog, lbl, lit, badge in [
+                (t1, self.tank1_progress, self.tank1_label, self.tank1_liters, self.tank1_status),
+                (t2, self.tank2_progress, self.tank2_label, self.tank2_liters, self.tank2_status),
+            ]:
+                if level is None:
+                    continue
+
+                prog.set(level / 100.0)
+                liters_val = (level / 100.0) * 16.0
+
+                if level < 20:
+                    badge_text = "CRITICAL"
+                    badge_fg   = "#FFEBEE"
+                    badge_tc   = "#E53935"
+                elif level < 50:
+                    badge_text = "LOW"
+                    badge_fg   = "#FFF3E0"
+                    badge_tc   = "#FB8C00"
+                else:
+                    badge_text = "OK"
+                    badge_fg   = "#E8F5EC"
+                    badge_tc   = GREEN
+
+                lit.configure(text=f"{liters_val:.1f} L / 16.0 L")
+                badge.configure(
+                    text=badge_text,
+                    fg_color=badge_fg,
+                    text_color=badge_tc,
+                )
+
+        except Exception as e:
+            if self.update_counter % 30 == 0:
+                print(f"⚠️  Tank update error: {e}")
+
+    # ======================================================
+    def _update_weather(self):
+        unavailable = (
+            not self.weather_service or not self.weather_service.available
+        )
+        weather = None if unavailable else self.weather_service.get_current_weather_cached()
+
+        if not weather:
+            self.weather_condition.configure(text="Weather unavailable", text_color=GREEN)
+            self.weather_temp.configure(text="--°")
+            self.weather_wind.configure(text="--")
+            self.weather_humidity.configure(text="--")
+            self.weather_feels_like.configure(text="Feels like --°C")
+            self.weather_uv.configure(text="--")
+            if self._current_anim is None or not self._current_anim.loaded:
+                self._play_weather_gif("cloudy")
+            return
+
+        condition  = weather.get("condition", "")
+        temp       = weather.get("temperature_c", 0)
+        wind_ms    = weather.get("wind_kph", 0) / 3.6
+        humidity   = weather.get("humidity", 0)
+        feels_like = weather.get("feelslike_c", temp)
+        temp_min   = weather.get("mintemp_c", temp - 2)
+        temp_max   = weather.get("maxtemp_c", temp + 2)
+
+        key = self._condition_key(condition)
+        if not hasattr(self, "_last_condition_key") or self._last_condition_key != key:
+            self._last_condition_key = key
+            self._play_weather_gif(key)
+
+        self.weather_condition.configure(text=f"{condition}", text_color=GREEN)
+        self.weather_temp.configure(text=f"{temp:.0f}°")
+        self.weather_wind.configure(text=f"{wind_ms:.1f} m/s")
+        self.weather_humidity.configure(text=f"{humidity}%")
+        self.weather_feels_like.configure(text=f"Feels like {feels_like:.0f}°C")
+        self.weather_uv.configure(text=f"{temp_min:.0f}° / {temp_max:.0f}°")
+
+    # ======================================================
+    def cleanup(self):
+        self.running = False
+        if self._current_anim:
+            self._current_anim.stop()
