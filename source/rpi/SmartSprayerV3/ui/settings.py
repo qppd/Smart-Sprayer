@@ -2,6 +2,7 @@
 # Smart Sprayer Settings Panel (Modernized)
 
 import customtkinter as ctk
+import json
 import sys, os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -55,7 +56,14 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             "Talao-Talao","Tapucan"
         ]
 
+        # Path to persisted weather settings
+        self._weather_settings_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "weather_settings.json"
+        )
+
         self.create_weather_card()
+        self._load_saved_location()
         self.create_sms_card()
 
     # ══════════════════════════════════════════════════════
@@ -254,8 +262,8 @@ class SettingsFrame(ctk.CTkScrollableFrame):
 
         ctk.CTkLabel(
             card,
-            text="Set your location in Quezon province to get weather-based forecasts.\n"
-                 "Used for weather based spraying decisions.",
+            text="Set your location to get weather-based forecasts.\n"
+                 "Used for weather-based spraying decisions.",
             font=ctk.CTkFont(size=17),
             text_color=GRAY,
             justify="left"
@@ -263,18 +271,41 @@ class SettingsFrame(ctk.CTkScrollableFrame):
 
         self._divider(card)
 
-        # Fields row
-        row = ctk.CTkFrame(card, fg_color="transparent")
-        row.pack(anchor="w", padx=22, pady=(0, 14))
+        # ── Input mode toggle ───────────────────────────
+        mode_row = ctk.CTkFrame(card, fg_color="transparent")
+        mode_row.pack(anchor="w", padx=22, pady=(0, 12))
 
-        ctk.CTkLabel(row, text="Municipality:",
+        ctk.CTkLabel(mode_row, text="Input Mode:",
+                     font=ctk.CTkFont(size=17),
+                     text_color=GRAY).pack(side="left", padx=(0, 12))
+
+        self._location_mode = ctk.StringVar(value="dropdown")
+        self._mode_seg = ctk.CTkSegmentedButton(
+            mode_row,
+            values=["Dropdown", "Manual"],
+            variable=self._location_mode,
+            font=ctk.CTkFont(size=15, weight="bold"),
+            selected_color=BTN_GREEN,
+            selected_hover_color="#388e3c",
+            unselected_color=FIELD_BG,
+            fg_color=FIELD_BG,
+            corner_radius=10,
+            command=self._toggle_location_mode
+        )
+        self._mode_seg.pack(side="left")
+
+        # ── DROPDOWN section ────────────────────────────
+        self._dropdown_frame = ctk.CTkFrame(card, fg_color="transparent")
+        self._dropdown_frame.pack(anchor="w", padx=22, pady=(0, 8))
+
+        ctk.CTkLabel(self._dropdown_frame, text="Municipality:",
                      font=ctk.CTkFont(size=18),
                      text_color=GRAY).grid(row=0, column=0, sticky="w")
 
         self.muni = ctk.CTkComboBox(
-            row,
+            self._dropdown_frame,
             values=["Lucban, Quezon", "Lucena City"],
-            width=190, height=38,
+            width=200, height=38,
             font=ctk.CTkFont(size=17),
             fg_color=FIELD_BG,
             button_color=ARROW_GREEN,
@@ -283,33 +314,52 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         )
         self.muni.grid(row=0, column=1, padx=(12, 30))
 
-        ctk.CTkLabel(row, text="Barangay:",
+        ctk.CTkLabel(self._dropdown_frame, text="Barangay:",
                      font=ctk.CTkFont(size=18),
                      text_color=GRAY).grid(row=0, column=2, sticky="w")
 
         self.brgy = ctk.CTkComboBox(
-            row,
+            self._dropdown_frame,
             values=self.lucban_barangays,
-            width=190, height=38,
+            width=200, height=38,
             font=ctk.CTkFont(size=17),
             fg_color=FIELD_BG,
             button_color=ARROW_GREEN,
             corner_radius=10
         )
-        self.brgy.grid(row=0, column=3, padx=(12, 30))
+        self.brgy.grid(row=0, column=3, padx=(12, 0))
 
+        # ── MANUAL section ──────────────────────────────
+        self._manual_frame = ctk.CTkFrame(card, fg_color="transparent")
+        # not packed initially — shown when mode == "Manual"
+
+        ctk.CTkLabel(self._manual_frame, text="Location:",
+                     font=ctk.CTkFont(size=18),
+                     text_color=GRAY).grid(row=0, column=0, sticky="w")
+
+        self._manual_entry = ctk.CTkEntry(
+            self._manual_frame,
+            width=380, height=38,
+            corner_radius=10,
+            font=ctk.CTkFont(size=17),
+            fg_color=FIELD_BG,
+            placeholder_text="e.g. Lucban, Quezon"
+        )
+        self._manual_entry.grid(row=0, column=1, padx=(12, 0))
+
+        # ── Save button ─────────────────────────────────
         ctk.CTkButton(
-            row,
-            text="Save Location",
+            card,
+            text="💾  Save Location",
             fg_color=BTN_GREEN,
             hover_color="#388e3c",
-            width=160, height=38,
+            width=200, height=40,
             corner_radius=10,
             font=ctk.CTkFont(size=17, weight="bold"),
             command=self.save_location
-        ).grid(row=0, column=4)
+        ).pack(anchor="w", padx=22, pady=(8, 4))
 
-        # Location status badge
+        # ── Location status badge ───────────────────────
         self.location_frame = ctk.CTkFrame(card, fg_color=FIELD_BG, corner_radius=10)
         self.location_frame.pack(anchor="w", padx=22, pady=(4, 20))
 
@@ -322,6 +372,15 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         )
         self.location_label.pack()
 
+    def _toggle_location_mode(self, value):
+        """Show/hide dropdown or manual entry frame."""
+        if value == "Manual":
+            self._dropdown_frame.pack_forget()
+            self._manual_frame.pack(anchor="w", padx=22, pady=(0, 8))
+        else:
+            self._manual_frame.pack_forget()
+            self._dropdown_frame.pack(anchor="w", padx=22, pady=(0, 8))
+
     def update_barangays(self, value):
         if "Lucena" in value:
             self.brgy.configure(values=self.lucena_barangays)
@@ -331,14 +390,69 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             self.brgy.set(self.lucban_barangays[0])
 
     def save_location(self):
-        if not self.muni.get() or not self.brgy.get():
-            self.show_toast("Failed to save location", "Please try again later", "error")
-            return
-        self.location_label.configure(
-            text=f"📍  Location Set: {self.brgy.get()}, {self.muni.get()}"
-        )
+        mode = self._location_mode.get()
+        if mode == "Manual":
+            location = self._manual_entry.get().strip()
+            if not location:
+                self.show_toast("No location entered", "Please type a location", "error")
+                return
+        else:
+            muni = self.muni.get()
+            brgy = self.brgy.get()
+            if not muni or not brgy:
+                self.show_toast("Failed to save location", "Please select municipality and barangay", "error")
+                return
+            location = f"{brgy}, {muni}"
+
+        # Persist to weather_settings.json
+        try:
+            with open(self._weather_settings_path, "w") as f:
+                json.dump({"location": location, "mode": mode.lower()}, f, indent=2)
+        except Exception:
+            pass
+
+        self.location_label.configure(text=f"📍  Location Set: {location}")
         self.show_toast("Weather location saved",
                         "Location will be used for spraying decisions", "success")
+
+    def _load_saved_location(self):
+        """Restore persisted location into the UI controls."""
+        try:
+            with open(self._weather_settings_path, "r") as f:
+                data = json.load(f)
+            location = data.get("location", "")
+            mode     = data.get("mode", "dropdown")
+        except Exception:
+            return
+
+        if not location:
+            return
+
+        self.location_label.configure(text=f"📍  Location Set: {location}")
+
+        if mode == "manual":
+            # Switch to manual mode and pre-fill the entry
+            self._location_mode.set("Manual")
+            self._toggle_location_mode("Manual")
+            self._manual_entry.delete(0, "end")
+            self._manual_entry.insert(0, location)
+        else:
+            # Try to match municipality and barangay from saved string
+            # Expected format: "<brgy>, <muni>"
+            self._location_mode.set("Dropdown")
+            self._toggle_location_mode("Dropdown")
+            parts = [p.strip() for p in location.split(",", 2)]
+            if len(parts) >= 2:
+                brgy_val = parts[0]
+                muni_val = ", ".join(parts[1:])
+                # Update municipality and barangay lists
+                if "Lucena" in muni_val:
+                    self.muni.set("Lucena City")
+                    self.brgy.configure(values=self.lucena_barangays)
+                else:
+                    self.muni.set("Lucban, Quezon")
+                    self.brgy.configure(values=self.lucban_barangays)
+                self.brgy.set(brgy_val)
 
     # ══════════════════════════════════════════════════════
     # SMS RECIPIENTS CARD
