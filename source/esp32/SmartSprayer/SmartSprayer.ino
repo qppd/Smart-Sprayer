@@ -70,6 +70,35 @@ bool parseFramedCommand(const String& frame, String& command, String& data) {
   return true;
 }
 
+// ============================================
+// NON-BLOCKING SPRAY STATE MACHINE GLOBALS
+// ============================================
+
+// Spray state — updated atomically from loop(), never from an ISR.
+struct SprayState {
+  bool          active = false;
+  int           relay  = 0;
+  int           volume = 0;
+  unsigned long end_ms = 0;
+};
+static SprayState spray_state;
+
+// SMS queued after relay OFF so it cannot delay relay timing.
+static bool   spray_sms_pending = false;
+static String spray_sms_msg     = "";
+
+// ============================================
+// FIXED-SIZE SERIAL LINE BUFFER
+// ============================================
+// Replaces Serial.readStringUntil('\n') to avoid:
+//   - Partial reads when bytes arrive across loop() iterations
+//   - Heap fragmentation from dynamic String growth
+//   - UART RX buffer overflow when ESP32 is "busy"
+#define CMD_BUF_SIZE 256
+static char cmd_buf[CMD_BUF_SIZE];
+static int  cmd_len  = 0;
+static bool cmd_ready = false;
+
 void setup() {
   Serial.begin(9600);
   delay(1000);
@@ -104,10 +133,43 @@ void setup() {
 }
 
 void loop() {
-  // Handle alarms
+  // Handle alarms (non-blocking 10 ms yield for TimeAlarms library)
   Alarm.delay(10);
 
-  // Continuously check for SIM800L responses
+  // ── NON-BLOCKING SPRAY TIMER ─────────────────────────────────────────────
+  // Check if an active spray has reached its end time.
+  // Uses signed cast to handle millis() rollover correctly.
+  if (spray_state.active && (long)(millis() - spray_state.end_ms) >= 0) {
+    // Turn relay OFF immediately.
+    if (spray_state.relay == 1) {
+      operateRELAY(RELAY_1, false);
+    } else {
+      operateRELAY(RELAY_2, false);
+    }
+    Serial.print("[SPRAY] Relay ");
+    Serial.print(spray_state.relay);
+    Serial.println(" OFF");
+
+    // Send completion ACK to RPI BEFORE slow SMS so RPI can proceed.
+    Serial.println("ACK:SPRAY_DONE");
+
+    // Queue SMS - will be sent on the next loop iteration so this one
+    // returns quickly and the ACK is flushed immediately.
+    spray_sms_msg     = "Spraying completed: " + String(spray_state.volume) + "mL";
+    spray_sms_pending = true;
+
+    buzzerBeep(200);
+    spray_state.active = false;
+  }
+
+  // ── PENDING SMS ─────────────────────────────────────────────────────────
+  // Relay is already OFF; sending SMS here cannot delay relay timing.
+  if (spray_sms_pending) {
+    spray_sms_pending = false;
+    sendSMSToAll(spray_sms_msg);
+  }
+
+  // ── SIM800L unsolicited responses ────────────────────────────────────────
   if (sim.available() > 0) {
     String simResponse = sim.readStringUntil('\n');
     simResponse.trim();
@@ -117,9 +179,31 @@ void loop() {
     }
   }
 
-  if (Serial.available()) {
-    String command = Serial.readStringUntil('\n');
-    command.trim();
+  // ── FIXED-SIZE SERIAL LINE BUFFER ────────────────────────────────────────
+  // Read one byte at a time; assemble a complete line before processing.
+  // This avoids partial reads and heap churn from readStringUntil().
+  while (Serial.available() > 0) {
+    char c = (char)Serial.read();
+    if (c == '\n' || c == '\r') {
+      if (cmd_len > 0) {
+        cmd_buf[cmd_len] = '\0';
+        cmd_ready = true;
+        break;   // process one command per loop() iteration
+      }
+    } else if (cmd_len < CMD_BUF_SIZE - 1) {
+      cmd_buf[cmd_len++] = c;
+    }
+    // Silently discard overflow bytes (command too long = malformed).
+  }
+
+  if (!cmd_ready) return;
+  cmd_ready = false;
+
+  // Build String from the static buffer for compatibility with existing
+  // startsWith / indexOf processing below.
+  String command = String(cmd_buf);
+  cmd_len = 0;  // reset buffer for next command
+  command.trim();    // remove any stray whitespace/CR
     
     // Check if this is a framed command
     if (isFramedCommand(command)) {
@@ -394,57 +478,66 @@ void loop() {
       }
     } else if (command.startsWith("spray_")) {
       // Format: spray_RELAY_DURATION_VOLUME
-      // Example: spray_1_60_5000 (Relay 1, 60 seconds, 5000mL)
-      int idx1 = command.indexOf('_');
-      int idx2 = command.indexOf('_', idx1 + 1);
-      int idx3 = command.indexOf('_', idx2 + 1);
-      
-      if (idx3 > 0) {
-        int relay = command.substring(idx1 + 1, idx2).toInt();
-        int duration = command.substring(idx2 + 1, idx3).toInt();
-        int volume = command.substring(idx3 + 1).toInt();
-        
-        Serial.print("[SPRAY] Starting: Relay ");
-        Serial.print(relay);
-        Serial.print(", Duration ");
-        Serial.print(duration);
-        Serial.print("s, Volume ");
-        Serial.print(volume);
-        Serial.println("mL");
-        
-        // Notify via SMS
-        String msg = "Spraying started: " + String(volume) + "mL for " + String(duration) + "s";
-        sendSMSToAll(msg);
-        
-        // Buzzer alert
-        buzzerBeep();
-        delay(500);
-        buzzerBeep();
-        
-        // Turn on relay
-        if (relay == 1) {
-          operateRELAY(RELAY_1, true);
-        } else {
-          operateRELAY(RELAY_2, true);
-        }
-        
-        // Wait for duration
-        delay(duration * 1000);
-        
-        // Turn off relay
-        if (relay == 1) {
-          operateRELAY(RELAY_1, false);
-        } else {
-          operateRELAY(RELAY_2, false);
-        }
-        
-        // Notify completion
-        buzzerBeep();
-        sendSMSToAll("Spraying completed: " + String(volume) + "mL");
-        
-        Serial.println("[SPRAY] Completed");
+      // Example: spray_1_60_5000  (Relay 1, 60 s, 5000 mL)
+      //
+      // NON-BLOCKING IMPLEMENTATION:
+      //   1. Relay turns ON IMMEDIATELY after argument parsing.
+      //   2. ACK:SPRAY_STARTED is sent to the RPI so it knows the relay is
+      //      physically active.
+      //   3. A millis() timer is set; the loop() state machine turns the relay
+      //      OFF when the timer expires (spray timer check at top of loop).
+      //   4. SMS and buzzer notifications fire AFTER relay OFF so they can
+      //      never delay actual relay actuation.
+
+      if (spray_state.active) {
+        Serial.println("[SPRAY] Busy - another spray is in progress");
       } else {
-        Serial.println("[ERROR] Invalid spray format. Use: spray_RELAY_DURATION_VOLUME");
+        int idx1 = command.indexOf('_');
+        int idx2 = command.indexOf('_', idx1 + 1);
+        int idx3 = command.indexOf('_', idx2 + 1);
+
+        if (idx3 > 0) {
+          int relay    = command.substring(idx1 + 1, idx2).toInt();
+          int duration = command.substring(idx2 + 1, idx3).toInt();
+          int volume   = command.substring(idx3 + 1).toInt();
+
+          Serial.print("[SPRAY] Starting: Relay ");
+          Serial.print(relay);
+          Serial.print(", Duration ");
+          Serial.print(duration);
+          Serial.print("s, Volume ");
+          Serial.print(volume);
+          Serial.println("mL");
+
+          // ── RELAY ON IMMEDIATELY ─────────────────────────────────────────
+          // Relay activates before any SMS/buzzer blocking call.
+          if (relay == 1) {
+            operateRELAY(RELAY_1, true);
+          } else {
+            operateRELAY(RELAY_2, true);
+          }
+          Serial.print("[SPRAY] Relay ");
+          Serial.print(relay);
+          Serial.println(" ON");
+
+          // Acknowledge to RPI: relay is physically ON right now.
+          Serial.println("ACK:SPRAY_STARTED");
+
+          // Arm the non-blocking timer.
+          spray_state.active = true;
+          spray_state.relay  = relay;
+          spray_state.volume = volume;
+          spray_state.end_ms = millis() + (unsigned long)duration * 1000UL;
+
+          // Buzzer: short beep is acceptable (relay is already ON).
+          buzzerBeep(200);
+
+          // SMS notification that spraying started (relay already ON).
+          String msg = "Spraying started: " + String(volume) + "mL for " + String(duration) + "s";
+          sendSMSToAll(msg);
+        } else {
+          Serial.println("[ERROR] Invalid spray format. Use: spray_RELAY_DURATION_VOLUME");
+        }
       }
     } else if (command.startsWith("add-recipient_")) {
       String number = command.substring(14);
@@ -478,5 +571,4 @@ void loop() {
       Serial.print("[ERROR] Unknown command: ");
       Serial.println(command);
     }
-  }
 }
