@@ -44,9 +44,7 @@ class NotificationsPanel(ctk.CTkFrame):
         self._start_clock()
 
         self.running = True
-        # Background thread: ONLY reads blocking hardware data (serial I/O)
         threading.Thread(target=self._fetch_hardware_loop, daemon=True).start()
-        # Main-thread periodic loop: no blocking calls, safe to call tkinter
         self.after(500, self._main_update_loop)
 
     # ══════════════════════════════════════════════════════
@@ -62,12 +60,12 @@ class NotificationsPanel(ctk.CTkFrame):
         ctk.CTkLabel(
             parent,
             text=text,
-            font=ctk.CTkFont(size=24, weight="bold"),
+            font=ctk.CTkFont(size=42, weight="bold"),
             text_color=DARK_GREEN
-        ).pack(anchor="w", padx=20, pady=(18, 10))
+        ).pack(anchor="w", padx=24, pady=(24, 14))
 
     def _divider(self, parent):
-        ctk.CTkFrame(parent, fg_color="#E8F5E9", height=1, corner_radius=0).pack(
+        ctk.CTkFrame(parent, fg_color="#E8F5E9", height=3, corner_radius=0).pack(
             fill="x", padx=20, pady=0
         )
 
@@ -78,45 +76,44 @@ class NotificationsPanel(ctk.CTkFrame):
     def _build_ui(self):
 
         # ── PAGE HEADER ──────────────────────────────────
-        header = ctk.CTkFrame(self, fg_color=WHITE, corner_radius=0, height=72)
+        header = ctk.CTkFrame(self, fg_color=WHITE, corner_radius=0, height=110)
         header.pack(fill="x")
         header.pack_propagate(False)
 
         inner = ctk.CTkFrame(header, fg_color="transparent")
         inner.pack(side="left", fill="y", padx=30)
 
-        # Tab buttons
         tabs = ctk.CTkFrame(inner, fg_color="transparent")
         tabs.pack(side="left", fill="y")
 
         self.tab_status_btn = ctk.CTkButton(
             tabs,
-            text="📊  System & Status",
-            font=ctk.CTkFont(size=17, weight="bold"),
+            text="System & Status",
+            font=ctk.CTkFont(size=32, weight="bold"),
             fg_color=TAB_ACTIVE_BG,
             text_color=TAB_ACTIVE_TEXT,
             hover_color="#388E3C",
-            corner_radius=10,
-            width=220, height=42,
+            corner_radius=14,
+            width=340, height=70,
             command=self._show_status_tab
         )
-        self.tab_status_btn.pack(side="left", padx=(0, 10), pady=15)
+        self.tab_status_btn.pack(side="left", padx=(0, 16), pady=20)
 
         self.tab_sched_btn = ctk.CTkButton(
             tabs,
-            text="📅  Schedules",
-            font=ctk.CTkFont(size=17, weight="bold"),
+            text="Schedules",
+            font=ctk.CTkFont(size=32, weight="bold"),
             fg_color=TAB_IDLE_BG,
             text_color=TAB_IDLE_TEXT,
             hover_color="#C8E6C9",
-            corner_radius=10,
-            width=220, height=42,
+            corner_radius=14,
+            width=340, height=70,
             command=self._show_schedules_tab
         )
-        self.tab_sched_btn.pack(side="left", pady=15)
+        self.tab_sched_btn.pack(side="left", pady=20)
 
         # Accent underline
-        ctk.CTkFrame(self, fg_color=GREEN, height=3, corner_radius=0).pack(fill="x")
+        ctk.CTkFrame(self, fg_color=GREEN, height=5, corner_radius=0).pack(fill="x")
 
         # ── CONTENT ──────────────────────────────────────
         self.content_container = ctk.CTkFrame(self, fg_color="transparent")
@@ -153,9 +150,8 @@ class NotificationsPanel(ctk.CTkFrame):
         self._divider(sys_card)
 
         status_inner = ctk.CTkFrame(sys_card, fg_color="transparent")
-        status_inner.pack(pady=16)
+        status_inner.pack(pady=24)
 
-        # Status pill
         self.status_pill = ctk.CTkFrame(
             status_inner,
             fg_color="transparent",
@@ -166,19 +162,19 @@ class NotificationsPanel(ctk.CTkFrame):
         self.system_status = ctk.CTkLabel(
             self.status_pill,
             text="● IDLE",
-            font=ctk.CTkFont(size=32, weight="bold"),
+            font=ctk.CTkFont(size=56, weight="bold"),
             text_color=GREEN,
-            padx=30, pady=10
+            padx=40, pady=18
         )
         self.system_status.pack()
 
         self.next_spray = ctk.CTkLabel(
             status_inner,
             text="Next Spray: --",
-            font=ctk.CTkFont(size=18),
+            font=ctk.CTkFont(size=34, weight="bold"),
             text_color=GRAY
         )
-        self.next_spray.pack(pady=(10, 0))
+        self.next_spray.pack(pady=(16, 0))
 
         # Tank Status card
         tank_card = self._card(left)
@@ -201,22 +197,15 @@ class NotificationsPanel(ctk.CTkFrame):
         self._divider(msg_card)
 
         signal_row = ctk.CTkFrame(msg_card, fg_color="transparent")
-        signal_row.pack(fill="x", padx=20, pady=(10, 4))
-
-        ctk.CTkLabel(
-            signal_row,
-            text="📶",
-            font=ctk.CTkFont(size=16),
-            text_color=GRAY
-        ).pack(side="left")
+        signal_row.pack(fill="x", padx=24, pady=(14, 8))
 
         self.signal = ctk.CTkLabel(
             signal_row,
             text="Signal Strength: Good",
-            font=ctk.CTkFont(size=18),
+            font=ctk.CTkFont(size=30),
             text_color=GRAY
         )
-        self.signal.pack(side="left", padx=6)
+        self.signal.pack(side="left", padx=8)
 
         self.message_list = ctk.CTkScrollableFrame(
             msg_card,
@@ -298,30 +287,29 @@ class NotificationsPanel(ctk.CTkFrame):
         ctk.CTkLabel(
             inner,
             text=title,
-            font=ctk.CTkFont(size=18, weight="bold"),
+            font=ctk.CTkFont(size=34, weight="bold"),
             text_color=DARK_GREEN
-        ).pack(pady=(0, 10))
+        ).pack(pady=(0, 14))
 
-        # Circular-look percent display
         pct_frame = ctk.CTkFrame(inner, fg_color="transparent", corner_radius=999)
         pct_frame.pack()
 
         percent = ctk.CTkLabel(
             pct_frame,
             text="0%",
-            font=ctk.CTkFont(size=28, weight="bold"),
+            font=ctk.CTkFont(size=58, weight="bold"),
             text_color=RED,
-            padx=20, pady=12
+            padx=30, pady=20
         )
         percent.pack()
 
         status = ctk.CTkLabel(
             inner,
             text="● CRITICAL",
-            font=ctk.CTkFont(size=16),
+            font=ctk.CTkFont(size=32),
             text_color=RED
         )
-        status.pack(pady=(8, 0))
+        status.pack(pady=(12, 0))
 
         if idx == 1:
             self.tank1_lbl    = percent
@@ -334,42 +322,40 @@ class NotificationsPanel(ctk.CTkFrame):
 
     def _recipient(self, name, phone, status="Sent"):
 
-        row = ctk.CTkFrame(self.message_list, fg_color=WHITE, corner_radius=10)
-        row.pack(fill="x", padx=8, pady=5)
+        row = ctk.CTkFrame(self.message_list, fg_color=WHITE, corner_radius=12)
+        row.pack(fill="x", padx=8, pady=8)
 
-        # Left side
         left = ctk.CTkFrame(row, fg_color="transparent")
-        left.pack(side="left", fill="y", padx=14, pady=10)
+        left.pack(side="left", fill="y", padx=18, pady=14)
 
         ctk.CTkLabel(
             left,
             text=name,
-            font=ctk.CTkFont(size=18, weight="bold"),
+            font=ctk.CTkFont(size=34, weight="bold"),
             text_color=DARK_GREEN
         ).pack(anchor="w")
 
         ctk.CTkLabel(
             left,
             text=phone,
-            font=ctk.CTkFont(size=16),
+            font=ctk.CTkFont(size=28),
             text_color=GRAY
         ).pack(anchor="w")
 
-        # Status badge
         ctk.CTkLabel(
             row,
             text=f"✓  {status}",
-            font=ctk.CTkFont(size=16, weight="bold"),
+            font=ctk.CTkFont(size=28, weight="bold"),
             fg_color="#E8F5E9",
             text_color=GREEN,
-            corner_radius=8,
-            padx=12, pady=6
-        ).pack(side="right", padx=14)
+            corner_radius=10,
+            padx=20, pady=10
+        ).pack(side="right", padx=18)
 
     def _schedule_item(self, parent, schedule_data):
 
-        item = ctk.CTkFrame(parent, fg_color=WHITE, corner_radius=10)
-        item.pack(fill="x", padx=8, pady=5)
+        item = ctk.CTkFrame(parent, fg_color=WHITE, corner_radius=12)
+        item.pack(fill="x", padx=8, pady=8)
 
         try:
             dt = datetime.strptime(
@@ -380,12 +366,12 @@ class NotificationsPanel(ctk.CTkFrame):
             datetime_text = f"{schedule_data['date']} {schedule_data['time']}"
 
         top = ctk.CTkFrame(item, fg_color="transparent")
-        top.pack(fill="x", padx=15, pady=(10, 4))
+        top.pack(fill="x", padx=20, pady=(14, 8))
 
         ctk.CTkLabel(
             top,
             text=f"🕐  {datetime_text}",
-            font=ctk.CTkFont(size=16, weight="bold"),
+            font=ctk.CTkFont(size=30, weight="bold"),
             text_color=DARK_GREEN
         ).pack(side="left")
 
@@ -397,29 +383,27 @@ class NotificationsPanel(ctk.CTkFrame):
             text=spray_type,
             fg_color=badge_color,
             text_color="white",
-            corner_radius=7,
-            font=ctk.CTkFont(size=13, weight="bold"),
-            padx=10, pady=5
+            corner_radius=10,
+            font=ctk.CTkFont(size=26, weight="bold"),
+            padx=18, pady=9
         ).pack(side="right")
 
-        # Divider
-        ctk.CTkFrame(item, fg_color="#F0F0F0", height=1).pack(fill="x", padx=15)
+        ctk.CTkFrame(item, fg_color="#F0F0F0", height=2).pack(fill="x", padx=20)
 
-        # Details row
         details = ctk.CTkFrame(item, fg_color="transparent")
-        details.pack(anchor="w", padx=15, pady=(6, 10))
+        details.pack(anchor="w", padx=20, pady=(10, 14))
 
         ctk.CTkLabel(
             details,
-            text=f"📦  Container: {schedule_data.get('container', '--')}",
-            font=ctk.CTkFont(size=14),
+            text=f"Container: {schedule_data.get('container', '--')}",
+            font=ctk.CTkFont(size=27),
             text_color=GRAY
-        ).pack(side="left", padx=(0, 16))
+        ).pack(side="left", padx=(0, 24))
 
         ctk.CTkLabel(
             details,
             text=f"💧  Volume: {schedule_data.get('volume_ml', '--')} ml",
-            font=ctk.CTkFont(size=14),
+            font=ctk.CTkFont(size=27),
             text_color=GRAY
         ).pack(side="left")
 
@@ -427,19 +411,15 @@ class NotificationsPanel(ctk.CTkFrame):
         ctk.CTkLabel(
             parent,
             text=text,
-            font=ctk.CTkFont(size=18),
+            font=ctk.CTkFont(size=32),
             text_color=GRAY
-        ).pack(pady=30)
+        ).pack(pady=40)
 
     # ══════════════════════════════════════════════════════
     # UPDATE LOOP
     # ══════════════════════════════════════════════════════
 
     def _fetch_hardware_loop(self):
-        """Background thread: ONLY reads hardware (blocking serial I/O).
-        Stores results in self.last_tank1/2 instance variables.
-        Never calls any tkinter methods.
-        """
         while self.running:
             if self.hardware:
                 try:
@@ -454,7 +434,6 @@ class NotificationsPanel(ctk.CTkFrame):
             time.sleep(5)
 
     def _main_update_loop(self):
-        """Main-thread periodic UI refresh — no blocking calls, tkinter-safe."""
         if not self.running:
             return
         try:
@@ -505,8 +484,6 @@ class NotificationsPanel(ctk.CTkFrame):
             self.next_spray.configure(text="Next Spray: --")
 
     def _update_tanks(self):
-        # Hardware reads happen in _fetch_hardware_loop (background thread).
-        # Here we only read the cached last_tank1/2 values and update widgets.
         self._apply_tank_ui(
             self.tank1_lbl, self.tank1_status, self.tank1_frame, self.last_tank1
         )
@@ -517,11 +494,11 @@ class NotificationsPanel(ctk.CTkFrame):
     def _apply_tank_ui(self, lbl, status_lbl, frame, value):
         pct = int(value)
         if pct >= 60:
-            color, label, bg = GREEN,  "● OK",       "#E8F5E9"
+            color, label = GREEN,  "● OK"
         elif pct >= 30:
-            color, label, bg = ORANGE, "● LOW",      "#FFF3E0"
+            color, label = ORANGE, "● LOW"
         else:
-            color, label, bg = RED,    "● CRITICAL", "#FFEBEE"
+            color, label = RED,    "● CRITICAL"
 
         lbl.configure(text=f"{pct}%", text_color=color)
         status_lbl.configure(text=label, text_color=color)

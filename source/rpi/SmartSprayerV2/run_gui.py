@@ -44,12 +44,12 @@ class D:
     RED      = "#EF4444"
     RED_D    = "#DC2626"
 
-    # Sizes
-    PILL_W   = 400
-    PILL_H   = 52
-    ENTRY_H  = 40
-    BTN_H    = 52
-    RADIUS   = 14
+    # Sizes — elder-friendly
+    PILL_W   = 620       # was 400
+    PILL_H   = 90        # was 52
+    ENTRY_H  = 70        # was 40
+    BTN_H    = 90        # was 52
+    RADIUS   = 16
 
 
 def F(size, weight="normal"):
@@ -83,7 +83,7 @@ def _green_btn(parent, text, cmd, width=None, height=None):
         corner_radius=D.RADIUS,
         fg_color=D.G700,
         hover_color=D.G800,
-        font=F(16, "bold"),
+        font=F(28, "bold"),
         text_color=D.T_WHITE
     )
 
@@ -108,7 +108,7 @@ def _pill_entry(parent, placeholder, show=None, width=None):
         fg_color="transparent",
         text_color=D.T_DARK,
         placeholder_text_color=D.T_LIGHT,
-        font=F(15)
+        font=F(30)
     )
     if show:
         entry.configure(show=show)
@@ -116,14 +116,12 @@ def _pill_entry(parent, placeholder, show=None, width=None):
     return frame, entry
 
 
-
 # ---------------------------------------------------------
-# LOGO LOADER  (loads once, reused across screens)
+# LOGO LOADER
 # ---------------------------------------------------------
 _LOGO_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "logo.png")
 
 def _make_logo(size):
-    """Return a CTkImage of the logo at the given (w,h) size, or None on failure."""
     try:
         img = Image.open(_LOGO_PATH)
         return ctk.CTkImage(light_image=img, dark_image=img, size=size)
@@ -138,34 +136,32 @@ def show_error_modal(parent, title, message):
     modal = ctk.CTkToplevel(parent)
     modal.overrideredirect(True)
     modal.attributes("-topmost", True)
-    modal.wait_visibility()  # Ensure the window is visible before grabbing
+    modal.wait_visibility()
     modal.grab_set()
     modal.configure(fg_color=D.CARD)
 
-    w, h = 420, 300
+    w, h = 580, 420
     _center(modal, w, h)
 
-    # Top accent bar
-    ctk.CTkFrame(modal, fg_color=D.RED, height=4, corner_radius=0).pack(fill="x")
+    ctk.CTkFrame(modal, fg_color=D.RED, height=6, corner_radius=0).pack(fill="x")
 
     container = ctk.CTkFrame(modal, fg_color="transparent")
-    container.pack(fill="both", expand=True, padx=30, pady=24)
+    container.pack(fill="both", expand=True, padx=36, pady=30)
 
-    # Icon
-    icon_bg = ctk.CTkFrame(container, fg_color="#FEE2E2", width=60, height=60, corner_radius=30)
-    icon_bg.pack(pady=(0, 16))
+    icon_bg = ctk.CTkFrame(container, fg_color="#FEE2E2", width=90, height=90, corner_radius=45)
+    icon_bg.pack(pady=(0, 20))
     icon_bg.pack_propagate(False)
-    ctk.CTkLabel(icon_bg, text="✕", font=F(28, "bold"), text_color=D.RED
+    ctk.CTkLabel(icon_bg, text="✕", font=F(42, "bold"), text_color=D.RED
                  ).place(relx=0.5, rely=0.5, anchor="center")
 
-    ctk.CTkLabel(container, text=title, font=F(20, "bold"), text_color=D.T_DARK).pack(pady=(0, 8))
-    ctk.CTkLabel(container, text=message, font=F(14), text_color=D.T_MID,
-                 wraplength=340, justify="center").pack(pady=(0, 24))
+    ctk.CTkLabel(container, text=title, font=F(32, "bold"), text_color=D.T_DARK).pack(pady=(0, 10))
+    ctk.CTkLabel(container, text=message, font=F(22), text_color=D.T_MID,
+                 wraplength=480, justify="center").pack(pady=(0, 28))
 
     ctk.CTkButton(
-        container, text="OK", width=160, height=44,
-        font=F(15, "bold"), fg_color=D.RED, hover_color=D.RED_D,
-        corner_radius=10, command=modal.destroy
+        container, text="OK", width=220, height=64,
+        font=F(24, "bold"), fg_color=D.RED, hover_color=D.RED_D,
+        corner_radius=12, command=modal.destroy
     ).pack()
 
     modal.wait_window()
@@ -178,48 +174,46 @@ def show_splash_screen():
     splash = ctk.CTk()
     splash.overrideredirect(True)
 
-    w, h = 560, 420
+    w, h = 700, 540
     _center(splash, w, h)
     splash.configure(fg_color=D.G800)
 
-    # Logo
-    _splash_logo = _make_logo((200, 200))
+    _splash_logo = _make_logo((240, 240))
     if _splash_logo:
         ctk.CTkLabel(splash, image=_splash_logo, text="", fg_color=D.G800
                      ).place(relx=0.5, rely=0.38, anchor="center")
     else:
-        ctk.CTkFrame(splash, width=220, height=220, corner_radius=110,
+        ctk.CTkFrame(splash, width=240, height=240, corner_radius=120,
                      fg_color=D.G700).place(relx=0.5, rely=0.38, anchor="center")
 
     ctk.CTkLabel(
         splash,
         text="AUTOMATED SPRAYER",
-        font=F(26, "bold"),
+        font=F(40, "bold"),
         text_color=D.T_WHITE
     ).place(relx=0.5, rely=0.66, anchor="center")
 
     ctk.CTkLabel(
         splash,
         text="SYSTEM",
-        font=F(26, "bold"),
+        font=F(40, "bold"),
         text_color=D.G400
-    ).place(relx=0.5, rely=0.73, anchor="center")
+    ).place(relx=0.5, rely=0.74, anchor="center")
 
-    # Progress bar
-    bar_bg = ctk.CTkFrame(splash, fg_color=D.G700, width=340, height=6, corner_radius=3)
-    bar_bg.place(relx=0.5, rely=0.87, anchor="center")
+    bar_bg = ctk.CTkFrame(splash, fg_color=D.G700, width=400, height=8, corner_radius=4)
+    bar_bg.place(relx=0.5, rely=0.88, anchor="center")
 
-    bar = ctk.CTkFrame(splash, fg_color=D.G400, width=0, height=6, corner_radius=3)
-    bar.place(x=(560 - 340) // 2, rely=0.87, anchor="w")
+    bar = ctk.CTkFrame(splash, fg_color=D.G400, width=0, height=8, corner_radius=4)
+    bar.place(x=(700 - 400) // 2, rely=0.88, anchor="w")
 
     ctk.CTkLabel(
         splash, text="Initializing system...",
-        font=F(12), text_color=D.G400
-    ).place(relx=0.5, rely=0.93, anchor="center")
+        font=F(18), text_color=D.G400
+    ).place(relx=0.5, rely=0.94, anchor="center")
 
     def animate(p):
         if p <= 1.0:
-            bar.configure(width=int(340 * p))
+            bar.configure(width=int(400 * p))
             splash.after(25, lambda: animate(p + 0.02))
         else:
             splash.destroy()
@@ -238,45 +232,43 @@ class WelcomeScreen(ctk.CTk):
         self.attributes("-fullscreen", True)
         self.configure(fg_color=D.BG)
 
-        # Left decorative panel
-        side = ctk.CTkFrame(self, fg_color=D.G800, width=480, corner_radius=0)
+        side = ctk.CTkFrame(self, fg_color=D.G800, width=580, corner_radius=0)
         side.pack(side="left", fill="y")
         side.pack_propagate(False)
 
-        _welcome_logo = _make_logo((260, 260))
+        _welcome_logo = _make_logo((320, 320))
         if _welcome_logo:
             ctk.CTkLabel(side, image=_welcome_logo, text="", fg_color=D.G800
-                         ).place(relx=0.5, rely=0.4, anchor="center")
+                         ).place(relx=0.5, rely=0.38, anchor="center")
         else:
-            ctk.CTkFrame(side, fg_color=D.G700, width=260, height=260,
-                         corner_radius=130).place(relx=0.5, rely=0.4, anchor="center")
+            ctk.CTkFrame(side, fg_color=D.G700, width=320, height=320,
+                         corner_radius=160).place(relx=0.5, rely=0.38, anchor="center")
 
         ctk.CTkLabel(
             side, text="Farming\nMade Simple",
-            font=F(28, "bold"), text_color=D.T_WHITE,
+            font=F(42, "bold"), text_color=D.T_WHITE,
             justify="center"
-        ).place(relx=0.5, rely=0.68, anchor="center")
+        ).place(relx=0.5, rely=0.70, anchor="center")
 
         ctk.CTkLabel(
             side, text="Spraying at your fingertips",
-            font=F(14), text_color=D.G400, justify="center"
-        ).place(relx=0.5, rely=0.78, anchor="center")
+            font=F(24), text_color=D.G400, justify="center"
+        ).place(relx=0.5, rely=0.81, anchor="center")
 
-        # Right content
         right = ctk.CTkFrame(self, fg_color="transparent")
         right.pack(side="left", fill="both", expand=True)
 
         box = ctk.CTkFrame(right, fg_color="transparent")
         box.place(relx=0.5, rely=0.5, anchor="center")
 
-        ctk.CTkLabel(box, text="Welcome", font=F(48, "bold"), text_color=D.T_DARK).pack(pady=(0, 6))
+        ctk.CTkLabel(box, text="Welcome", font=F(68, "bold"), text_color=D.T_DARK).pack(pady=(0, 8))
         ctk.CTkLabel(box, text="Automated Sprayer System",
-                     font=F(18), text_color=D.T_MID).pack(pady=(0, 50))
+                     font=F(28), text_color=D.T_MID).pack(pady=(0, 60))
 
-        _green_btn(box, "GET STARTED →", self.close, width=340, height=56).pack()
+        _green_btn(box, "GET STARTED →", self.close, width=460, height=80).pack()
 
         ctk.CTkLabel(box, text="v1.0  ·  Automated Sprayer System",
-                     font=F(11), text_color=D.T_LIGHT).pack(pady=(20, 0))
+                     font=F(18), text_color=D.T_LIGHT).pack(pady=(24, 0))
 
     def close(self):
         self.destroy()
@@ -293,75 +285,99 @@ class LoginScreen(ctk.CTk):
         self.configure(fg_color=D.BG)
         self._show_pass = False
 
-        # Card
-        card = ctk.CTkFrame(self, fg_color=D.CARD, corner_radius=20,
+        card = ctk.CTkFrame(self, fg_color=D.CARD, corner_radius=28,
                              border_width=1, border_color=D.G200)
         card.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Green top strip
-        _strip_canvas_1 = tk.Canvas(card, height=8, bg="#66BB6A", highlightthickness=0)
+        _strip_canvas_1 = tk.Canvas(card, height=12, bg="#66BB6A", highlightthickness=0)
         _strip_canvas_1.pack(fill="x")
 
         inner = ctk.CTkFrame(card, fg_color="transparent")
-        inner.pack(padx=48, pady=36)
+        inner.pack(padx=80, pady=60)
 
-        # Logo
-        _login_logo = _make_logo((90, 90))
+        _login_logo = _make_logo((150, 150))
         if _login_logo:
-            ctk.CTkLabel(inner, image=_login_logo, text="").pack(pady=(0, 20))
+            ctk.CTkLabel(inner, image=_login_logo, text="").pack(pady=(0, 28))
         else:
-            icon_bg = ctk.CTkFrame(inner, fg_color=D.G100, width=80, height=80, corner_radius=40)
-            icon_bg.pack(pady=(0, 20))
+            icon_bg = ctk.CTkFrame(inner, fg_color=D.G100, width=130, height=130, corner_radius=65)
+            icon_bg.pack(pady=(0, 28))
 
-        ctk.CTkLabel(inner, text="Sign In", font=F(30, "bold"), text_color=D.T_DARK).pack(pady=(0, 4))
+        ctk.CTkLabel(inner, text="Sign In",
+                     font=F(58, "bold"), text_color=D.T_DARK).pack(pady=(0, 8))
         ctk.CTkLabel(inner,
                      text="Log in using your Sprayer account credentials",
-                     font=F(13), text_color=D.T_LIGHT).pack()
+                     font=F(26), text_color=D.T_LIGHT).pack()
         ctk.CTkLabel(inner,
                      text="you may found on the sprayer manual",
-                     font=F(13), text_color=D.T_LIGHT).pack(pady=(0, 28))
+                     font=F(26), text_color=D.T_LIGHT).pack(pady=(0, 40))
 
-        # Username
-        user_frame, self.user = _pill_entry(inner, "Username")
-        user_frame.pack(pady=(0, 10))
-
-        # Password
-        pass_outer = ctk.CTkFrame(
+        # Username field
+        user_frame = ctk.CTkFrame(
             inner, fg_color=D.FIELD, corner_radius=D.RADIUS,
-            width=D.PILL_W, height=D.PILL_H,
+            width=620, height=90,
             border_width=2, border_color=D.G200
         )
-        pass_outer.pack(pady=(0, 24))
+        user_frame.pack(pady=(0, 16))
+        user_frame.pack_propagate(False)
+        self.user = ctk.CTkEntry(
+            user_frame,
+            placeholder_text="Username",
+            width=580,
+            height=70,
+            border_width=0,
+            fg_color="transparent",
+            text_color=D.T_DARK,
+            placeholder_text_color=D.T_LIGHT,
+            font=F(30)
+        )
+        self.user.place(relx=0.5, rely=0.5, anchor="center")
+
+        # Password field
+        pass_outer = ctk.CTkFrame(
+            inner, fg_color=D.FIELD, corner_radius=D.RADIUS,
+            width=620, height=90,
+            border_width=2, border_color=D.G200
+        )
+        pass_outer.pack(pady=(0, 36))
         pass_outer.pack_propagate(False)
 
         self.passw = ctk.CTkEntry(
             pass_outer,
             placeholder_text="Password",
             show="•",
-            width=D.PILL_W - 80,
-            height=D.ENTRY_H,
+            width=510,
+            height=70,
             border_width=0,
             fg_color="transparent",
             text_color=D.T_DARK,
             placeholder_text_color=D.T_LIGHT,
-            font=F(15)
+            font=F(30)
         )
         self.passw.place(x=16, rely=0.5, anchor="w")
 
         self.eye_btn = ctk.CTkButton(
             pass_outer, text="👁",
-            width=40, height=34,
+            width=70, height=60,
             fg_color=D.G200, hover_color=D.G200,
-            text_color=D.T_DARK, font=F(16),
+            text_color=D.T_DARK, font=F(28),
             corner_radius=10, border_width=0,
             command=self._toggle_password
         )
-        self.eye_btn.place(relx=1.0, x=-12, rely=0.5, anchor="e")
+        self.eye_btn.place(relx=1.0, x=-14, rely=0.5, anchor="e")
 
-        _green_btn(inner, "LOG IN", self.login, width=D.PILL_W).pack()
+        ctk.CTkButton(
+            inner, text="LOG IN",
+            command=self.login,
+            width=620, height=90,
+            corner_radius=D.RADIUS,
+            fg_color=D.G700,
+            hover_color=D.G800,
+            font=F(36, "bold"),
+            text_color=D.T_WHITE
+        ).pack()
 
         ctk.CTkLabel(inner, text="You can change your password after login",
-                     font=F(12), text_color=D.T_LIGHT).pack(pady=(14, 0))
+                     font=F(22), text_color=D.T_LIGHT).pack(pady=(22, 0))
 
     def _toggle_password(self):
         self._show_pass = not self._show_pass
@@ -392,68 +408,75 @@ class MobileNumberScreen(ctk.CTk):
         self.attributes("-fullscreen", True)
         self.configure(fg_color=D.BG)
 
-        # Card
-        card = ctk.CTkFrame(self, fg_color=D.CARD, corner_radius=20,
+        card = ctk.CTkFrame(self, fg_color=D.CARD, corner_radius=28,
                              border_width=1, border_color=D.G200)
         card.place(relx=0.5, rely=0.5, anchor="center")
 
-        _strip_canvas_2 = tk.Canvas(card, height=8, bg="#66BB6A", highlightthickness=0)
+        _strip_canvas_2 = tk.Canvas(card, height=12, bg="#66BB6A", highlightthickness=0)
         _strip_canvas_2.pack(fill="x")
 
         inner = ctk.CTkFrame(card, fg_color="transparent")
-        inner.pack(padx=48, pady=36)
+        inner.pack(padx=80, pady=60)
 
-        # Logo
-        _mobile_logo = _make_logo((90, 90))
+        _mobile_logo = _make_logo((150, 150))
         if _mobile_logo:
-            ctk.CTkLabel(inner, image=_mobile_logo, text="").pack(pady=(0, 20))
+            ctk.CTkLabel(inner, image=_mobile_logo, text="").pack(pady=(0, 28))
         else:
-            icon_bg = ctk.CTkFrame(inner, fg_color=D.G100, width=80, height=80, corner_radius=40)
-            icon_bg.pack(pady=(0, 20))
+            icon_bg = ctk.CTkFrame(inner, fg_color=D.G100, width=130, height=130, corner_radius=65)
+            icon_bg.pack(pady=(0, 28))
 
         ctk.CTkLabel(inner, text="Stay Connected",
-                     font=F(30, "bold"), text_color=D.T_DARK).pack(pady=(0, 4))
+                     font=F(58, "bold"), text_color=D.T_DARK).pack(pady=(0, 8))
         ctk.CTkLabel(inner, text="Enter your mobile number to receive",
-                     font=F(13), text_color=D.T_LIGHT).pack()
+                     font=F(26), text_color=D.T_LIGHT).pack()
         ctk.CTkLabel(inner, text="spray alerts and system notifications",
-                     font=F(13), text_color=D.T_LIGHT).pack(pady=(0, 28))
+                     font=F(26), text_color=D.T_LIGHT).pack(pady=(0, 40))
 
         # Phone row
         phone_outer = ctk.CTkFrame(
             inner, fg_color=D.FIELD, corner_radius=D.RADIUS,
-            height=D.PILL_H, border_width=2, border_color=D.G200
+            width=620, height=90,
+            border_width=2, border_color=D.G200
         )
-        phone_outer.pack(fill="x", pady=(0, 20))
+        phone_outer.pack(pady=(0, 30))
         phone_outer.pack_propagate(False)
 
-        # +63 prefix badge
-        prefix = ctk.CTkFrame(phone_outer, fg_color=D.G200, corner_radius=10,
-                               width=52, height=36)
-        prefix.place(x=8, rely=0.5, anchor="w")
+        prefix = ctk.CTkFrame(phone_outer, fg_color=D.G200, corner_radius=12,
+                               width=96, height=66)
+        prefix.place(x=12, rely=0.5, anchor="w")
         prefix.pack_propagate(False)
-        ctk.CTkLabel(prefix, text="+63", font=F(14, "bold"),
+        ctk.CTkLabel(prefix, text="+63", font=F(28, "bold"),
                      text_color=D.G800).place(relx=0.5, rely=0.5, anchor="center")
 
         self.phone_entry = ctk.CTkEntry(
             phone_outer,
             placeholder_text="9XX XXX XXXX",
-            width=D.PILL_W - 90,
-            height=D.ENTRY_H,
+            width=480,
+            height=70,
             border_width=0,
             fg_color="transparent",
             text_color=D.T_DARK,
             placeholder_text_color=D.T_LIGHT,
-            font=F(15)
+            font=F(30)
         )
-        self.phone_entry.place(x=70, rely=0.5, anchor="w")
+        self.phone_entry.place(x=122, rely=0.5, anchor="w")
 
-        _green_btn(inner, "SUBMIT", self.submit, width=D.PILL_W).pack()
+        ctk.CTkButton(
+            inner, text="SUBMIT",
+            command=self.submit,
+            width=620, height=90,
+            corner_radius=D.RADIUS,
+            fg_color=D.G700,
+            hover_color=D.G800,
+            font=F(36, "bold"),
+            text_color=D.T_WHITE
+        ).pack()
 
         ctk.CTkLabel(
             inner,
             text="Your number is only used for system alerts.\nWe never share your information.",
-            font=F(11), text_color=D.T_LIGHT, justify="center"
-        ).pack(pady=(14, 0))
+            font=F(22), text_color=D.T_LIGHT, justify="center"
+        ).pack(pady=(22, 0))
 
     def submit(self):
         phone = self.phone_entry.get().strip()
@@ -495,7 +518,6 @@ class MobileNumberScreen(ctk.CTk):
 # MAIN
 # ---------------------------------------------------------
 def _send_login_sms(phone: str):
-    """Send a login notification SMS to the registered phone number."""
     try:
         from hardware.hardware_interface import get_hardware
         hw = get_hardware()
@@ -515,7 +537,6 @@ def main():
     WelcomeScreen().mainloop()
     LoginScreen().mainloop()
 
-    # Check if a phone number is already registered
     saved_phone = ""
     try:
         from core.session import get_phone
@@ -524,11 +545,8 @@ def main():
         print(f"⚠️ Session read error: {e}")
 
     if saved_phone:
-        # Returning user — skip mobile registration, go straight to dashboard
-        # but still send a login notification SMS
         _send_login_sms(saved_phone)
     else:
-        # First-time user — show mobile number registration screen
         MobileNumberScreen().mainloop()
 
     try:

@@ -32,8 +32,8 @@ class SmartSprayerUI(ctk.CTk):
 
         # Window
         self.title("Sprayer System Control")
-        self.geometry("1550x900")
-        self.minsize(1200, 700)
+        self.geometry("1650x900")
+        self.minsize(1300, 700)
 
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("green")
@@ -78,14 +78,14 @@ class SmartSprayerUI(ctk.CTk):
         self.topbar = ctk.CTkFrame(
             self,
             fg_color=self.COL_TOPBAR_BG,
-            height=90,
+            height=120,
             corner_radius=0
         )
         self.topbar.grid(row=0, column=0, columnspan=2, sticky="ew")
         self.topbar.grid_columnconfigure(1, weight=1)
 
         left = ctk.CTkFrame(self.topbar, fg_color="transparent")
-        left.grid(row=0, column=0, sticky="w", padx=24, pady=18)
+        left.grid(row=0, column=0, sticky="w", padx=28, pady=20)
 
         logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "logo.png")
 
@@ -95,34 +95,34 @@ class SmartSprayerUI(ctk.CTk):
             self.logo_img = ctk.CTkImage(
                 light_image=Image.open(logo_path),
                 dark_image=Image.open(logo_path),
-                size=(54, 54)
+                size=(72, 72)
             )
 
-        ctk.CTkLabel(left, text="", image=self.logo_img).grid(row=0, column=0, padx=(0, 16))
+        ctk.CTkLabel(left, text="", image=self.logo_img).grid(row=0, column=0, padx=(0, 18))
 
         ctk.CTkLabel(
             left,
             text="AUTOMATED SPRAYER SYSTEM",
-            font=ctk.CTkFont(size=30, weight="bold"),
+            font=ctk.CTkFont(size=50, weight="bold"),
             text_color=self.COL_TEXT_DARK
         ).grid(row=0, column=1, sticky="w")
 
         self.datetime_lbl = ctk.CTkLabel(
             self.topbar,
-            font=ctk.CTkFont(size=15, weight="bold"),
+            font=ctk.CTkFont(size=26, weight="bold"),
             text_color=self.COL_TEXT_GRAY
         )
-        self.datetime_lbl.grid(row=0, column=1, sticky="e", padx=24)
+        self.datetime_lbl.grid(row=0, column=1, sticky="e", padx=28)
 
         self._update_clock()
 
         divider = ctk.CTkFrame(self, height=2, fg_color=self.COL_DIVIDER)
-        divider.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(88, 0))
+        divider.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(118, 0))
 
         # ================= SIDEBAR =================
         self.sidebar = ctk.CTkFrame(
             self,
-            width=320,
+            width=420,
             fg_color=self.COL_SIDEBAR_BG,
             corner_radius=0
         )
@@ -134,30 +134,30 @@ class SmartSprayerUI(ctk.CTk):
 
         # Load navigation icons
         icons_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "icons")
-        
+
         nav_items = [
-            ("Dashboard", "dashboard", "dashboard.png"),
-            ("Scheduling", "scheduling", "scheduling.png"),
+            ("Dashboard",     "dashboard",     "dashboard.png"),
+            ("Scheduling",    "scheduling",    "scheduling.png"),
             ("Previous Data", "previous_data", "previous.png"),
             ("Notifications", "notifications", "notifications.png"),
-            ("Settings", "settings", "settings.png"),
+            ("Settings",      "settings",      "settings.png"),
         ]
 
         for i, (label, key, icon_file) in enumerate(nav_items):
 
             container = ctk.CTkFrame(self.sidebar, fg_color="transparent")
             container.grid(row=i, column=0, sticky="ew",
-                           padx=18, pady=(18 if i == 0 else 12, 0))
+                           padx=16, pady=(20 if i == 0 else 10, 0))
             container.grid_columnconfigure(1, weight=1)
 
             indicator = ctk.CTkFrame(
                 container,
-                width=6,
-                height=50,
+                width=8,
+                height=72,
                 fg_color="transparent",
                 corner_radius=6
             )
-            indicator.grid(row=0, column=0, sticky="ns", padx=(0, 12))
+            indicator.grid(row=0, column=0, sticky="ns", padx=(0, 14))
 
             # Try to load icon image
             icon_img = None
@@ -167,7 +167,7 @@ class SmartSprayerUI(ctk.CTk):
                     icon_img = ctk.CTkImage(
                         light_image=Image.open(icon_path),
                         dark_image=Image.open(icon_path),
-                        size=(24, 24)
+                        size=(36, 36)
                     )
                 except:
                     pass
@@ -177,12 +177,12 @@ class SmartSprayerUI(ctk.CTk):
                 text=f"  {label}",
                 image=icon_img,
                 compound="left",
-                height=50,
-                corner_radius=8,
+                height=72,
+                corner_radius=10,
                 fg_color="transparent",
                 text_color=self.COL_TEXT_MID,
                 hover_color=self.COL_HOVER,
-                font=ctk.CTkFont(size=19, weight="bold"),
+                font=ctk.CTkFont(size=32, weight="bold"),
                 anchor="w",
                 command=lambda k=key: self._show_panel(k)
             )
@@ -190,7 +190,6 @@ class SmartSprayerUI(ctk.CTk):
 
             self.nav_buttons[key] = btn
             self.nav_indicators[key] = indicator
-
 
         # Account button with icon
         account_icon = None
@@ -200,7 +199,7 @@ class SmartSprayerUI(ctk.CTk):
                 account_icon = ctk.CTkImage(
                     light_image=Image.open(account_icon_path),
                     dark_image=Image.open(account_icon_path),
-                    size=(24, 24)
+                    size=(36, 36)
                 )
             except:
                 pass
@@ -210,16 +209,16 @@ class SmartSprayerUI(ctk.CTk):
             text="  Sprayer Account",
             image=account_icon,
             compound="left",
-            height=50,
-            corner_radius=8,
+            height=72,
+            corner_radius=10,
             fg_color="transparent",
             text_color=self.COL_TEXT_MID,
             hover_color=self.COL_HOVER,
-            font=ctk.CTkFont(size=19, weight="bold"),
+            font=ctk.CTkFont(size=32, weight="bold"),
             anchor="w",
             command=self._show_account
         )
-        account_btn.grid(row=21, column=0, sticky="ew", padx=18, pady=(0, 20))
+        account_btn.grid(row=21, column=0, sticky="ew", padx=16, pady=(0, 24))
 
         # ================= CONTENT =================
         self.content_frame = ctk.CTkFrame(
@@ -232,12 +231,12 @@ class SmartSprayerUI(ctk.CTk):
         self.content_frame.grid_columnconfigure(0, weight=1)
 
         self.panels = {
-            "dashboard": DashboardPanel(self.content_frame, self.hardware, self.scheduler),
-            "scheduling": SchedulingPanel(self.content_frame, self.scheduler, self.reschedule_mgr, self.logger),
+            "dashboard":    DashboardPanel(self.content_frame, self.hardware, self.scheduler),
+            "scheduling":   SchedulingPanel(self.content_frame, self.scheduler, self.reschedule_mgr, self.logger),
             "previous_data": PreviousDataPanel(self.content_frame, self.data_store),
             "notifications": NotificationsPanel(self.content_frame, self.scheduler, self.data_store, self.hardware),
-            "settings": SettingsFrame(self.content_frame),
-            "account": SprayerAccountPanel(self.content_frame)
+            "settings":     SettingsFrame(self.content_frame),
+            "account":      SprayerAccountPanel(self.content_frame)
         }
 
         self._show_panel("dashboard")
@@ -269,10 +268,10 @@ class SmartSprayerUI(ctk.CTk):
             self.nav_buttons[key].configure(
                 fg_color=self.COL_ACTIVE_BG,
                 text_color=self.COL_TEXT_DARK
-                )
+            )
             self.nav_indicators[key].configure(
                 fg_color=self.COL_ACTIVE_BAR
-                )
+            )
 
     # =====================================================
 
@@ -292,7 +291,6 @@ class SmartSprayerUI(ctk.CTk):
 
     def _show_account(self):
         self._show_panel("account")
-
 
     def _on_closing(self):
         if messagebox.askokcancel("Quit", "Exit Sprayer System?"):

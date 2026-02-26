@@ -412,3 +412,22 @@ def update_recipient(phone: str, new_name: str) -> bool:
     except Exception as e:
         print(f"Error updating recipient: {e}")
         return False
+        
+        # ── PASTE THESE TWO FUNCTIONS AT THE BOTTOM OF data_store.py ──
+
+def save_location(barangay: str, municipality: str):
+    """Save the user's selected weather location."""
+    store = get_data_store()
+    location_file = store.data_dir / "location.json"
+    store._save_json(location_file, {
+        "barangay": barangay,
+        "municipality": municipality
+    })
+
+def get_location() -> dict:
+    """Get the saved weather location. Returns dict with 'barangay' and 'municipality', or {}."""
+    store = get_data_store()
+    location_file = store.data_dir / "location.json"
+    if not location_file.exists():
+        return {}
+    return store._load_json(location_file) or {}

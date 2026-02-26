@@ -2039,3 +2039,261 @@
 2026-02-15 23:23:13 - INFO - Smart Sprayer Logger initialized
 2026-02-15 23:23:13 - INFO - Scheduler initialized
 2026-02-15 23:23:13 - INFO - Scheduler started
+2026-02-23 12:59:31 - INFO - Smart Sprayer Logger initialized
+2026-02-23 12:59:33 - INFO - Scheduler initialized
+2026-02-23 12:59:33 - INFO - Scheduler started
+2026-02-23 13:20:57 - INFO - Smart Sprayer Logger initialized
+2026-02-23 13:20:59 - INFO - Scheduler initialized
+2026-02-23 13:20:59 - INFO - Scheduler started
+2026-02-23 13:22:23 - INFO - Smart Sprayer Logger initialized
+2026-02-23 13:22:25 - INFO - Scheduler initialized
+2026-02-23 13:22:26 - INFO - Scheduler started
+2026-02-23 13:27:08 - INFO - Smart Sprayer Logger initialized
+2026-02-23 13:27:10 - INFO - Scheduler initialized
+2026-02-23 13:27:10 - INFO - Scheduler started
+2026-02-23 13:31:23 - INFO - Smart Sprayer Logger initialized
+2026-02-23 13:31:25 - INFO - Scheduler initialized
+2026-02-23 13:31:25 - INFO - Scheduler started
+2026-02-23 13:33:57 - INFO - Smart Sprayer Logger initialized
+2026-02-23 13:33:59 - INFO - Scheduler initialized
+2026-02-23 13:33:59 - INFO - Scheduler started
+2026-02-23 13:40:34 - INFO - SCHEDULE CREATED - Date: 2026-02-23, Time: 13:45, Type: Pesticide, Container: Container 2
+2026-02-23 13:45:09 - INFO - Checking weather before spray...
+2026-02-23 13:45:09 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_016
+2026-02-23 13:45:09 - INFO - Weather reschedule attempt #1 for schedule SCH_016
+2026-02-23 13:45:10 - INFO - Schedule SCH_016 rescheduled to 2026-02-24 13:45 due to weather (attempt 1/3)
+2026-02-23 13:48:42 - INFO - Smart Sprayer Logger initialized
+2026-02-23 13:48:45 - INFO - Scheduler initialized
+2026-02-23 13:48:45 - INFO - Scheduler started
+2026-02-23 13:52:41 - INFO - Smart Sprayer Logger initialized
+2026-02-23 13:52:44 - INFO - Scheduler initialized
+2026-02-23 13:52:44 - INFO - Scheduler started
+2026-02-23 13:56:32 - INFO - Smart Sprayer Logger initialized
+2026-02-23 13:56:35 - INFO - Scheduler initialized
+2026-02-23 13:56:35 - INFO - Scheduler started
+2026-02-23 14:04:16 - INFO - Smart Sprayer Logger initialized
+2026-02-23 14:04:18 - INFO - Scheduler initialized
+2026-02-23 14:04:18 - INFO - Scheduler started
+2026-02-23 14:10:12 - INFO - Smart Sprayer Logger initialized
+2026-02-23 14:10:15 - INFO - Scheduler initialized
+2026-02-23 14:10:15 - INFO - Scheduler started
+2026-02-23 14:31:18 - INFO - Smart Sprayer Logger initialized
+2026-02-23 14:31:22 - INFO - Scheduler initialized
+2026-02-23 14:31:22 - INFO - Scheduler started
+2026-02-23 14:40:23 - INFO - Smart Sprayer Logger initialized
+2026-02-23 14:40:26 - INFO - Scheduler initialized
+2026-02-23 14:40:26 - INFO - Scheduler started
+2026-02-23 14:46:17 - INFO - Smart Sprayer Logger initialized
+2026-02-23 14:46:25 - INFO - Scheduler initialized
+2026-02-23 14:46:25 - INFO - Scheduler started
+2026-02-23 14:48:50 - INFO - Smart Sprayer Logger initialized
+2026-02-23 14:48:53 - INFO - Scheduler initialized
+2026-02-23 14:48:53 - INFO - Scheduler started
+2026-02-23 14:59:54 - INFO - Smart Sprayer Logger initialized
+2026-02-23 14:59:56 - INFO - Scheduler initialized
+2026-02-23 14:59:56 - INFO - Scheduler started
+2026-02-23 15:04:11 - INFO - Smart Sprayer Logger initialized
+2026-02-23 15:04:14 - INFO - Scheduler initialized
+2026-02-23 15:04:14 - INFO - Scheduler started
+2026-02-23 15:12:25 - INFO - Smart Sprayer Logger initialized
+2026-02-23 15:12:34 - INFO - Scheduler initialized
+2026-02-23 15:12:34 - INFO - Scheduler started
+2026-02-23 15:14:51 - INFO - SCHEDULE CREATED - Date: 2026-02-23, Time: 15:20, Type: Fertilizer, Container: Container 1
+2026-02-23 15:20:04 - INFO - Checking weather before spray...
+2026-02-23 15:20:04 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_017
+2026-02-23 15:20:04 - INFO - Weather reschedule attempt #1 for schedule SCH_017
+2026-02-23 15:20:06 - INFO - Schedule SCH_017 rescheduled to 2026-02-24 15:20 due to weather (attempt 1/3)
+2026-02-23 15:29:14 - INFO - SCHEDULE CREATED - Date: 2026-02-23, Time: 15:30, Type: Fertilizer, Container: Container 1
+2026-02-23 15:30:06 - INFO - Checking weather before spray...
+2026-02-23 15:30:06 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_018
+2026-02-23 15:30:06 - INFO - Weather reschedule attempt #1 for schedule SCH_018
+2026-02-23 15:30:07 - INFO - Schedule SCH_018 rescheduled to 2026-02-24 15:30 due to weather (attempt 1/3)
+2026-02-23 15:31:39 - INFO - SCHEDULE CREATED - Date: 2026-02-23, Time: 15:35, Type: Fertilizer, Container: Container 1
+2026-02-23 15:35:07 - INFO - Checking weather before spray...
+2026-02-23 15:35:07 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_019
+2026-02-23 15:35:07 - INFO - Weather reschedule attempt #1 for schedule SCH_019
+2026-02-23 15:35:07 - INFO - Schedule SCH_019 rescheduled to 2026-02-24 15:35 due to weather (attempt 1/3)
+2026-02-23 17:59:31 - INFO - SCHEDULE CREATED - Date: 2026-02-24, Time: 08:35, Type: Fertilizer, Container: Container 1
+2026-02-23 17:59:58 - INFO - SCHEDULE CREATED - Date: 2026-02-24, Time: 08:00, Type: Fertilizer, Container: Container 1
+2026-02-23 18:00:07 - INFO - SCHEDULE CREATED - Date: 2026-02-24, Time: 08:05, Type: Fertilizer, Container: Container 1
+2026-02-23 18:00:12 - INFO - SCHEDULE CREATED - Date: 2026-02-24, Time: 08:10, Type: Fertilizer, Container: Container 1
+2026-02-23 18:00:17 - INFO - SCHEDULE CREATED - Date: 2026-02-24, Time: 08:15, Type: Fertilizer, Container: Container 1
+2026-02-23 18:00:24 - INFO - SCHEDULE CREATED - Date: 2026-02-24, Time: 08:20, Type: Fertilizer, Container: Container 1
+2026-02-23 18:00:46 - INFO - SCHEDULE CREATED - Date: 2026-02-24, Time: 08:30, Type: Pesticide, Container: Container 2
+2026-02-23 18:00:59 - INFO - SCHEDULE CREATED - Date: 2026-02-24, Time: 08:40, Type: Pesticide, Container: Container 2
+2026-02-23 18:01:00 - INFO - SCHEDULE CREATED - Date: 2026-02-24, Time: 08:40, Type: Pesticide, Container: Container 2
+2026-02-23 18:01:54 - INFO - SCHEDULE CREATED - Date: 2026-02-24, Time: 08:45, Type: Pesticide, Container: Container 2
+2026-02-23 18:02:24 - WARNING - SCHEDULE CANCELLED - ID: SCH_027, Reason: User cancelled
+2026-02-23 18:02:48 - INFO - SCHEDULE CREATED - Date: 2026-02-24, Time: 08:50, Type: Pesticide, Container: Container 2
+2026-02-23 18:03:07 - INFO - SCHEDULE CREATED - Date: 2026-02-24, Time: 09:00, Type: Pesticide, Container: Container 2
+2026-02-23 23:26:03 - INFO - Smart Sprayer Logger initialized
+2026-02-23 23:26:06 - INFO - Scheduler initialized
+2026-02-23 23:26:06 - INFO - Scheduler started
+2026-02-24 08:00:02 - INFO - Checking weather before spray...
+2026-02-24 08:00:09 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_021
+2026-02-24 08:00:09 - INFO - Weather reschedule attempt #1 for schedule SCH_021
+2026-02-24 08:00:09 - INFO - Schedule SCH_021 rescheduled to 2026-02-25 08:00 due to weather (attempt 1/3)
+2026-02-24 08:05:09 - INFO - Checking weather before spray...
+2026-02-24 08:05:09 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_022
+2026-02-24 08:05:09 - INFO - Weather reschedule attempt #1 for schedule SCH_022
+2026-02-24 08:05:10 - INFO - Schedule SCH_022 rescheduled to 2026-02-25 08:05 due to weather (attempt 1/3)
+2026-02-24 08:10:00 - INFO - Checking weather before spray...
+2026-02-24 08:10:00 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_023
+2026-02-24 08:10:00 - INFO - Weather reschedule attempt #1 for schedule SCH_023
+2026-02-24 08:10:01 - INFO - Schedule SCH_023 rescheduled to 2026-02-25 08:10 due to weather (attempt 1/3)
+2026-02-24 08:15:01 - INFO - Checking weather before spray...
+2026-02-24 08:15:01 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_024
+2026-02-24 08:15:01 - INFO - Weather reschedule attempt #1 for schedule SCH_024
+2026-02-24 08:15:02 - INFO - Schedule SCH_024 rescheduled to 2026-02-25 08:15 due to weather (attempt 1/3)
+2026-02-24 08:20:02 - INFO - Checking weather before spray...
+2026-02-24 08:20:02 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_025
+2026-02-24 08:20:02 - INFO - Weather reschedule attempt #1 for schedule SCH_025
+2026-02-24 08:20:03 - INFO - Schedule SCH_025 rescheduled to 2026-02-25 08:20 due to weather (attempt 1/3)
+2026-02-24 08:30:03 - INFO - Checking weather before spray...
+2026-02-24 08:30:08 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_026
+2026-02-24 08:30:08 - INFO - Weather reschedule attempt #1 for schedule SCH_026
+2026-02-24 08:30:09 - INFO - Schedule SCH_026 rescheduled to 2026-02-25 08:30 due to weather (attempt 1/3)
+2026-02-24 08:35:09 - INFO - Checking weather before spray...
+2026-02-24 08:35:10 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_020
+2026-02-24 08:35:10 - INFO - Weather reschedule attempt #1 for schedule SCH_020
+2026-02-24 08:35:15 - INFO - Schedule SCH_020 rescheduled to 2026-02-25 08:35 due to weather (attempt 1/3)
+2026-02-24 08:40:05 - INFO - Checking weather before spray...
+2026-02-24 08:40:06 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_028
+2026-02-24 08:40:06 - INFO - Weather reschedule attempt #1 for schedule SCH_028
+2026-02-24 08:40:07 - INFO - Schedule SCH_028 rescheduled to 2026-02-25 08:40 due to weather (attempt 1/3)
+2026-02-24 08:45:07 - INFO - Checking weather before spray...
+2026-02-24 08:45:08 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_029
+2026-02-24 08:45:08 - INFO - Weather reschedule attempt #1 for schedule SCH_029
+2026-02-24 08:45:08 - INFO - Schedule SCH_029 rescheduled to 2026-02-25 08:45 due to weather (attempt 1/3)
+2026-02-24 08:50:08 - INFO - Checking weather before spray...
+2026-02-24 08:50:09 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_030
+2026-02-24 08:50:09 - INFO - Weather reschedule attempt #1 for schedule SCH_030
+2026-02-24 08:50:09 - INFO - Schedule SCH_030 rescheduled to 2026-02-25 08:50 due to weather (attempt 1/3)
+2026-02-24 09:00:09 - INFO - Checking weather before spray...
+2026-02-24 09:00:23 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_031
+2026-02-24 09:00:23 - INFO - Weather reschedule attempt #1 for schedule SCH_031
+2026-02-24 09:00:23 - INFO - Schedule SCH_031 rescheduled to 2026-02-25 09:00 due to weather (attempt 1/3)
+2026-02-24 13:45:06 - INFO - Checking weather before spray...
+2026-02-24 13:45:07 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_016
+2026-02-24 13:45:07 - INFO - Weather reschedule attempt #2 for schedule SCH_016
+2026-02-24 13:45:08 - INFO - Schedule SCH_016 rescheduled to 2026-02-25 13:45 due to weather (attempt 2/3)
+2026-02-24 19:19:18 - INFO - Smart Sprayer Logger initialized
+2026-02-24 19:19:21 - INFO - Scheduler initialized
+2026-02-24 19:19:21 - INFO - Scheduler started
+2026-02-24 20:10:17 - INFO - Smart Sprayer Logger initialized
+2026-02-24 20:10:20 - INFO - Scheduler initialized
+2026-02-24 20:10:20 - INFO - Scheduler started
+2026-02-24 20:13:11 - INFO - Smart Sprayer Logger initialized
+2026-02-24 20:13:14 - INFO - Scheduler initialized
+2026-02-24 20:13:14 - INFO - Scheduler started
+2026-02-24 21:04:07 - INFO - Smart Sprayer Logger initialized
+2026-02-24 21:04:10 - INFO - Scheduler initialized
+2026-02-24 21:04:10 - INFO - Scheduler started
+2026-02-24 21:07:23 - INFO - Smart Sprayer Logger initialized
+2026-02-24 21:07:26 - INFO - Scheduler initialized
+2026-02-24 21:07:26 - INFO - Scheduler started
+2026-02-24 21:12:34 - INFO - Smart Sprayer Logger initialized
+2026-02-24 21:12:37 - INFO - Scheduler initialized
+2026-02-24 21:12:37 - INFO - Scheduler started
+2026-02-24 21:19:21 - INFO - Smart Sprayer Logger initialized
+2026-02-24 21:19:24 - INFO - Scheduler initialized
+2026-02-24 21:19:24 - INFO - Scheduler started
+2026-02-24 21:22:17 - INFO - Smart Sprayer Logger initialized
+2026-02-24 21:22:20 - INFO - Scheduler initialized
+2026-02-24 21:22:20 - INFO - Scheduler started
+2026-02-24 21:27:36 - INFO - Smart Sprayer Logger initialized
+2026-02-24 21:27:39 - INFO - Scheduler initialized
+2026-02-24 21:27:39 - INFO - Scheduler started
+2026-02-24 21:31:00 - INFO - Smart Sprayer Logger initialized
+2026-02-24 21:31:03 - INFO - Scheduler initialized
+2026-02-24 21:31:03 - INFO - Scheduler started
+2026-02-24 21:35:47 - INFO - Smart Sprayer Logger initialized
+2026-02-24 21:35:50 - INFO - Scheduler initialized
+2026-02-24 21:35:50 - INFO - Scheduler started
+2026-02-24 21:38:09 - INFO - Smart Sprayer Logger initialized
+2026-02-24 21:38:12 - INFO - Scheduler initialized
+2026-02-24 21:38:12 - INFO - Scheduler started
+2026-02-24 21:44:22 - INFO - Smart Sprayer Logger initialized
+2026-02-24 21:44:25 - INFO - Scheduler initialized
+2026-02-24 21:44:25 - INFO - Scheduler started
+2026-02-24 21:52:10 - INFO - Smart Sprayer Logger initialized
+2026-02-24 21:52:12 - INFO - Scheduler initialized
+2026-02-24 21:52:12 - INFO - Scheduler started
+2026-02-24 22:01:02 - INFO - Smart Sprayer Logger initialized
+2026-02-24 22:01:05 - INFO - Scheduler initialized
+2026-02-24 22:01:05 - INFO - Scheduler started
+2026-02-24 22:02:53 - INFO - Smart Sprayer Logger initialized
+2026-02-24 22:02:56 - INFO - Scheduler initialized
+2026-02-24 22:02:56 - INFO - Scheduler started
+2026-02-24 22:04:34 - INFO - Smart Sprayer Logger initialized
+2026-02-24 22:04:37 - INFO - Scheduler initialized
+2026-02-24 22:04:37 - INFO - Scheduler started
+2026-02-24 22:13:57 - INFO - Smart Sprayer Logger initialized
+2026-02-24 22:14:00 - INFO - Scheduler initialized
+2026-02-24 22:14:00 - INFO - Scheduler started
+2026-02-24 22:21:37 - INFO - Smart Sprayer Logger initialized
+2026-02-24 22:21:40 - INFO - Scheduler initialized
+2026-02-24 22:21:40 - INFO - Scheduler started
+2026-02-24 22:24:12 - INFO - Smart Sprayer Logger initialized
+2026-02-24 22:24:15 - INFO - Scheduler initialized
+2026-02-24 22:24:15 - INFO - Scheduler started
+2026-02-24 22:27:13 - INFO - Smart Sprayer Logger initialized
+2026-02-24 22:27:16 - INFO - Scheduler initialized
+2026-02-24 22:27:16 - INFO - Scheduler started
+2026-02-24 22:32:29 - INFO - Smart Sprayer Logger initialized
+2026-02-24 22:32:32 - INFO - Scheduler initialized
+2026-02-24 22:32:32 - INFO - Scheduler started
+2026-02-24 22:36:22 - INFO - Smart Sprayer Logger initialized
+2026-02-24 22:36:24 - INFO - Scheduler initialized
+2026-02-24 22:36:24 - INFO - Scheduler started
+2026-02-24 22:40:53 - INFO - Smart Sprayer Logger initialized
+2026-02-24 22:40:56 - INFO - Scheduler initialized
+2026-02-24 22:40:56 - INFO - Scheduler started
+2026-02-24 22:45:35 - INFO - Smart Sprayer Logger initialized
+2026-02-24 22:45:37 - INFO - Scheduler initialized
+2026-02-24 22:45:37 - INFO - Scheduler started
+2026-02-24 22:47:11 - INFO - Smart Sprayer Logger initialized
+2026-02-24 22:47:13 - INFO - Scheduler initialized
+2026-02-24 22:47:13 - INFO - Scheduler started
+2026-02-24 22:50:07 - INFO - Smart Sprayer Logger initialized
+2026-02-24 22:50:09 - INFO - Scheduler initialized
+2026-02-24 22:50:09 - INFO - Scheduler started
+2026-02-24 22:53:13 - INFO - Smart Sprayer Logger initialized
+2026-02-24 22:53:15 - INFO - Scheduler initialized
+2026-02-24 22:53:15 - INFO - Scheduler started
+2026-02-24 22:56:24 - INFO - Smart Sprayer Logger initialized
+2026-02-24 22:56:26 - INFO - Scheduler initialized
+2026-02-24 22:56:26 - INFO - Scheduler started
+2026-02-24 23:02:11 - INFO - Smart Sprayer Logger initialized
+2026-02-24 23:02:13 - INFO - Scheduler initialized
+2026-02-24 23:02:13 - INFO - Scheduler started
+2026-02-24 23:10:00 - INFO - Smart Sprayer Logger initialized
+2026-02-24 23:10:02 - INFO - Scheduler initialized
+2026-02-24 23:10:02 - INFO - Scheduler started
+2026-02-24 23:11:28 - INFO - Scheduler stopped
+2026-02-26 08:31:16 - INFO - Smart Sprayer Logger initialized
+2026-02-26 08:31:17 - INFO - Scheduler initialized
+2026-02-26 08:31:17 - INFO - Scheduler started
+2026-02-26 09:14:23 - INFO - Smart Sprayer Logger initialized
+2026-02-26 09:14:23 - INFO - Scheduler initialized
+2026-02-26 09:14:23 - INFO - Scheduler started
+2026-02-26 09:16:50 - INFO - Smart Sprayer Logger initialized
+2026-02-26 09:16:51 - INFO - Scheduler initialized
+2026-02-26 09:16:51 - INFO - Scheduler started
+2026-02-26 09:22:01 - INFO - SCHEDULE CREATED - Date: 2026-02-26, Time: 09:25, Type: Fertilizer, Container: Container 1
+2026-02-26 09:25:13 - INFO - Smart Sprayer Logger initialized
+2026-02-26 09:25:14 - INFO - Scheduler initialized
+2026-02-26 09:25:14 - INFO - Checking weather before spray...
+2026-02-26 09:25:14 - INFO - Scheduler started
+2026-02-26 09:25:15 - WARNING - Weather unsuitable (rain)! Rescheduling schedule SCH_032
+2026-02-26 09:25:15 - INFO - Weather reschedule attempt #1 for schedule SCH_032
+2026-02-26 09:25:15 - INFO - Schedule SCH_032 rescheduled to 2026-02-27 09:25 due to weather (attempt 1/3)
+2026-02-26 09:44:00 - INFO - Smart Sprayer Logger initialized
+2026-02-26 09:44:02 - INFO - Scheduler initialized
+2026-02-26 09:44:02 - INFO - Scheduler started
+2026-02-26 11:43:19 - INFO - Smart Sprayer Logger initialized
+2026-02-26 11:43:22 - INFO - Scheduler initialized
+2026-02-26 11:43:22 - INFO - Scheduler started
+2026-02-26 11:45:20 - INFO - SCHEDULE CREATED - Date: 2026-02-26, Time: 11:50, Type: Fertilizer, Container: Container 1
+2026-02-26 11:45:22 - INFO - SCHEDULE CREATED - Date: 2026-02-26, Time: 11:50, Type: Fertilizer, Container: Container 1
+2026-02-26 11:45:27 - INFO - SCHEDULE CREATED - Date: 2026-02-26, Time: 11:50, Type: Fertilizer, Container: Container 1

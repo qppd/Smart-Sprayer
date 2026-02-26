@@ -6,7 +6,7 @@ import sys, os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.data_store import get_recipients, add_recipient, delete_recipient
+from core.data_store import get_recipients, add_recipient, delete_recipient, save_location
 from hardware.hardware_interface import get_hardware
 
 # ══════════════════════════════════════════════════════
@@ -58,32 +58,19 @@ class SettingsFrame(ctk.CTkScrollableFrame):
     # HELPERS
     # ══════════════════════════════════════════════════════
 
-    def _card(self, **kwargs):
-        card = ctk.CTkFrame(self, fg_color=WHITE, corner_radius=18, **kwargs)
-        card.pack(fill="x", padx=30, pady=(0, 16))
-        return card
-
     def _card_title(self, parent, text):
-        """Section title with accent strip."""
-        strip = ctk.CTkFrame(parent, fg_color=GREEN, height=3, corner_radius=0)
+        strip = ctk.CTkFrame(parent, fg_color=GREEN, height=5, corner_radius=0)
         strip.pack(fill="x")
 
         ctk.CTkLabel(
             parent,
             text=text,
-            font=ctk.CTkFont(size=26, weight="bold"),
+            font=ctk.CTkFont(size=40, weight="bold"),
             text_color=GREEN
-        ).pack(anchor="w", padx=22, pady=(16, 4))
+        ).pack(anchor="w", padx=22, pady=(20, 6))
 
     def _divider(self, parent):
-        ctk.CTkFrame(parent, fg_color=DIVIDER, height=1).pack(fill="x", padx=22, pady=8)
-
-    def _field_label(self, parent, text, col):
-        ctk.CTkLabel(
-            parent, text=text,
-            font=ctk.CTkFont(size=18),
-            text_color=GRAY
-        ).grid(row=0, column=col, sticky="w")
+        ctk.CTkFrame(parent, fg_color=DIVIDER, height=2).pack(fill="x", padx=22, pady=10)
 
     # ══════════════════════════════════════════════════════
     # PHONE VALIDATION
@@ -114,7 +101,7 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         toast.attributes("-topmost", True)
         toast.configure(fg_color=bg_color)
 
-        width, height = 400, 90
+        width, height = 540, 120
         self.update_idletasks()
         x = self.winfo_screenwidth() - width - 20
         y = 20
@@ -123,25 +110,25 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         container = ctk.CTkFrame(toast, fg_color=bg_color, corner_radius=14)
         container.pack(fill="both", expand=True)
 
-        icon_bg = ctk.CTkFrame(container, width=48, height=48,
-                               corner_radius=24, fg_color=circle_color)
+        icon_bg = ctk.CTkFrame(container, width=65, height=65,
+                               corner_radius=33, fg_color=circle_color)
         icon_bg.pack_propagate(False)
-        icon_bg.pack(side="left", padx=18)
+        icon_bg.pack(side="left", padx=20)
 
         ctk.CTkLabel(icon_bg, text=icon,
-                     font=ctk.CTkFont(size=26, weight="bold"),
+                     font=ctk.CTkFont(size=34, weight="bold"),
                      text_color="white").pack(expand=True)
 
         text_frame = ctk.CTkFrame(container, fg_color="transparent")
         text_frame.pack(side="left", fill="both", expand=True)
 
         ctk.CTkLabel(text_frame, text=title,
-                     font=ctk.CTkFont(size=20, weight="bold"),
-                     text_color="white").pack(anchor="w", pady=(20, 0))
+                     font=ctk.CTkFont(size=30, weight="bold"),
+                     text_color="white").pack(anchor="w", pady=(24, 0))
 
         if subtitle:
             ctk.CTkLabel(text_frame, text=subtitle,
-                         font=ctk.CTkFont(size=16),
+                         font=ctk.CTkFont(size=24),
                          text_color=sub_color).pack(anchor="w")
 
         toast.after(2800, toast.destroy)
@@ -154,82 +141,79 @@ class SettingsFrame(ctk.CTkScrollableFrame):
 
         modal = ctk.CTkToplevel(self)
         modal.overrideredirect(True)
-        modal.geometry("480x400")
+        modal.geometry("640x510")
         modal.grab_set()
         modal.attributes("-topmost", True)
 
         modal.update_idletasks()
-        x = self.winfo_rootx() + (self.winfo_width()  // 2) - 240
-        y = self.winfo_rooty() + (self.winfo_height() // 2) - 200
-        modal.geometry(f"480x400+{x}+{y}")
+        x = self.winfo_rootx() + (self.winfo_width()  // 2) - 320
+        y = self.winfo_rooty() + (self.winfo_height() // 2) - 255
+        modal.geometry(f"640x510+{x}+{y}")
 
-        # Outer shadow frame
-        outer = ctk.CTkFrame(modal, fg_color="#d0e8d8", corner_radius=20)
+        outer = ctk.CTkFrame(modal, fg_color="#d0e8d8", corner_radius=22)
         outer.pack(fill="both", expand=True, padx=3, pady=3)
 
-        container = ctk.CTkFrame(outer, fg_color=WHITE, corner_radius=18)
+        container = ctk.CTkFrame(outer, fg_color=WHITE, corner_radius=20)
         container.pack(fill="both", expand=True, padx=2, pady=2)
 
-        # Warning icon
         icon_frame = ctk.CTkFrame(container, fg_color="#fff8e1",
-                                  corner_radius=999, width=64, height=64)
+                                  corner_radius=999, width=86, height=86)
         icon_frame.pack_propagate(False)
-        icon_frame.pack(pady=(24, 8))
+        icon_frame.pack(pady=(30, 10))
 
-        ctk.CTkLabel(icon_frame, text="⚠",
-                     font=ctk.CTkFont(size=32),
+        ctk.CTkLabel(icon_frame, text="?",
+                     font=ctk.CTkFont(size=46, weight="bold"),
                      text_color="#f39c12").pack(expand=True)
 
         ctk.CTkLabel(container, text="Delete Recipient",
-                     font=ctk.CTkFont(size=26, weight="bold"),
+                     font=ctk.CTkFont(size=38, weight="bold"),
                      text_color=GREEN).pack()
 
         ctk.CTkLabel(container,
                      text="Are you sure you want to delete this recipient?",
-                     font=ctk.CTkFont(size=18),
-                     text_color=GRAY).pack(pady=(6, 0))
+                     font=ctk.CTkFont(size=26),
+                     text_color=GRAY).pack(pady=(8, 0))
 
-        # Preview card
         preview = ctk.CTkFrame(container, fg_color=FIELD_BG, corner_radius=12)
-        preview.pack(fill="x", padx=24, pady=14)
+        preview.pack(fill="x", padx=30, pady=16)
 
         ctk.CTkLabel(preview,
-                     text=f"👤  {recipient['name']}",
-                     font=ctk.CTkFont(size=18, weight="bold"),
-                     text_color=GREEN).pack(anchor="w", padx=18, pady=(12, 2))
+                     text=recipient['name'],
+                     font=ctk.CTkFont(size=28, weight="bold"),
+                     text_color=GREEN).pack(anchor="w", padx=20, pady=(14, 4))
 
         ctk.CTkLabel(preview,
-                     text=f"📞  {recipient['phone']}",
-                     font=ctk.CTkFont(size=17),
-                     text_color=GRAY).pack(anchor="w", padx=18, pady=(0, 12))
+                     text=recipient['phone'],
+                     font=ctk.CTkFont(size=26),
+                     text_color=GRAY).pack(anchor="w", padx=20, pady=(0, 14))
 
         ctk.CTkLabel(container,
                      text="This action cannot be undone.",
                      text_color=RED,
-                     font=ctk.CTkFont(size=17, weight="bold")).pack(pady=(0, 14))
+                     font=ctk.CTkFont(size=26, weight="bold")).pack(pady=(0, 16))
 
         btns = ctk.CTkFrame(container, fg_color="transparent")
-        btns.pack(pady=(0, 20))
+        btns.pack(pady=(0, 26))
 
         ctk.CTkButton(
             btns, text="Cancel",
-            width=160, height=42,
-            corner_radius=10,
-            font=ctk.CTkFont(size=18, weight="bold"),
+            width=220, height=60,
+            corner_radius=12,
+            font=ctk.CTkFont(size=28, weight="bold"),
             fg_color=BTN_GREEN,
             hover_color="#388e3c",
             command=modal.destroy
-        ).pack(side="left", padx=12)
+        ).pack(side="left", padx=14)
 
         ctk.CTkButton(
             btns, text="Delete",
-            width=160, height=42,
-            corner_radius=10,
-            font=ctk.CTkFont(size=18, weight="bold"),
+            width=220, height=60,
+            corner_radius=12,
+            font=ctk.CTkFont(size=28, weight="bold"),
             fg_color=RED,
             hover_color="#c62828",
             command=lambda: self.delete_and_close(recipient["phone"], modal)
-        ).pack(side="left", padx=12)
+        ).pack(side="left", padx=14)
 
     def delete_and_close(self, phone, modal):
         delete_recipient(phone)
@@ -246,75 +230,77 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         card = ctk.CTkFrame(self, fg_color=WHITE, corner_radius=18)
         card.pack(fill="x", padx=30, pady=(30, 16))
 
-        self._card_title(card, "🌤  Weather Location")
+        self._card_title(card, "Weather Location")
 
         ctk.CTkLabel(
             card,
             text="Set your location in Quezon province to get weather-based forecasts.\n"
                  "Used for weather based spraying decisions.",
-            font=ctk.CTkFont(size=17),
+            font=ctk.CTkFont(size=26),
             text_color=GRAY,
             justify="left"
-        ).pack(anchor="w", padx=22, pady=(0, 12))
+        ).pack(anchor="w", padx=22, pady=(0, 14))
 
         self._divider(card)
 
         # Fields row
         row = ctk.CTkFrame(card, fg_color="transparent")
-        row.pack(anchor="w", padx=22, pady=(0, 14))
+        row.pack(anchor="w", padx=22, pady=(0, 18))
 
         ctk.CTkLabel(row, text="Municipality:",
-                     font=ctk.CTkFont(size=18),
+                     font=ctk.CTkFont(size=28),
                      text_color=GRAY).grid(row=0, column=0, sticky="w")
 
         self.muni = ctk.CTkComboBox(
             row,
             values=["Lucban, Quezon", "Lucena City"],
-            width=190, height=38,
-            font=ctk.CTkFont(size=17),
+            width=300, height=58,
+            font=ctk.CTkFont(size=26),
+            dropdown_font=ctk.CTkFont(size=24),
             fg_color=FIELD_BG,
             button_color=ARROW_GREEN,
             corner_radius=10,
             command=self.update_barangays
         )
-        self.muni.grid(row=0, column=1, padx=(12, 30))
+        self.muni.grid(row=0, column=1, padx=(14, 34))
 
         ctk.CTkLabel(row, text="Barangay:",
-                     font=ctk.CTkFont(size=18),
+                     font=ctk.CTkFont(size=28),
                      text_color=GRAY).grid(row=0, column=2, sticky="w")
 
         self.brgy = ctk.CTkComboBox(
             row,
             values=self.lucban_barangays,
-            width=190, height=38,
-            font=ctk.CTkFont(size=17),
+            width=300, height=58,
+            font=ctk.CTkFont(size=26),
+            dropdown_font=ctk.CTkFont(size=24),
             fg_color=FIELD_BG,
             button_color=ARROW_GREEN,
             corner_radius=10
         )
-        self.brgy.grid(row=0, column=3, padx=(12, 30))
+        self.brgy.grid(row=0, column=3, padx=(14, 34))
 
         ctk.CTkButton(
             row,
             text="Save Location",
             fg_color=BTN_GREEN,
             hover_color="#388e3c",
-            width=160, height=38,
-            corner_radius=10,
-            font=ctk.CTkFont(size=17, weight="bold"),
+            width=240, height=58,
+            corner_radius=12,
+            font=ctk.CTkFont(size=26, weight="bold"),
             command=self.save_location
         ).grid(row=0, column=4)
 
         # Location status badge
         self.location_frame = ctk.CTkFrame(card, fg_color=FIELD_BG, corner_radius=10)
-        self.location_frame.pack(anchor="w", padx=22, pady=(4, 20))
+        self.location_frame.pack(anchor="w", padx=22, pady=(6, 22))
 
         self.location_label = ctk.CTkLabel(
             self.location_frame,
-            text="📍  Location Set: None",
-            font=ctk.CTkFont(size=18),
+            text="Location Set: None",
+            font=ctk.CTkFont(size=26),
             text_color=GREEN,
-            padx=14, pady=8
+            padx=18, pady=10
         )
         self.location_label.pack()
 
@@ -330,8 +316,9 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         if not self.muni.get() or not self.brgy.get():
             self.show_toast("Failed to save location", "Please try again later", "error")
             return
+        save_location(self.brgy.get(), self.muni.get())
         self.location_label.configure(
-            text=f"📍  Location Set: {self.brgy.get()}, {self.muni.get()}"
+            text=f"Location Set: {self.brgy.get()}, {self.muni.get()}"
         )
         self.show_toast("Weather location saved",
                         "Location will be used for spraying decisions", "success")
@@ -345,7 +332,7 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         card = ctk.CTkFrame(self, fg_color=WHITE, corner_radius=18)
         card.pack(fill="x", padx=30, pady=(0, 30))
 
-        self._card_title(card, "📱  SMS Recipients")
+        self._card_title(card, "SMS Recipients")
 
         # Registered number banner
         try:
@@ -356,99 +343,99 @@ class SettingsFrame(ctk.CTkScrollableFrame):
 
         if saved_phone:
             reg_frame = ctk.CTkFrame(card, fg_color=FIELD_BG, corner_radius=10)
-            reg_frame.pack(fill="x", padx=22, pady=(0, 10))
+            reg_frame.pack(fill="x", padx=22, pady=(0, 12))
 
             ctk.CTkLabel(reg_frame,
-                         text="📱  Registered number from setup:",
-                         font=ctk.CTkFont(size=16),
-                         text_color="#4A5A52").pack(side="left", padx=(16, 8), pady=10)
+                         text="Registered number from setup:",
+                         font=ctk.CTkFont(size=24),
+                         text_color="#4A5A52").pack(side="left", padx=(18, 10), pady=12)
 
             ctk.CTkLabel(reg_frame,
                          text=saved_phone,
-                         font=ctk.CTkFont(size=17, weight="bold"),
-                         text_color=GREEN).pack(side="left", pady=10)
+                         font=ctk.CTkFont(size=26, weight="bold"),
+                         text_color=GREEN).pack(side="left", pady=12)
 
         self._divider(card)
 
         # ── Add recipient section ─────────────────────────
         add_frame = ctk.CTkFrame(card, fg_color=BG, corner_radius=12)
-        add_frame.pack(fill="x", padx=22, pady=(0, 14))
+        add_frame.pack(fill="x", padx=22, pady=(0, 16))
 
         ctk.CTkLabel(add_frame, text="Add Recipient",
-                     font=ctk.CTkFont(size=19, weight="bold"),
-                     text_color=GREEN).pack(anchor="w", padx=16, pady=(14, 10))
+                     font=ctk.CTkFont(size=30, weight="bold"),
+                     text_color=GREEN).pack(anchor="w", padx=18, pady=(16, 12))
 
         # Phone row
         phone_row = ctk.CTkFrame(add_frame, fg_color="transparent")
-        phone_row.pack(anchor="w", padx=16, pady=(0, 8))
+        phone_row.pack(anchor="w", padx=18, pady=(0, 10))
 
         ctk.CTkLabel(phone_row, text="Mobile Number:",
-                     font=ctk.CTkFont(size=18),
+                     font=ctk.CTkFont(size=28),
                      text_color=GRAY).grid(row=0, column=0, sticky="w")
 
-        prefix = ctk.CTkEntry(phone_row, width=60, justify="center",
+        prefix = ctk.CTkEntry(phone_row, width=90, justify="center",
                               fg_color=FIELD_BG, corner_radius=8,
-                              font=ctk.CTkFont(size=17), height=38)
-        prefix.grid(row=0, column=1, padx=(12, 0))
+                              font=ctk.CTkFont(size=26), height=58)
+        prefix.grid(row=0, column=1, padx=(14, 0))
         prefix.insert(0, "+63")
         prefix.configure(state="disabled")
 
         vcmd = (self.register(self.validate_phone), "%P")
 
         self.phone_entry = ctk.CTkEntry(
-            phone_row, width=220, height=38,
+            phone_row, width=320, height=58,
             corner_radius=8,
-            font=ctk.CTkFont(size=17),
+            font=ctk.CTkFont(size=26),
             validate="key",
             validatecommand=vcmd,
             placeholder_text="9XXXXXXXXX"
         )
-        self.phone_entry.grid(row=0, column=2, padx=(6, 0))
+        self.phone_entry.grid(row=0, column=2, padx=(8, 0))
 
         # Name row
         name_row = ctk.CTkFrame(add_frame, fg_color="transparent")
-        name_row.pack(anchor="w", padx=16, pady=(0, 14))
+        name_row.pack(anchor="w", padx=18, pady=(0, 18))
 
         ctk.CTkLabel(name_row, text="Name:",
-                     font=ctk.CTkFont(size=18),
+                     font=ctk.CTkFont(size=28),
                      text_color=GRAY).grid(row=0, column=0, sticky="w")
 
         self.name_entry = ctk.CTkEntry(
-            name_row, width=290, height=38,
+            name_row, width=410, height=58,
             corner_radius=8,
-            font=ctk.CTkFont(size=17),
+            font=ctk.CTkFont(size=26),
             placeholder_text="Optional"
         )
-        self.name_entry.grid(row=0, column=1, padx=(12, 0))
+        self.name_entry.grid(row=0, column=1, padx=(14, 0))
 
         ctk.CTkButton(
-            name_row, text="+ Add",
+            name_row, text="Add",
             fg_color=BTN_GREEN,
             hover_color="#388e3c",
-            width=100, height=38,
-            corner_radius=10,
-            font=ctk.CTkFont(size=17, weight="bold"),
+            width=150, height=58,
+            corner_radius=12,
+            font=ctk.CTkFont(size=26, weight="bold"),
             command=self.add_recipient
-        ).grid(row=0, column=2, padx=(12, 0))
+        ).grid(row=0, column=2, padx=(14, 0))
 
         # ── Recipients list ───────────────────────────────
         ctk.CTkLabel(card, text="Recipients",
-                     font=ctk.CTkFont(size=19, weight="bold"),
-                     text_color=GREEN).pack(anchor="w", padx=22, pady=(0, 6))
+                     font=ctk.CTkFont(size=30, weight="bold"),
+                     text_color=GREEN).pack(anchor="w", padx=22, pady=(0, 8))
 
         self.recipients_container = ctk.CTkFrame(card, fg_color=BG, corner_radius=12)
-        self.recipients_container.pack(fill="x", padx=22, pady=(0, 14))
+        self.recipients_container.pack(fill="x", padx=22, pady=(0, 16))
 
         # Save button
         ctk.CTkButton(
-            card, text="💾  Save Recipients",
+            card, text="Save Recipients",
             fg_color=BTN_GREEN,
             hover_color="#388e3c",
-            width=240, height=42,
-            corner_radius=10,
-            font=ctk.CTkFont(size=18, weight="bold"),
+            width=320, height=62,
+            corner_radius=12,
+            font=ctk.CTkFont(size=28, weight="bold"),
             command=self.sync_recipients
-        ).pack(pady=(0, 20))
+        ).pack(pady=(0, 24))
 
         self.refresh_recipients()
 
@@ -482,9 +469,9 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             ctk.CTkLabel(
                 self.recipients_container,
                 text="No recipients added yet.",
-                font=ctk.CTkFont(size=18),
+                font=ctk.CTkFont(size=28),
                 text_color=GRAY
-            ).pack(pady=20)
+            ).pack(pady=24)
             return
 
         for r in recipients:
@@ -492,27 +479,27 @@ class SettingsFrame(ctk.CTkScrollableFrame):
                 self.recipients_container,
                 fg_color=WHITE, corner_radius=10
             )
-            row.pack(fill="x", padx=10, pady=5)
+            row.pack(fill="x", padx=10, pady=6)
 
             # Avatar circle
             avatar = ctk.CTkFrame(row, fg_color=FIELD_BG,
-                                  corner_radius=999, width=40, height=40)
+                                  corner_radius=999, width=60, height=60)
             avatar.pack_propagate(False)
-            avatar.pack(side="left", padx=(14, 10), pady=10)
+            avatar.pack(side="left", padx=(16, 12), pady=12)
 
-            ctk.CTkLabel(avatar, text="👤",
-                         font=ctk.CTkFont(size=20)).pack(expand=True)
+            ctk.CTkLabel(avatar, text=" ",
+                         font=ctk.CTkFont(size=28)).pack(expand=True)
 
             # Info
             info = ctk.CTkFrame(row, fg_color="transparent")
-            info.pack(side="left", padx=4, pady=10)
+            info.pack(side="left", padx=4, pady=12)
 
             ctk.CTkLabel(info, text=r["name"],
-                         font=ctk.CTkFont(size=18, weight="bold"),
+                         font=ctk.CTkFont(size=28, weight="bold"),
                          text_color=GREEN).pack(anchor="w")
 
             ctk.CTkLabel(info, text=r["phone"],
-                         font=ctk.CTkFont(size=16),
+                         font=ctk.CTkFont(size=24),
                          text_color=GRAY).pack(anchor="w")
 
             # Delete button
@@ -521,13 +508,13 @@ class SettingsFrame(ctk.CTkScrollableFrame):
                 fg_color="#ffebee",
                 text_color=RED,
                 hover_color="#ffcdd2",
-                width=90, height=34,
-                corner_radius=8,
-                font=ctk.CTkFont(size=16, weight="bold"),
+                width=150, height=54,
+                corner_radius=10,
+                font=ctk.CTkFont(size=24, weight="bold"),
                 border_width=1,
                 border_color="#ffcdd2",
                 command=lambda rec=r: self.confirm_delete_recipient(rec)
-            ).pack(side="right", padx=14)
+            ).pack(side="right", padx=16)
 
 
 # ══════════════════════════════════════════════════════
@@ -538,7 +525,7 @@ if __name__ == "__main__":
     ctk.set_default_color_theme("green")
 
     root = ctk.CTk()
-    root.geometry("1000x650")
+    root.geometry("1200x800")
     root.title("Automated Sprayer System")
 
     SettingsFrame(root)

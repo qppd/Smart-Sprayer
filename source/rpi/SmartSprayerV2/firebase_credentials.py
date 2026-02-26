@@ -17,7 +17,7 @@ FIREBASE_USER = {
 
 # Weather API configuration
 WEATHER_API_KEY = "64812e322c3f4b42af7135146252012"
-WEATHER_LOCATION = "Unisan Quezon"
+WEATHER_LOCATION = "Kulapi, Lucban, Quezon"
 WEATHER_API_URL = f"https://api.weatherapi.com/v1/current.json?key={WEATHER_API_KEY}&q={WEATHER_LOCATION}&aqi=no"
 WEATHER_FORECAST_URL = f"https://api.weatherapi.com/v1/forecast.json?key={WEATHER_API_KEY}&q={WEATHER_LOCATION}&days=5&aqi=no"
 

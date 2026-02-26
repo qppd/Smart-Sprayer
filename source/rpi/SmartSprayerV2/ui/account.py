@@ -27,7 +27,7 @@ BG         = "#F3F8F6"
 # SHARED MODAL HELPER
 # ══════════════════════════════════════════════════════
 
-def _base_modal(parent, w=480, h=320):
+def _base_modal(parent, w=620, h=440):
     modal = ctk.CTkToplevel(parent)
     modal.overrideredirect(True)
     modal.attributes("-topmost", True)
@@ -36,9 +36,9 @@ def _base_modal(parent, w=480, h=320):
     x = (modal.winfo_screenwidth()  // 2) - (w // 2)
     y = (modal.winfo_screenheight() // 2) - (h // 2)
     modal.geometry(f"{w}x{h}+{x}+{y}")
-    outer = ctk.CTkFrame(modal, fg_color=DIVIDER, corner_radius=20)
+    outer = ctk.CTkFrame(modal, fg_color=DIVIDER, corner_radius=22)
     outer.pack(fill="both", expand=True, padx=3, pady=3)
-    container = ctk.CTkFrame(outer, fg_color=CARD_BG, corner_radius=18)
+    container = ctk.CTkFrame(outer, fg_color=CARD_BG, corner_radius=20)
     container.pack(fill="both", expand=True, padx=2, pady=2)
     return modal, container
 
@@ -47,26 +47,26 @@ def show_error_modal(parent, title, message):
     modal, container = _base_modal(parent)
 
     icon_frame = ctk.CTkFrame(container, fg_color="#FFEBEE",
-                               width=64, height=64, corner_radius=999)
+                               width=88, height=88, corner_radius=999)
     icon_frame.pack_propagate(False)
-    icon_frame.pack(pady=(24, 10))
-    ctk.CTkLabel(icon_frame, text="✕",
-                 font=ctk.CTkFont(size=30, weight="bold"),
+    icon_frame.pack(pady=(30, 12))
+    ctk.CTkLabel(icon_frame, text="X",
+                 font=ctk.CTkFont(size=40, weight="bold"),
                  text_color=RED).pack(expand=True)
 
     ctk.CTkLabel(container, text=title,
-                 font=ctk.CTkFont(size=24, weight="bold"),
-                 text_color="#2E2E2E").pack(pady=(0, 8))
+                 font=ctk.CTkFont(size=34, weight="bold"),
+                 text_color="#2E2E2E").pack(pady=(0, 10))
 
     ctk.CTkLabel(container, text=message,
-                 font=ctk.CTkFont(size=18),
+                 font=ctk.CTkFont(size=28),
                  text_color="#4A4A4A",
-                 wraplength=400).pack(pady=(0, 20))
+                 wraplength=540).pack(pady=(0, 24))
 
     ctk.CTkButton(container, text="OK",
-                  width=180, height=46,
-                  corner_radius=10,
-                  font=ctk.CTkFont(size=18, weight="bold"),
+                  width=240, height=62,
+                  corner_radius=12,
+                  font=ctk.CTkFont(size=28, weight="bold"),
                   fg_color=RED, hover_color="#C62828",
                   command=modal.destroy).pack()
 
@@ -77,26 +77,26 @@ def show_success_modal(parent, title, message):
     modal, container = _base_modal(parent)
 
     icon_frame = ctk.CTkFrame(container, fg_color="#E8F5E9",
-                               width=64, height=64, corner_radius=999)
+                               width=88, height=88, corner_radius=999)
     icon_frame.pack_propagate(False)
-    icon_frame.pack(pady=(24, 10))
-    ctk.CTkLabel(icon_frame, text="✓",
+    icon_frame.pack(pady=(30, 12))
+    ctk.CTkLabel(icon_frame, text="OK",
                  font=ctk.CTkFont(size=30, weight="bold"),
                  text_color=GREEN).pack(expand=True)
 
     ctk.CTkLabel(container, text=title,
-                 font=ctk.CTkFont(size=24, weight="bold"),
-                 text_color="#2E2E2E").pack(pady=(0, 8))
+                 font=ctk.CTkFont(size=34, weight="bold"),
+                 text_color="#2E2E2E").pack(pady=(0, 10))
 
     ctk.CTkLabel(container, text=message,
-                 font=ctk.CTkFont(size=18),
+                 font=ctk.CTkFont(size=28),
                  text_color="#4A4A4A",
-                 wraplength=400).pack(pady=(0, 20))
+                 wraplength=540).pack(pady=(0, 24))
 
     ctk.CTkButton(container, text="OK",
-                  width=180, height=46,
-                  corner_radius=10,
-                  font=ctk.CTkFont(size=18, weight="bold"),
+                  width=240, height=62,
+                  corner_radius=12,
+                  font=ctk.CTkFont(size=28, weight="bold"),
                   fg_color=GREEN, hover_color="#388E3C",
                   command=modal.destroy).pack()
 
@@ -119,15 +119,15 @@ class SprayerAccountPanel(ctk.CTkScrollableFrame):
         return ctk.CTkFrame(parent, fg_color=CARD_BG, corner_radius=20)
 
     def _card_title(self, parent, text):
-        strip = ctk.CTkFrame(parent, fg_color=DARK_GREEN, height=3, corner_radius=0)
+        strip = ctk.CTkFrame(parent, fg_color=DARK_GREEN, height=5, corner_radius=0)
         strip.pack(fill="x")
         ctk.CTkLabel(parent, text=text,
-                     font=ctk.CTkFont(size=28, weight="bold"),
-                     text_color=DARK_GREEN).pack(anchor="w", padx=30, pady=(20, 16))
+                     font=ctk.CTkFont(size=38, weight="bold"),
+                     text_color=DARK_GREEN).pack(anchor="w", padx=30, pady=(22, 18))
 
     def _divider(self, parent):
-        ctk.CTkFrame(parent, fg_color=DIVIDER, height=1).pack(
-            fill="x", padx=30, pady=4)
+        ctk.CTkFrame(parent, fg_color=DIVIDER, height=2).pack(
+            fill="x", padx=30, pady=6)
 
     # ── main layout ──────────────────────────────────
 
@@ -145,11 +145,11 @@ class SprayerAccountPanel(ctk.CTkScrollableFrame):
 
         # Avatar circle
         avatar_frame = ctk.CTkFrame(left, fg_color=LIGHT_BG,
-                                    corner_radius=999, width=80, height=80)
+                                    corner_radius=999, width=108, height=108)
         avatar_frame.pack_propagate(False)
-        avatar_frame.pack(pady=(0, 16))
-        ctk.CTkLabel(avatar_frame, text="👤",
-                     font=ctk.CTkFont(size=42)).pack(expand=True)
+        avatar_frame.pack(pady=(0, 18))
+        ctk.CTkLabel(avatar_frame, text=" ",
+                     font=ctk.CTkFont(size=54)).pack(expand=True)
 
         username   = get_username()  or "Not Set"
         phone      = get_phone()     or "Not Set"
@@ -163,7 +163,7 @@ class SprayerAccountPanel(ctk.CTkScrollableFrame):
         self._info(left, "Created",    created_at)
         self._info(left, "Last Login", last_login)
 
-        ctk.CTkFrame(left, fg_color="transparent", height=20).pack()
+        ctk.CTkFrame(left, fg_color="transparent", height=24).pack()
 
         # ── RIGHT: Security ───────────────────────────
         right = self._card(wrapper)
@@ -180,29 +180,29 @@ class SprayerAccountPanel(ctk.CTkScrollableFrame):
         ctk.CTkButton(
             right,
             text="Change Password",
-            height=48,
-            corner_radius=12,
+            height=64,
+            corner_radius=13,
             fg_color=GREEN,
             hover_color="#388E3C",
-            font=ctk.CTkFont(size=18, weight="bold"),
+            font=ctk.CTkFont(size=28, weight="bold"),
             command=self._change_password
-        ).pack(fill="x", padx=30, pady=(10, 28))
+        ).pack(fill="x", padx=30, pady=(12, 30))
 
         # ── Logout ────────────────────────────────────
         logout_row = ctk.CTkFrame(self, fg_color="transparent")
-        logout_row.pack(fill="x", padx=40, pady=(20, 40))
+        logout_row.pack(fill="x", padx=40, pady=(24, 44))
 
         ctk.CTkButton(
             logout_row,
-            text="🔒  Log Out",
-            height=38, width=180,
-            corner_radius=10,
+            text="Log Out",
+            height=60, width=240,
+            corner_radius=12,
             fg_color="#FFEBEE",
             text_color=RED,
             hover_color="#FFCDD2",
             border_width=1,
             border_color="#FFCDD2",
-            font=ctk.CTkFont(size=14, weight="bold"),
+            font=ctk.CTkFont(size=26, weight="bold"),
             command=self._logout
         ).pack(anchor="center")
 
@@ -212,15 +212,15 @@ class SprayerAccountPanel(ctk.CTkScrollableFrame):
 
     def _info(self, parent, label, value, value_color=None):
         row = ctk.CTkFrame(parent, fg_color=LIGHT_BG, corner_radius=12)
-        row.pack(fill="x", padx=30, pady=5)
+        row.pack(fill="x", padx=30, pady=6)
 
         ctk.CTkLabel(row, text=label,
                      text_color=GRAY,
-                     font=ctk.CTkFont(size=16)).pack(side="left", padx=18, pady=12)
+                     font=ctk.CTkFont(size=26)).pack(side="left", padx=20, pady=16)
 
         ctk.CTkLabel(row, text=value,
                      text_color=value_color or DARK_GREEN,
-                     font=ctk.CTkFont(size=16, weight="bold")).pack(side="right", padx=18, pady=12)
+                     font=ctk.CTkFont(size=26, weight="bold")).pack(side="right", padx=20, pady=16)
 
     # ══════════════════════════════════════════════════════
     # PASSWORD FIELD
@@ -229,14 +229,14 @@ class SprayerAccountPanel(ctk.CTkScrollableFrame):
     def _password_field(self, parent, label):
         ctk.CTkLabel(parent, text=label,
                      text_color=GRAY,
-                     font=ctk.CTkFont(size=16)).pack(anchor="w", padx=30, pady=(10, 4))
+                     font=ctk.CTkFont(size=26)).pack(anchor="w", padx=30, pady=(12, 4))
 
         entry = ctk.CTkEntry(
             parent,
             show="•",
-            height=46,
+            height=60,
             corner_radius=12,
-            font=ctk.CTkFont(size=15)
+            font=ctk.CTkFont(size=26)
         )
         entry.pack(fill="x", padx=30, pady=(0, 4))
         return entry
@@ -265,50 +265,51 @@ class SprayerAccountPanel(ctk.CTkScrollableFrame):
     # ══════════════════════════════════════════════════════
 
     def _logout(self):
-        modal, container = _base_modal(self, w=500, h=300)
+        modal, container = _base_modal(self, w=620, h=400)
 
         icon_frame = ctk.CTkFrame(container, fg_color="#FFEBEE",
-                                   width=64, height=64, corner_radius=999)
+                                   width=88, height=88, corner_radius=999)
         icon_frame.pack_propagate(False)
-        icon_frame.pack(pady=(24, 10))
-        ctk.CTkLabel(icon_frame, text="🔒",
-                     font=ctk.CTkFont(size=28)).pack(expand=True)
+        icon_frame.pack(pady=(30, 12))
+        ctk.CTkLabel(icon_frame, text="?",
+                     font=ctk.CTkFont(size=46, weight="bold"),
+                     text_color=RED).pack(expand=True)
 
         ctk.CTkLabel(container, text="Log Out",
-                     font=ctk.CTkFont(size=26, weight="bold"),
+                     font=ctk.CTkFont(size=38, weight="bold"),
                      text_color=DARK_GREEN).pack()
 
         ctk.CTkLabel(container,
                      text="Are you sure you want to log out?",
                      text_color=GRAY,
-                     font=ctk.CTkFont(size=18)).pack(pady=(10, 20))
+                     font=ctk.CTkFont(size=28)).pack(pady=(12, 26))
 
         btn_row = ctk.CTkFrame(container, fg_color="transparent")
         btn_row.pack()
 
         ctk.CTkButton(
             btn_row, text="Cancel",
-            width=180, height=46,
-            corner_radius=10,
+            width=240, height=62,
+            corner_radius=12,
             fg_color="#E0E0E0",
             text_color="#333333",
             hover_color="#D6D6D6",
-            font=ctk.CTkFont(size=17, weight="bold"),
+            font=ctk.CTkFont(size=28, weight="bold"),
             command=modal.destroy
-        ).pack(side="left", padx=10)
+        ).pack(side="left", padx=12)
 
         ctk.CTkButton(
             btn_row, text="Log Out",
-            width=180, height=46,
-            corner_radius=10,
+            width=240, height=62,
+            corner_radius=12,
             fg_color=RED,
             hover_color="#C62828",
-            font=ctk.CTkFont(size=17, weight="bold"),
+            font=ctk.CTkFont(size=28, weight="bold"),
             command=lambda: self._confirm_logout(modal)
-        ).pack(side="left", padx=10)
+        ).pack(side="left", padx=12)
 
     def _confirm_logout(self, modal):
         modal.destroy()
         clear_session()
-        print("✓ User logged out, session cleared")
+        print("User logged out, session cleared")
         self.winfo_toplevel().destroy()

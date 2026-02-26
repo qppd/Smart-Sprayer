@@ -34,9 +34,9 @@ class PreviousDataPanel(ctk.CTkFrame):
         filter_card.pack(fill="x", padx=30, pady=(14, 6))
 
         row = ctk.CTkFrame(filter_card, fg_color="transparent")
-        row.pack(fill="x", padx=20, pady=12)
+        row.pack(fill="x", padx=20, pady=16)
 
-        self._label(row, "Filter:", size=17, weight="bold").pack(side="left")
+        self._label(row, "Filter:", size=30, weight="bold").pack(side="left")
 
         self.filter_var = ctk.StringVar(value="All")
 
@@ -49,16 +49,16 @@ class PreviousDataPanel(ctk.CTkFrame):
         ctk.CTkButton(
             row,
             text="\u21bb  Refresh",
-            width=120, height=36,
-            corner_radius=10,
+            width=200, height=62,
+            corner_radius=14,
             fg_color="#2196F3",
             hover_color="#1E88E5",
-            font=ctk.CTkFont(size=15, weight="bold"),
+            font=ctk.CTkFont(size=26, weight="bold"),
             command=self.refresh_data
         ).pack(side="right")
 
         # STATISTICS
-        self._label(self, "Statistics:", size=19, weight="bold").pack(anchor="w", padx=30, pady=(16, 8))
+        self._label(self, "Statistics:", size=32, weight="bold").pack(anchor="w", padx=30, pady=(20, 10))
 
         stats_row = ctk.CTkFrame(self, fg_color="transparent")
         stats_row.pack(fill="x", padx=30)
@@ -67,11 +67,11 @@ class PreviousDataPanel(ctk.CTkFrame):
         self.fert_lbl  = self._stat_card(stats_row, "Fertilizer",   accent="#2196F3")
         self.pest_lbl  = self._stat_card(stats_row, "Pesticide",    accent="#F4B400")
 
-        # HISTORY HEADER — no badge
+        # HISTORY HEADER
         hist_hdr = ctk.CTkFrame(self, fg_color="transparent")
-        hist_hdr.pack(fill="x", padx=30, pady=(20, 6))
+        hist_hdr.pack(fill="x", padx=30, pady=(24, 8))
 
-        self._label(hist_hdr, "History", size=19, weight="bold").pack(side="left")
+        self._label(hist_hdr, "History", size=32, weight="bold").pack(side="left")
 
         # HISTORY LIST
         self.list_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
@@ -84,31 +84,33 @@ class PreviousDataPanel(ctk.CTkFrame):
             variable=self.filter_var,
             value=name,
             command=self.refresh_data,
-            font=ctk.CTkFont(size=15),
+            font=ctk.CTkFont(size=28),
+            radiobutton_width=32,
+            radiobutton_height=32,
             fg_color="#1B5E20",
             hover_color="#2E7D32",
             border_color="#1B5E20",
-        ).pack(side="left", padx=8)
+        ).pack(side="left", padx=12)
 
     def _stat_card(self, parent, title, accent="#1B5E20"):
         outer = ctk.CTkFrame(parent, fg_color="transparent")
         outer.pack(side="left", expand=True, fill="x", padx=6)
 
-        strip = ctk.CTkFrame(outer, fg_color=accent, corner_radius=12, height=4)
+        strip = ctk.CTkFrame(outer, fg_color=accent, corner_radius=12, height=6)
         strip.pack(fill="x")
         strip.pack_propagate(False)
 
         card = self._soft_card(outer, corner=12)
         card.pack(fill="x")
 
-        self._label(card, title, size=16, color="#616161").pack(pady=(14, 4))
+        self._label(card, title, size=26, color="#616161").pack(pady=(16, 6))
 
         value_lbl = ctk.CTkLabel(
             card, text="0",
-            font=ctk.CTkFont(size=26, weight="bold"),
+            font=ctk.CTkFont(size=48, weight="bold"),
             text_color="#1B5E20"
         )
-        value_lbl.pack(pady=(0, 14))
+        value_lbl.pack(pady=(0, 16))
 
         return value_lbl
 
@@ -137,14 +139,14 @@ class PreviousDataPanel(ctk.CTkFrame):
     def _empty_state(self):
         frame = ctk.CTkFrame(self.list_frame, fg_color="transparent")
         frame.pack(fill="both", expand=True, pady=60)
-        self._label(frame, "No spray records found for this filter.", size=16, color="#616161").pack()
+        self._label(frame, "No spray records found for this filter.", size=28, color="#616161").pack()
 
     def _history_row(self, item):
         row = self._soft_card(self.list_frame)
-        row.pack(fill="x", pady=6)
+        row.pack(fill="x", pady=8)
 
         top = ctk.CTkFrame(row, fg_color="transparent")
-        top.pack(fill="x", padx=20, pady=(12, 6))
+        top.pack(fill="x", padx=24, pady=(16, 8))
 
         try:
             dt = datetime.strptime(f"{item['date']} {item['time']}", "%Y-%m-%d %H:%M")
@@ -152,23 +154,23 @@ class PreviousDataPanel(ctk.CTkFrame):
         except Exception:
             display = f"{item['date']} {item['time']}"
 
-        self._label(top, f"\U0001f550  {display}", size=16, weight="bold", color="#1B5E20").pack(side="left")
+        self._label(top, f"\U0001f550  {display}", size=28, weight="bold", color="#1B5E20").pack(side="left")
 
         badge_color = "#2196F3" if item["spray_type"] == "Fertilizer" else "#F4B400"
         ctk.CTkLabel(
             top, text=item["spray_type"],
             fg_color=badge_color, text_color="white",
-            corner_radius=8, padx=14, pady=5,
-            font=ctk.CTkFont(size=14, weight="bold")
+            corner_radius=10, padx=22, pady=10,
+            font=ctk.CTkFont(size=26, weight="bold")
         ).pack(side="right")
 
-        ctk.CTkFrame(row, fg_color="#C8DDD4", height=1).pack(fill="x", padx=20)
+        ctk.CTkFrame(row, fg_color="#C8DDD4", height=2).pack(fill="x", padx=24)
 
         bottom = ctk.CTkFrame(row, fg_color="transparent")
-        bottom.pack(fill="x", padx=20, pady=(6, 12))
+        bottom.pack(fill="x", padx=24, pady=(10, 18))
 
         for text in [f"Container: {item['container']}", f"Volume: {item['volume_ml']} ml", f"Duration: {item['duration']} s"]:
-            self._label(bottom, text, size=15, color="#616161").pack(side="left", padx=14)
+            self._label(bottom, text, size=25, color="#616161").pack(side="left", padx=20)
 
     def _run_clock(self):
         self.after(1000, self._run_clock)
