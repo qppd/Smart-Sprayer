@@ -173,9 +173,7 @@ def show_error_modal(parent, title, message):
 def show_splash_screen():
     splash = ctk.CTk()
     splash.overrideredirect(True)
-
-    w, h = 700, 540
-    _center(splash, w, h)
+    splash.attributes("-fullscreen", True)
     splash.configure(fg_color=D.G800)
 
     _splash_logo = _make_logo((240, 240))
@@ -204,7 +202,6 @@ def show_splash_screen():
     bar_bg.place(relx=0.5, rely=0.88, anchor="center")
 
     bar = ctk.CTkFrame(splash, fg_color=D.G400, width=0, height=8, corner_radius=4)
-    bar.place(x=(700 - 400) // 2, rely=0.88, anchor="w")
 
     ctk.CTkLabel(
         splash, text="Initializing system...",
@@ -218,7 +215,12 @@ def show_splash_screen():
         else:
             splash.destroy()
 
-    splash.after(300, lambda: animate(0))
+    def start_animation():
+        bar_x = (splash.winfo_width() - 400) // 2
+        bar.place(x=bar_x, rely=0.88, anchor="w")
+        animate(0)
+
+    splash.after(300, start_animation)
     splash.mainloop()
 
 

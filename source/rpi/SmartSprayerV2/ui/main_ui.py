@@ -32,8 +32,7 @@ class SmartSprayerUI(ctk.CTk):
 
         # Window
         self.title("Sprayer System Control")
-        self.geometry("1650x900")
-        self.minsize(1300, 700)
+        self.attributes("-fullscreen", True)
 
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("green")
