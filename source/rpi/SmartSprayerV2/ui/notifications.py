@@ -48,6 +48,34 @@ class NotificationsPanel(ctk.CTkFrame):
         self.after(500, self._main_update_loop)
 
     # ══════════════════════════════════════════════════════
+    # MOUSE-WHEEL SCROLL
+    # ══════════════════════════════════════════════════════
+
+    def _bind_mousewheel(self, scrollable_frame):
+        def _scroll(event):
+            scrollable_frame._parent_canvas.yview_scroll(
+                int(-1 * (event.delta / 120)), "units"
+            )
+        def _scroll_up(event):
+            scrollable_frame._parent_canvas.yview_scroll(-1, "units")
+        def _scroll_down(event):
+            scrollable_frame._parent_canvas.yview_scroll(1, "units")
+
+        def _bind_all(widget):
+            widget.bind("<MouseWheel>", _scroll,    add="+")
+            widget.bind("<Button-4>",   _scroll_up,   add="+")
+            widget.bind("<Button-5>",   _scroll_down, add="+")
+            for child in widget.winfo_children():
+                _bind_all(child)
+
+        _bind_all(scrollable_frame)
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: _bind_all(scrollable_frame),
+            add="+"
+        )
+
+    # ══════════════════════════════════════════════════════
     # HELPERS
     # ══════════════════════════════════════════════════════
 
@@ -213,6 +241,7 @@ class NotificationsPanel(ctk.CTkFrame):
             corner_radius=12
         )
         self.message_list.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        self._bind_mousewheel(self.message_list)
 
         self.refresh_recipients()
 
@@ -241,6 +270,7 @@ class NotificationsPanel(ctk.CTkFrame):
             resched_card, fg_color=LIGHT_BG, corner_radius=12
         )
         self.resched.pack(fill="both", expand=True, padx=20, pady=(10, 20))
+        self._bind_mousewheel(self.resched)
 
         # Cancelled
         cancel_card = self._card(bottom)
@@ -253,6 +283,7 @@ class NotificationsPanel(ctk.CTkFrame):
             cancel_card, fg_color=LIGHT_BG, corner_radius=12
         )
         self.cancel.pack(fill="both", expand=True, padx=20, pady=(10, 20))
+        self._bind_mousewheel(self.cancel)
 
     # ══════════════════════════════════════════════════════
     # TAB SWITCHING
@@ -458,6 +489,7 @@ class NotificationsPanel(ctk.CTkFrame):
         else:
             for s in reversed(cancelled[-10:]):
                 self._schedule_item(self.cancel, s)
+        self._bind_mousewheel(self.cancel)
 
     def _refresh_rescheduled_schedules(self):
         for w in self.resched.winfo_children():
@@ -468,6 +500,7 @@ class NotificationsPanel(ctk.CTkFrame):
         else:
             for s in reversed(rescheduled[-10:]):
                 self._schedule_item(self.resched, s)
+        self._bind_mousewheel(self.resched)
 
     def _update_system(self):
         nxt = self.scheduler.get_next_schedule()
@@ -519,6 +552,9 @@ class NotificationsPanel(ctk.CTkFrame):
 
         for r in recipients:
             self._recipient(r.get("name", "Unknown"), r.get("phone", ""))
+
+        # Re-bind after new children are added
+        self._bind_mousewheel(self.message_list)
 
     # ══════════════════════════════════════════════════════
     # CLOCK

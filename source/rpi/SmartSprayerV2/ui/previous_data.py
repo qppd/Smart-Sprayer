@@ -27,6 +27,34 @@ class PreviousDataPanel(ctk.CTkFrame):
             **kw
         )
 
+    # ══════════════════════════════════════════════════════
+    # MOUSE-WHEEL SCROLL
+    # ══════════════════════════════════════════════════════
+
+    def _bind_mousewheel(self, scrollable_frame):
+        def _scroll(event):
+            scrollable_frame._parent_canvas.yview_scroll(
+                int(-1 * (event.delta / 120)), "units"
+            )
+        def _scroll_up(event):
+            scrollable_frame._parent_canvas.yview_scroll(-1, "units")
+        def _scroll_down(event):
+            scrollable_frame._parent_canvas.yview_scroll(1, "units")
+
+        def _bind_all(widget):
+            widget.bind("<MouseWheel>", _scroll,    add="+")
+            widget.bind("<Button-4>",   _scroll_up,   add="+")
+            widget.bind("<Button-5>",   _scroll_down, add="+")
+            for child in widget.winfo_children():
+                _bind_all(child)
+
+        _bind_all(scrollable_frame)
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: _bind_all(scrollable_frame),
+            add="+"
+        )
+
     def _create_widgets(self):
 
         # FILTER BAR
@@ -76,6 +104,7 @@ class PreviousDataPanel(ctk.CTkFrame):
         # HISTORY LIST
         self.list_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
         self.list_frame.pack(fill="both", expand=True, padx=30, pady=(0, 20))
+        self._bind_mousewheel(self.list_frame)
 
     def _radio_pill(self, parent, name):
         ctk.CTkRadioButton(
@@ -135,6 +164,9 @@ class PreviousDataPanel(ctk.CTkFrame):
 
         for item in reversed(history):
             self._history_row(item)
+
+        # Re-bind after new children are added
+        self._bind_mousewheel(self.list_frame)
 
     def _empty_state(self):
         frame = ctk.CTkFrame(self.list_frame, fg_color="transparent")

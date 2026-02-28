@@ -1735,3 +1735,116 @@
 2026-02-26 12:01:33 - DEBUG - Switched to panel: settings
 2026-02-26 12:01:33 - DEBUG - Switched to panel: settings
 2026-02-26 12:01:33 - DEBUG - Switched to panel: settings
+2026-02-26 13:24:10 - INFO - Smart Sprayer Logger initialized
+2026-02-26 13:24:10 - INFO - === Smart Sprayer GUI Started ===
+2026-02-26 13:24:13 - INFO - Scheduler initialized
+2026-02-26 13:24:13 - INFO - Scheduler started
+2026-02-26 13:24:13 - INFO - Syncing ESP32 on startup...
+2026-02-26 13:24:13 - INFO - Syncing time to ESP32 RTC...
+2026-02-26 13:24:13 - INFO - Syncing recipients to ESP32...
+2026-02-26 13:24:13 - INFO - Synced 2 recipients to ESP32
+2026-02-26 13:24:14 - INFO - ESP32 startup sync complete!
+2026-02-26 13:24:20 - DEBUG - Switched to panel: dashboard
+2026-02-26 13:24:20 - INFO - GUI initialization complete
+2026-02-26 13:32:17 - INFO - Smart Sprayer Logger initialized
+2026-02-26 13:32:17 - INFO - === Smart Sprayer GUI Started ===
+2026-02-26 13:32:21 - INFO - Scheduler initialized
+2026-02-26 13:32:21 - INFO - Scheduler started
+2026-02-26 13:32:21 - INFO - Syncing ESP32 on startup...
+2026-02-26 13:32:21 - INFO - Syncing time to ESP32 RTC...
+2026-02-26 13:32:21 - INFO - Syncing recipients to ESP32...
+2026-02-26 13:32:21 - INFO - Synced 2 recipients to ESP32
+2026-02-26 13:32:22 - INFO - ESP32 startup sync complete!
+2026-02-26 13:32:28 - DEBUG - Switched to panel: dashboard
+2026-02-26 13:32:28 - INFO - GUI initialization complete
+2026-02-26 13:32:28 - DEBUG - Switched to panel: scheduling
+2026-02-26 13:32:34 - DEBUG - Switched to panel: dashboard
+2026-02-26 13:32:44 - DEBUG - Switched to panel: scheduling
+2026-02-26 13:33:12 - INFO - SCHEDULE CREATED - Date: 2026-02-26, Time: 13:35, Type: Fertilizer, Container: Container 1
+2026-02-26 13:33:36 - DEBUG - Switched to panel: dashboard
+2026-02-26 13:35:01 - INFO - Checking weather before spray...
+2026-02-26 13:35:01 - INFO - Weather check passed - safe to spray
+2026-02-26 13:35:01 - INFO - SPRAY EXECUTED - Date: 2026-02-26, Time: 13:35, Type: Fertilizer, Container: Container 1
+2026-02-26 13:35:01 - INFO - Executing spray: Fertilizer using Container 1, 1000.0mL for 12.0 seconds
+2026-02-26 13:35:01 - INFO - SPRAY COMPLETED - ID: SCH_062, Duration: 12.0s
+2026-02-26 13:37:16 - INFO - Smart Sprayer Logger initialized
+2026-02-26 13:37:16 - INFO - === Smart Sprayer GUI Started ===
+2026-02-26 13:37:19 - INFO - Scheduler initialized
+2026-02-26 13:37:19 - INFO - Scheduler started
+2026-02-26 13:37:19 - INFO - Syncing ESP32 on startup...
+2026-02-26 13:37:19 - INFO - Syncing time to ESP32 RTC...
+2026-02-26 13:37:19 - INFO - Syncing recipients to ESP32...
+2026-02-26 13:37:20 - INFO - Synced 2 recipients to ESP32
+2026-02-26 13:37:20 - INFO - ESP32 startup sync complete!
+2026-02-26 13:37:26 - DEBUG - Switched to panel: dashboard
+2026-02-26 13:37:26 - INFO - GUI initialization complete
+2026-02-26 13:37:28 - DEBUG - Switched to panel: scheduling
+2026-02-26 13:38:13 - INFO - SCHEDULE CREATED - Date: 2026-02-26, Time: 15:40, Type: Pesticide, Container: Container 2
+2026-02-26 13:39:18 - DEBUG - Switched to panel: dashboard
+2026-02-26 13:40:49 - DEBUG - Switched to panel: scheduling
+2026-02-26 13:40:55 - DEBUG - Switched to panel: dashboard
+2026-02-26 13:42:15 - DEBUG - Switched to panel: scheduling
+2026-02-26 13:42:52 - INFO - SCHEDULE CREATED - Date: 2026-02-26, Time: 13:45, Type: Pesticide, Container: Container 2
+2026-02-26 13:43:04 - DEBUG - Switched to panel: dashboard
+2026-02-26 13:43:11 - DEBUG - Switched to panel: dashboard
+2026-02-26 13:43:59 - DEBUG - Switched to panel: scheduling
+2026-02-26 13:44:13 - DEBUG - Switched to panel: dashboard
+2026-02-26 13:45:09 - INFO - Checking weather before spray...
+2026-02-26 13:45:10 - INFO - Weather check passed - safe to spray
+2026-02-26 13:45:10 - INFO - SPRAY EXECUTED - Date: 2026-02-26, Time: 13:45, Type: Pesticide, Container: Container 2
+2026-02-26 13:45:10 - INFO - Executing spray: Pesticide using Container 2, 1000.0mL for 12.0 seconds
+2026-02-26 13:45:11 - INFO - SPRAY COMPLETED - ID: SCH_064, Duration: 12.0s
+2026-02-26 13:45:35 - DEBUG - Switched to panel: dashboard
+2026-02-26 13:45:35 - DEBUG - Switched to panel: dashboard
+2026-02-26 13:45:38 - DEBUG - Switched to panel: dashboard
+2026-02-26 13:45:38 - DEBUG - Switched to panel: dashboard
+2026-02-26 14:00:56 - INFO - Smart Sprayer Logger initialized
+2026-02-26 14:00:56 - INFO - === Smart Sprayer GUI Started ===
+2026-02-26 14:00:59 - INFO - Scheduler initialized
+2026-02-26 14:00:59 - INFO - Scheduler started
+2026-02-26 14:00:59 - INFO - Syncing ESP32 on startup...
+2026-02-26 14:00:59 - INFO - Syncing time to ESP32 RTC...
+2026-02-26 14:00:59 - INFO - Syncing recipients to ESP32...
+2026-02-26 14:01:00 - INFO - Synced 2 recipients to ESP32
+2026-02-26 14:01:01 - INFO - ESP32 startup sync complete!
+2026-02-26 14:01:07 - DEBUG - Switched to panel: dashboard
+2026-02-26 14:01:07 - INFO - GUI initialization complete
+2026-02-26 14:01:41 - DEBUG - Switched to panel: previous_data
+2026-02-26 14:01:43 - DEBUG - Switched to panel: scheduling
+2026-02-26 14:02:13 - INFO - SCHEDULE CREATED - Date: 2026-02-26, Time: 14:05, Type: Pesticide, Container: Container 2
+2026-02-26 14:02:45 - DEBUG - Switched to panel: dashboard
+2026-02-26 14:02:45 - DEBUG - Switched to panel: dashboard
+2026-02-26 14:02:46 - DEBUG - Switched to panel: dashboard
+2026-02-26 14:02:58 - DEBUG - Switched to panel: dashboard
+2026-02-26 14:03:33 - DEBUG - Switched to panel: dashboard
+2026-02-26 14:03:47 - DEBUG - Switched to panel: dashboard
+2026-02-26 14:04:46 - DEBUG - Switched to panel: scheduling
+2026-02-26 14:05:03 - DEBUG - Switched to panel: dashboard
+2026-02-26 14:05:05 - DEBUG - Switched to panel: dashboard
+2026-02-26 14:05:09 - INFO - Checking weather before spray...
+2026-02-26 14:05:10 - INFO - Weather check passed - safe to spray
+2026-02-26 14:05:10 - INFO - SPRAY EXECUTED - Date: 2026-02-26, Time: 14:05, Type: Pesticide, Container: Container 2
+2026-02-26 14:05:10 - INFO - Executing spray: Pesticide using Container 2, 5000.0mL for 60.0 seconds
+2026-02-26 14:05:11 - INFO - SPRAY COMPLETED - ID: SCH_065, Duration: 60.0s
+2026-02-26 14:19:52 - INFO - Smart Sprayer Logger initialized
+2026-02-26 14:19:52 - INFO - === Smart Sprayer GUI Started ===
+2026-02-26 14:19:54 - INFO - Scheduler initialized
+2026-02-26 14:19:54 - INFO - Scheduler started
+2026-02-26 14:19:54 - INFO - Syncing ESP32 on startup...
+2026-02-26 14:19:54 - INFO - Syncing time to ESP32 RTC...
+2026-02-26 14:19:55 - INFO - Syncing recipients to ESP32...
+2026-02-26 14:19:55 - INFO - Synced 2 recipients to ESP32
+2026-02-26 14:19:55 - INFO - ESP32 startup sync complete!
+2026-02-26 14:20:02 - DEBUG - Switched to panel: dashboard
+2026-02-26 14:20:02 - INFO - GUI initialization complete
+2026-02-26 14:21:09 - INFO - Smart Sprayer Logger initialized
+2026-02-26 14:21:09 - INFO - === Smart Sprayer GUI Started ===
+2026-02-26 14:21:13 - INFO - Scheduler initialized
+2026-02-26 14:21:13 - INFO - Scheduler started
+2026-02-26 14:21:13 - INFO - Syncing ESP32 on startup...
+2026-02-26 14:21:13 - INFO - Syncing time to ESP32 RTC...
+2026-02-26 14:21:13 - INFO - Syncing recipients to ESP32...
+2026-02-26 14:21:13 - INFO - Synced 2 recipients to ESP32
+2026-02-26 14:21:14 - INFO - ESP32 startup sync complete!
+2026-02-26 14:21:20 - DEBUG - Switched to panel: dashboard
+2026-02-26 14:21:20 - INFO - GUI initialization complete

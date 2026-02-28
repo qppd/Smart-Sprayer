@@ -245,13 +245,13 @@ class WelcomeScreen(ctk.CTk):
                          corner_radius=160).place(relx=0.5, rely=0.38, anchor="center")
 
         ctk.CTkLabel(
-            side, text="Farming\nMade Simple",
+            side, text="Pagsasakang Pinadali\nsa Bawat Wisik",
             font=F(42, "bold"), text_color=D.T_WHITE,
             justify="center"
         ).place(relx=0.5, rely=0.70, anchor="center")
 
         ctk.CTkLabel(
-            side, text="Spraying at your fingertips",
+            side, text="Kontrol sa Wisik, Hawak Mo",
             font=F(24), text_color=D.G400, justify="center"
         ).place(relx=0.5, rely=0.81, anchor="center")
 
@@ -261,13 +261,13 @@ class WelcomeScreen(ctk.CTk):
         box = ctk.CTkFrame(right, fg_color="transparent")
         box.place(relx=0.5, rely=0.5, anchor="center")
 
-        ctk.CTkLabel(box, text="Welcome", font=F(68, "bold"), text_color=D.T_DARK).pack(pady=(0, 8))
+        ctk.CTkLabel(box, text="Mabuhay!", font=F(68, "bold"), text_color=D.T_DARK).pack(pady=(0, 8))
         ctk.CTkLabel(box, text="Automated Sprayer System",
                      font=F(28), text_color=D.T_MID).pack(pady=(0, 60))
 
         _green_btn(box, "GET STARTED →", self.close, width=460, height=80).pack()
 
-        ctk.CTkLabel(box, text="v1.0  ·  Automated Sprayer System",
+        ctk.CTkLabel(box, text="Simulan ang Mas Madaling Pagwisik",
                      font=F(18), text_color=D.T_LIGHT).pack(pady=(24, 0))
 
     def close(self):

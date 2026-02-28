@@ -520,7 +520,7 @@ class DashboardPanel(ctk.CTkFrame):
 
         self.weather_wind     = _pill(pills, 0, wind_img,     "💨", "Wind")
         self.weather_humidity = _pill(pills, 1, humidity_img, "💧", "Humidity")
-        self.weather_uv       = _pill(pills, 2, temp_img,     "🌡", "Min / Max")
+        self.weather_uv       = _pill(pills, 2, temp_img,     "🌡", "Min / Max \nTemperature")
 
         # ── RAIN FORECAST SECTION ──────────────────────────────────────────────
         ctk.CTkFrame(self.weather_card, height=1, fg_color="#D6EEE0", corner_radius=0).pack(

@@ -71,6 +71,34 @@ class SchedulingPanel(ctk.CTkFrame):
         self.refresh_schedule_list()
 
     # ══════════════════════════════════════════════════════
+    #  MOUSE-WHEEL SCROLL (works without touching scrollbar)
+    # ══════════════════════════════════════════════════════
+
+    def _bind_mousewheel(self, scrollable_frame):
+        def _scroll(event):
+            scrollable_frame._parent_canvas.yview_scroll(
+                int(-1 * (event.delta / 120)), "units"
+            )
+        def _scroll_up(event):
+            scrollable_frame._parent_canvas.yview_scroll(-1, "units")
+        def _scroll_down(event):
+            scrollable_frame._parent_canvas.yview_scroll(1, "units")
+
+        def _bind_all(widget):
+            widget.bind("<MouseWheel>", _scroll,      add="+")
+            widget.bind("<Button-4>",   _scroll_up,   add="+")
+            widget.bind("<Button-5>",   _scroll_down, add="+")
+            for child in widget.winfo_children():
+                _bind_all(child)
+
+        _bind_all(scrollable_frame)
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: _bind_all(scrollable_frame),
+            add="+"
+        )
+
+    # ══════════════════════════════════════════════════════
     #  MAIN LAYOUT
     # ══════════════════════════════════════════════════════
     def _create_widgets(self):
@@ -110,6 +138,7 @@ class SchedulingPanel(ctk.CTkFrame):
         scroll.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
 
         self._build_form(scroll)
+        self._bind_mousewheel(scroll)
 
     def _build_form(self, parent):
         pad = {"padx": 24}
@@ -251,7 +280,7 @@ class SchedulingPanel(ctk.CTkFrame):
         # ── CREATE BUTTON ─────────────────────
         ctk.CTkButton(
             parent,
-            text="✦  Create Schedule",
+            text="Create Schedule",
             command=self._handle_create,
             fg_color=DS.G500, hover_color=DS.G600,
             height=80, corner_radius=14,
@@ -278,7 +307,7 @@ class SchedulingPanel(ctk.CTkFrame):
         btn_row.grid(row=0, column=1, sticky="e")
 
         ctk.CTkButton(
-            btn_row, text="↻  Refresh",
+            btn_row, text="Refresh",
             command=self.refresh_schedule_list,
             fg_color=DS.BLUE, hover_color=DS.BLUE_D,
             height=56, corner_radius=10,
@@ -286,7 +315,7 @@ class SchedulingPanel(ctk.CTkFrame):
         ).pack(side="left", padx=(0, 10))
 
         ctk.CTkButton(
-            btn_row, text="✕  Cancel All",
+            btn_row, text="Cancel All",
             command=self._cancel_all,
             fg_color=DS.RED, hover_color=DS.RED_D,
             height=56, corner_radius=10,
@@ -305,6 +334,7 @@ class SchedulingPanel(ctk.CTkFrame):
             scrollbar_button_hover_color=DS.G400,
         )
         self.schedule_list.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
+        self._bind_mousewheel(self.schedule_list)
 
     # ══════════════════════════════════════════════════════
     #  HELPER WIDGETS
@@ -512,9 +542,6 @@ class SchedulingPanel(ctk.CTkFrame):
             empty = ctk.CTkFrame(self.schedule_list, fg_color="transparent")
             empty.pack(expand=True, pady=60)
             ctk.CTkLabel(
-                empty, text="🌿", font=_font(56)
-            ).pack()
-            ctk.CTkLabel(
                 empty, text="No active schedules",
                 font=_font(28, "bold"), text_color=DS.N400
             ).pack(pady=(8, 4))
@@ -552,7 +579,7 @@ class SchedulingPanel(ctk.CTkFrame):
 
         ctk.CTkLabel(
             top_row,
-            text=f"📅  {sc['date']}  ·  🕐 {disp_t}",
+            text=f"{sc['date']}  -  {disp_t}",
             font=_font(26, "bold"), text_color=DS.G800, anchor="w"
         ).grid(row=0, column=0, sticky="w")
 
@@ -604,7 +631,7 @@ class SchedulingPanel(ctk.CTkFrame):
         btn_row.grid(row=10, column=0, sticky="ew", pady=(14, 0))
 
         ctk.CTkButton(
-            btn_row, text="✎  Reschedule",
+            btn_row, text="Reschedule",
             fg_color=DS.AMBER, hover_color=DS.AMBER_D,
             width=200, height=60, corner_radius=10,
             font=_font(22, "bold"), text_color=DS.WHITE,
@@ -612,7 +639,7 @@ class SchedulingPanel(ctk.CTkFrame):
         ).pack(side="left", padx=(0, 10))
 
         ctk.CTkButton(
-            btn_row, text="✕  Cancel",
+            btn_row, text="Cancel",
             fg_color=DS.RED, hover_color=DS.RED_D,
             width=170, height=60, corner_radius=10,
             font=_font(22, "bold"), text_color=DS.WHITE,
@@ -718,7 +745,8 @@ class SchedulingPanel(ctk.CTkFrame):
         icon_bg = ctk.CTkFrame(hdr, fg_color="#FEE2E2", width=66, height=66, corner_radius=33)
         icon_bg.pack(side="left", padx=(0, 16))
         icon_bg.pack_propagate(False)
-        ctk.CTkLabel(icon_bg, text="⚠", font=_font(34),
+        ctk.CTkLabel(icon_bg, text="?",
+                     font=_font(34, "bold"),
                      text_color=DS.RED).place(relx=.5, rely=.5, anchor="center")
 
         ctk.CTkLabel(hdr, text="Cancel Schedule",
@@ -731,7 +759,7 @@ class SchedulingPanel(ctk.CTkFrame):
 
         bf = ctk.CTkFrame(inner, fg_color="transparent")
         bf.pack(fill="x")
-        bf.grid_columnconfigure((0,1), weight=1)
+        bf.grid_columnconfigure((0, 1), weight=1)
 
         ctk.CTkButton(bf, text="Keep", command=dlg.destroy,
                       fg_color=DS.N100, text_color=DS.N800, hover_color=DS.N200,
@@ -764,7 +792,7 @@ class SchedulingPanel(ctk.CTkFrame):
 
         title_bar = ctk.CTkFrame(outer, fg_color="transparent")
         title_bar.pack(fill="x", padx=22, pady=(16, 10))
-        ctk.CTkLabel(title_bar, text="✎  Reschedule",
+        ctk.CTkLabel(title_bar, text="Reschedule",
                      font=_font(30, "bold"), text_color=DS.G800).pack(side="left")
 
         scroll = ctk.CTkScrollableFrame(
@@ -773,6 +801,7 @@ class SchedulingPanel(ctk.CTkFrame):
             scrollbar_button_hover_color=DS.G400,
         )
         scroll.pack(fill="both", expand=True, padx=4, pady=(0, 4))
+        self._bind_mousewheel(scroll)
 
         # ── DATE ──
         ctk.CTkLabel(scroll, text="Select New Date",
@@ -909,7 +938,7 @@ class SchedulingPanel(ctk.CTkFrame):
         bf.pack(fill="x", padx=16, pady=(24, 12))
 
         def confirm():
-            nd = sel_date['date'].strftime("%Y-%m-%d")
+            nd  = sel_date['date'].strftime("%Y-%m-%d")
             h24 = self._convert_to_24h(new_hr.get(), new_ap.get())
             nt  = f"{h24:02d}:{new_mn.get()}"
             if self._is_datetime_in_past(nd, nt):
@@ -949,7 +978,7 @@ class SchedulingPanel(ctk.CTkFrame):
                       height=64, corner_radius=10, font=_font(22), width=170
                       ).pack(side="left", padx=(0, 12))
 
-        ctk.CTkButton(bf, text="✓  Confirm Reschedule", command=confirm,
+        ctk.CTkButton(bf, text="Confirm Reschedule", command=confirm,
                       fg_color=DS.G500, hover_color=DS.G600, text_color=DS.WHITE,
                       height=64, corner_radius=10, font=_font(22, "bold"), width=280
                       ).pack(side="right")
@@ -991,7 +1020,8 @@ class SchedulingPanel(ctk.CTkFrame):
         icon_bg = ctk.CTkFrame(hdr, fg_color="#FEE2E2", width=70, height=70, corner_radius=35)
         icon_bg.pack(side="left", padx=(0, 18))
         icon_bg.pack_propagate(False)
-        ctk.CTkLabel(icon_bg, text="⚠", font=_font(38),
+        ctk.CTkLabel(icon_bg, text="?",
+                     font=_font(38, "bold"),
                      text_color=DS.RED).place(relx=.5, rely=.5, anchor="center")
 
         title_col = ctk.CTkFrame(hdr, fg_color="transparent")
@@ -1008,7 +1038,7 @@ class SchedulingPanel(ctk.CTkFrame):
 
         bf = ctk.CTkFrame(inner, fg_color="transparent")
         bf.pack(fill="x")
-        bf.grid_columnconfigure((0,1), weight=1)
+        bf.grid_columnconfigure((0, 1), weight=1)
 
         ctk.CTkButton(bf, text="Keep All", command=dlg.destroy,
                       fg_color=DS.N100, text_color=DS.N800, hover_color=DS.N200,
