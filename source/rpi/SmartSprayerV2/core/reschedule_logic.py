@@ -33,11 +33,17 @@ class RescheduleManager:
         if reschedule_count >= self.MAX_RESCHEDULES:
             # Cancel all schedules in the series
             self._cancel_all_related_schedules(schedule)
+            spray_type = schedule.get('spray_type', 'Unknown')
+            cancel_date = schedule.get('date', '')
             self.logger.log_warning(
-                f"Maximum reschedules ({self.MAX_RESCHEDULES}) reached. "
-                f"All related schedules cancelled."
+                f"Spraying session for {spray_type} has been cancelled. "
+                f"All {self.MAX_RESCHEDULES} reschedules have been used. "
+                f"Date: {cancel_date}."
             )
-            return False, f"Maximum {self.MAX_RESCHEDULES} reschedules reached. All schedules cancelled.", []
+            return False, (
+                f"Spraying session for {spray_type} has been cancelled. "
+                f"All {self.MAX_RESCHEDULES} reschedules have been used."
+            ), []
         
         old_date = schedule['date']
         old_time = schedule['time']
@@ -61,7 +67,13 @@ class RescheduleManager:
         }
         
         self.data_store.update_schedule(schedule_id, updates)
-        self.logger.log_schedule_rescheduled(old_date, new_date, reschedule_count + 1)
+        self.logger.log_schedule_rescheduled(
+            old_date,
+            new_date,
+            reschedule_count + 1,
+            spray_type=schedule.get('spray_type', 'Unknown'),
+            max_reschedule=self.MAX_RESCHEDULES
+        )
         
         print(f"✓ Schedule rescheduled successfully")
         
@@ -184,8 +196,11 @@ class RescheduleManager:
                         'cancelled_at': datetime.now().isoformat()
                     })
                     self.logger.log_schedule_cancelled(
-                        sched['id'], 
-                        "Max reschedules exceeded in series"
+                        sched['id'],
+                        reason='Max reschedules exceeded',
+                        spray_type=sched.get('spray_type', 'Unknown'),
+                        max_reschedule=self.MAX_RESCHEDULES,
+                        date=sched.get('date', '')
                     )
         else:
             # Just cancel this single schedule
@@ -197,8 +212,11 @@ class RescheduleManager:
                 'cancelled_at': datetime.now().isoformat()
             })
             self.logger.log_schedule_cancelled(
-                schedule['id'], 
-                "Max reschedules exceeded"
+                schedule['id'],
+                reason='Max reschedules exceeded',
+                spray_type=schedule.get('spray_type', 'Unknown'),
+                max_reschedule=self.MAX_RESCHEDULES,
+                date=schedule.get('date', '')
             )
     
     def cancel_schedule(self, schedule_id: str, reason: str = "User cancelled") -> bool:
@@ -222,7 +240,13 @@ class RescheduleManager:
             'cancelled_at': datetime.now().isoformat()
         })
         
-        self.logger.log_schedule_cancelled(schedule_id, reason)
+        self.logger.log_schedule_cancelled(
+            schedule_id,
+            reason=reason,
+            spray_type=schedule.get('spray_type', 'Unknown'),
+            max_reschedule=self.MAX_RESCHEDULES,
+            date=schedule.get('date', '')
+        )
         print(f"✓ Schedule {schedule_id} cancelled successfully")
         return True
     

@@ -3,6 +3,9 @@
 
 import customtkinter as ctk
 import sys, os
+import subprocess
+import threading
+import shutil
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -84,6 +87,7 @@ class SettingsFrame(ctk.CTkScrollableFrame):
 
         self.create_weather_card()
         self.create_sms_card()
+        self.create_wifi_card()
         # Enable mouse-wheel scrolling anywhere in the panel
         self._bind_mousewheel(self)
 
@@ -579,6 +583,446 @@ class SettingsFrame(ctk.CTkScrollableFrame):
                 font=_font(24, "bold"),
                 command=lambda rec=r: self.confirm_delete_recipient(rec)
             ).pack(side="right")
+
+
+    # ══════════════════════════════════════════════════════
+    # WIFI CONFIGURATION CARD
+    # ══════════════════════════════════════════════════════
+
+    def _wifi_nmcli_available(self):
+        """Return True if nmcli is present on this machine."""
+        return shutil.which("nmcli") is not None
+
+    def _wifi_scan(self):
+        """
+        Scan for available SSIDs using nmcli.
+        Returns a list of unique, non-empty SSID strings sorted by signal strength.
+        Safe to call from a background thread.
+        """
+        try:
+            result = subprocess.run(
+                ["nmcli", "--terse", "--fields", "SSID,SIGNAL",
+                 "device", "wifi", "list", "--rescan", "yes"],
+                capture_output=True, text=True, timeout=15
+            )
+            seen = {}
+            for line in result.stdout.splitlines():
+                parts = line.strip().split(":")
+                if len(parts) >= 2:
+                    ssid = parts[0].strip()
+                    try:
+                        signal = int(parts[-1].strip())
+                    except ValueError:
+                        signal = 0
+                    if ssid and ssid not in seen:
+                        seen[ssid] = signal
+            # Sort by signal strength descending
+            return [s for s, _ in sorted(seen.items(), key=lambda x: x[1], reverse=True)]
+        except FileNotFoundError:
+            return []
+        except subprocess.TimeoutExpired:
+            return []
+        except Exception:
+            return []
+
+    def _wifi_current_ssid(self):
+        """
+        Return (ssid, signal_str) of the currently connected WiFi network,
+        or (None, None) if not connected.
+        """
+        try:
+            result = subprocess.run(
+                ["nmcli", "--terse", "--fields",
+                 "TYPE,NAME,DEVICE,STATE", "connection", "show", "--active"],
+                capture_output=True, text=True, timeout=8
+            )
+            for line in result.stdout.splitlines():
+                parts = line.strip().split(":")
+                if len(parts) >= 4 and parts[0].strip().lower() in ("wifi", "802-11-wireless"):
+                    name   = parts[1].strip()
+                    device = parts[2].strip()
+                    state  = parts[3].strip()
+                    if state.lower() == "activated" and name:
+                        # Try to get signal strength
+                        try:
+                            sig_result = subprocess.run(
+                                ["nmcli", "--terse", "--fields",
+                                 "SSID,SIGNAL", "device", "wifi",
+                                 "list", "ifname", device],
+                                capture_output=True, text=True, timeout=8
+                            )
+                            for sig_line in sig_result.stdout.splitlines():
+                                sp = sig_line.strip().split(":")
+                                if len(sp) >= 2 and sp[0].strip() == name:
+                                    return name, f"{sp[-1].strip()}%"
+                        except Exception:
+                            pass
+                        return name, None
+            return None, None
+        except Exception:
+            return None, None
+
+    def _wifi_connect(self, ssid, password):
+        """
+        Connect to the given SSID using nmcli.
+        Returns (success: bool, message: str).
+        Never logs the plain-text password.
+        """
+        if not ssid:
+            return False, "No SSID selected."
+        try:
+            # First try to activate an existing saved connection
+            activate = subprocess.run(
+                ["nmcli", "connection", "up", ssid],
+                capture_output=True, text=True, timeout=30
+            )
+            if activate.returncode == 0:
+                return True, f"Connected to {ssid}."
+
+            # Otherwise create a new connection
+            args = ["nmcli", "device", "wifi", "connect", ssid]
+            if password:
+                args += ["password", password]
+
+            result = subprocess.run(
+                args, capture_output=True, text=True, timeout=30
+            )
+
+            if result.returncode == 0:
+                return True, f"Connected to {ssid}."
+
+            # Parse nmcli error for user-friendly message
+            stderr = result.stderr.lower()
+            stdout = result.stdout.lower()
+            combined = stderr + stdout
+            if "secrets were required" in combined or "no secrets" in combined \
+                    or "wrong password" in combined or "802-11" in combined:
+                return False, "Incorrect password."
+            elif "network not found" in combined or "no network" in combined:
+                return False, "Network not found."
+            elif "no wifi" in combined or "no suitable" in combined:
+                return False, "No WiFi adapter detected."
+            else:
+                # Return stderr without exposing password
+                safe_msg = result.stderr.strip().replace(password, "****") if password else result.stderr.strip()
+                return False, f"Connection failed: {safe_msg[:120]}"
+
+        except subprocess.TimeoutExpired:
+            return False, "Connection timed out."
+        except FileNotFoundError:
+            return False, "nmcli not found. Install NetworkManager."
+        except Exception as exc:
+            return False, f"Unexpected error: {exc}"
+
+    def create_wifi_card(self):
+        """Build the WiFi Configuration settings card."""
+
+        # ── State
+        self._wifi_scanning    = False
+        self._wifi_connecting  = False
+
+        # ── Outer card
+        card = ctk.CTkFrame(
+            self, fg_color=WHITE, corner_radius=16,
+            border_width=1, border_color=DS.N200
+        )
+        card.pack(fill="x", padx=30, pady=(0, 30))
+
+        self._card_title(card, "WiFi Configuration")
+
+        ctk.CTkLabel(
+            card,
+            text="Scan and connect to an available WiFi network.\n"
+                 "Uses NetworkManager (nmcli) — safe for existing connections.",
+            font=_font(26),
+            text_color=GRAY,
+            justify="left"
+        ).pack(anchor="w", padx=22, pady=(0, 10))
+
+        self._divider(card)
+
+        # ── Current connection status badge
+        status_row = ctk.CTkFrame(card, fg_color="transparent")
+        status_row.pack(fill="x", padx=22, pady=(0, 14))
+
+        ctk.CTkLabel(
+            status_row, text="Current WiFi:",
+            font=_font(28, "bold"), text_color=DS.G800
+        ).pack(side="left")
+
+        self._wifi_current_label = ctk.CTkLabel(
+            status_row,
+            text="Checking…",
+            font=_font(26),
+            text_color=DS.N400
+        )
+        self._wifi_current_label.pack(side="left", padx=(12, 0))
+
+        self._wifi_signal_badge = ctk.CTkLabel(
+            status_row,
+            text="",
+            fg_color=DS.G100,
+            corner_radius=8,
+            text_color=DS.G800,
+            font=_font(22, "bold"),
+            padx=12, pady=4
+        )
+        self._wifi_signal_badge.pack(side="left", padx=(10, 0))
+
+        self._divider(card)
+
+        # ── SSID row
+        ssid_row = ctk.CTkFrame(card, fg_color="transparent")
+        ssid_row.pack(fill="x", padx=22, pady=(0, 12))
+
+        ctk.CTkLabel(
+            ssid_row, text="Network (SSID):",
+            font=_font(28), text_color=GRAY
+        ).pack(side="left")
+
+        self._wifi_ssid_var = ctk.StringVar(value="")
+        self._wifi_ssid_menu = ctk.CTkComboBox(
+            ssid_row,
+            variable=self._wifi_ssid_var,
+            values=["Click \"Scan\" to load networks"],
+            width=400, height=58,
+            font=_font(26),
+            dropdown_font=_font(24),
+            fg_color=FIELD_BG,
+            button_color=DS.G500,
+            border_color=DS.G400,
+            border_width=2,
+            corner_radius=10,
+            state="readonly"
+        )
+        self._wifi_ssid_menu.pack(side="left", padx=(14, 14))
+
+        self._wifi_scan_btn = ctk.CTkButton(
+            ssid_row,
+            text="⟳  Scan",
+            fg_color=DS.N100, hover_color=DS.N200,
+            text_color=DS.N800,
+            width=160, height=58,
+            corner_radius=10,
+            font=_font(26, "bold"),
+            command=self._on_wifi_scan
+        )
+        self._wifi_scan_btn.pack(side="left")
+
+        # ── Password row
+        pw_row = ctk.CTkFrame(card, fg_color="transparent")
+        pw_row.pack(fill="x", padx=22, pady=(0, 16))
+
+        ctk.CTkLabel(
+            pw_row, text="Password:",
+            font=_font(28), text_color=GRAY
+        ).pack(side="left")
+
+        self._wifi_pw_entry = ctk.CTkEntry(
+            pw_row,
+            width=400, height=58,
+            corner_radius=10,
+            border_color=DS.G400,
+            border_width=2,
+            font=_font(26),
+            show="●",
+            placeholder_text="Enter WiFi password"
+        )
+        self._wifi_pw_entry.pack(side="left", padx=(14, 14))
+
+        # Show/hide password toggle
+        self._wifi_pw_visible = False
+        self._wifi_pw_toggle = ctk.CTkButton(
+            pw_row,
+            text="Show",
+            fg_color=DS.N100, hover_color=DS.N200,
+            text_color=DS.N800,
+            width=120, height=58,
+            corner_radius=10,
+            font=_font(24),
+            command=self._toggle_wifi_pw_visibility
+        )
+        self._wifi_pw_toggle.pack(side="left")
+
+        # ── Connect button + operation status
+        action_row = ctk.CTkFrame(card, fg_color="transparent")
+        action_row.pack(fill="x", padx=22, pady=(0, 18))
+
+        self._wifi_connect_btn = ctk.CTkButton(
+            action_row,
+            text="Connect",
+            fg_color=DS.G500, hover_color=DS.G600,
+            text_color=DS.WHITE,
+            width=220, height=62,
+            corner_radius=10,
+            font=_font(28, "bold"),
+            command=self._on_wifi_connect
+        )
+        self._wifi_connect_btn.pack(side="left")
+
+        self._wifi_op_label = ctk.CTkLabel(
+            action_row,
+            text="",
+            font=_font(24),
+            text_color=DS.N400
+        )
+        self._wifi_op_label.pack(side="left", padx=(18, 0))
+
+        # ── nmcli unavailable notice
+        if not self._wifi_nmcli_available():
+            notice = ctk.CTkFrame(
+                card, fg_color="#FFF8E1",
+                corner_radius=10, border_width=1, border_color="#FFE082"
+            )
+            notice.pack(fill="x", padx=22, pady=(0, 16))
+            ctk.CTkLabel(
+                notice,
+                text="⚠  nmcli (NetworkManager) not detected. "
+                     "WiFi management may not be available on this system.",
+                font=_font(22),
+                text_color="#795548"
+            ).pack(anchor="w", padx=16, pady=10)
+
+        # Kick off an initial silent status refresh
+        threading.Thread(
+            target=self._wifi_refresh_current_status,
+            daemon=True
+        ).start()
+
+    # ── WiFi helpers ──────────────────────────────────────
+
+    def _toggle_wifi_pw_visibility(self):
+        self._wifi_pw_visible = not self._wifi_pw_visible
+        self._wifi_pw_entry.configure(
+            show="" if self._wifi_pw_visible else "●"
+        )
+        self._wifi_pw_toggle.configure(
+            text="Hide" if self._wifi_pw_visible else "Show"
+        )
+
+    def _wifi_refresh_current_status(self):
+        """Background thread: fetch current SSID and update label."""
+        ssid, signal = self._wifi_current_ssid()
+        try:
+            if ssid:
+                self._wifi_current_label.configure(
+                    text=ssid, text_color=DS.G800
+                )
+                self._wifi_signal_badge.configure(
+                    text=f"📶 {signal}" if signal else "📶 Connected"
+                )
+            else:
+                self._wifi_current_label.configure(
+                    text="Not connected", text_color=DS.N400
+                )
+                self._wifi_signal_badge.configure(text="")
+        except Exception:
+            pass
+
+    def _on_wifi_scan(self):
+        """Triggered by Scan button — runs scan in background thread."""
+        if self._wifi_scanning:
+            return
+        self._wifi_scanning = True
+        self._wifi_scan_btn.configure(state="disabled", text="Scanning…")
+        self._wifi_op_label.configure(text="Scanning for networks…", text_color=DS.N400)
+        threading.Thread(target=self._wifi_scan_bg, daemon=True).start()
+
+    def _wifi_scan_bg(self):
+        """Background: scan then update the SSID combobox."""
+        try:
+            ssids = self._wifi_scan()
+        finally:
+            self._wifi_scanning = False
+        try:
+            if ssids:
+                self._wifi_ssid_menu.configure(values=ssids)
+                self._wifi_ssid_menu.set(ssids[0])
+                self._wifi_op_label.configure(
+                    text=f"{len(ssids)} network(s) found.",
+                    text_color=DS.G800
+                )
+            else:
+                self._wifi_ssid_menu.configure(
+                    values=["No networks found — try again"]
+                )
+                self._wifi_ssid_menu.set("No networks found — try again")
+                self._wifi_op_label.configure(
+                    text="No networks found.",
+                    text_color=DS.AMBER
+                )
+            self._wifi_scan_btn.configure(state="normal", text="⟳  Scan")
+        except Exception:
+            pass
+
+    def _on_wifi_connect(self):
+        """Triggered by Connect button — validates input, runs connection in background."""
+        if self._wifi_connecting:
+            return
+
+        ssid     = self._wifi_ssid_var.get().strip()
+        password = self._wifi_pw_entry.get()   # do NOT strip — spaces may be intentional
+
+        if not ssid or "Click" in ssid or "No networks" in ssid:
+            self._wifi_op_label.configure(
+                text="Please select a network first.",
+                text_color=DS.AMBER
+            )
+            return
+
+        self._wifi_connecting = True
+        self._wifi_connect_btn.configure(state="disabled")
+        self._wifi_op_label.configure(
+            text=f"Connecting to {ssid}…",
+            text_color=DS.N400
+        )
+
+        # Capture password now — clear field immediately to avoid it lingering
+        pw_snapshot = password
+        self._wifi_pw_entry.delete(0, "end")
+        # Reset show/hide state
+        self._wifi_pw_visible = False
+        self._wifi_pw_entry.configure(show="●")
+        self._wifi_pw_toggle.configure(text="Show")
+
+        threading.Thread(
+            target=self._wifi_connect_bg,
+            args=(ssid, pw_snapshot),
+            daemon=True
+        ).start()
+
+    def _wifi_connect_bg(self, ssid, password):
+        """Background: attempt connection and update UI when done."""
+        success, message = self._wifi_connect(ssid, password)
+        # Securely discard password from memory as soon as possible
+        password = None  # noqa: F841  (overwrite local reference)
+        try:
+            self._wifi_connecting = False
+            self._wifi_connect_btn.configure(state="normal")
+
+            if success:
+                self._wifi_op_label.configure(
+                    text=f"✓  {message}",
+                    text_color=DS.G800
+                )
+                # Refresh the current-connection status badge
+                threading.Thread(
+                    target=self._wifi_refresh_current_status,
+                    daemon=True
+                ).start()
+                self.after(0, lambda: self.show_toast(
+                    f"Connected to {ssid} successfully"
+                ))
+            else:
+                self._wifi_op_label.configure(
+                    text=f"✕  {message}",
+                    text_color=DS.RED
+                )
+                self.after(0, lambda: self.show_toast(
+                    message, mode="error"
+                ))
+        except Exception:
+            pass
 
 
 # ══════════════════════════════════════════════════════

@@ -76,10 +76,11 @@ bool parseFramedCommand(const String& frame, String& command, String& data) {
 
 // Spray state — updated atomically from loop(), never from an ISR.
 struct SprayState {
-  bool          active = false;
-  int           relay  = 0;
-  int           volume = 0;
-  unsigned long end_ms = 0;
+  bool          active     = false;
+  int           relay      = 0;
+  int           volume     = 0;
+  String        spray_type = "";
+  unsigned long end_ms     = 0;
 };
 static SprayState spray_state;
 
@@ -155,7 +156,8 @@ void loop() {
 
     // Queue SMS - will be sent on the next loop iteration so this one
     // returns quickly and the ACK is flushed immediately.
-    spray_sms_msg     = "Spraying completed: " + String(spray_state.volume) + "mL";
+    spray_sms_msg     = "Spraying completed: " + String(spray_state.volume) +
+                        " mL of " + spray_state.spray_type + " applied.";
     spray_sms_pending = true;
 
     buzzerBeep(200);
@@ -477,8 +479,9 @@ void loop() {
         Serial.println("Tank2=INVALID");
       }
     } else if (command.startsWith("spray_")) {
-      // Format: spray_RELAY_DURATION_VOLUME
-      // Example: spray_1_60_5000  (Relay 1, 60 s, 5000 mL)
+      // Format: spray_RELAY_DURATION_VOLUME_SPRAYTYPE
+      // Example: spray_1_60_5000_Pesticide  (Relay 1, 60 s, 5000 mL, Pesticide)
+      // SPRAYTYPE is optional (defaults to "Unknown" for backward compatibility)
       //
       // NON-BLOCKING IMPLEMENTATION:
       //   1. Relay turns ON IMMEDIATELY after argument parsing.
@@ -495,11 +498,23 @@ void loop() {
         int idx1 = command.indexOf('_');
         int idx2 = command.indexOf('_', idx1 + 1);
         int idx3 = command.indexOf('_', idx2 + 1);
+        int idx4 = command.indexOf('_', idx3 + 1);  // Optional spray type index
 
         if (idx3 > 0) {
-          int relay    = command.substring(idx1 + 1, idx2).toInt();
-          int duration = command.substring(idx2 + 1, idx3).toInt();
-          int volume   = command.substring(idx3 + 1).toInt();
+          int    relay     = command.substring(idx1 + 1, idx2).toInt();
+          int    duration  = command.substring(idx2 + 1, idx3).toInt();
+          int    volume;
+          String sprayType;
+
+          if (idx4 > 0) {
+            // New format: spray_RELAY_DURATION_VOLUME_SPRAYTYPE
+            volume    = command.substring(idx3 + 1, idx4).toInt();
+            sprayType = command.substring(idx4 + 1);
+          } else {
+            // Legacy format: spray_RELAY_DURATION_VOLUME
+            volume    = command.substring(idx3 + 1).toInt();
+            sprayType = "Unknown";
+          }
 
           Serial.print("[SPRAY] Starting: Relay ");
           Serial.print(relay);
@@ -524,16 +539,19 @@ void loop() {
           Serial.println("ACK:SPRAY_STARTED");
 
           // Arm the non-blocking timer.
-          spray_state.active = true;
-          spray_state.relay  = relay;
-          spray_state.volume = volume;
-          spray_state.end_ms = millis() + (unsigned long)duration * 1000UL;
+          spray_state.active     = true;
+          spray_state.relay      = relay;
+          spray_state.volume     = volume;
+          spray_state.spray_type = sprayType;
+          spray_state.end_ms     = millis() + (unsigned long)duration * 1000UL;
 
           // Buzzer: short beep is acceptable (relay is already ON).
           buzzerBeep(200);
 
           // SMS notification that spraying started (relay already ON).
-          String msg = "Spraying started: " + String(volume) + "mL for " + String(duration) + "s";
+          String msg = "Spraying started: " + String(volume) +
+                       " mL of " + sprayType +
+                       " for " + String(duration) + " seconds.";
           sendSMSToAll(msg);
         } else {
           Serial.println("[ERROR] Invalid spray format. Use: spray_RELAY_DURATION_VOLUME");

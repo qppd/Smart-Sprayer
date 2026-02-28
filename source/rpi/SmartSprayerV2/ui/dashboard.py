@@ -874,6 +874,18 @@ class DashboardPanel(ctk.CTkFrame):
             self.forecast_alert.configure(
                 text="Low rain risk. Safe to spray.", text_color="#4CAF50")
 
+    def _get_spray_type_for_tank(self, tank_num):
+        """Look up the spray type assigned to a container from active schedules."""
+        try:
+            container_name = f"Container {tank_num}"
+            schedules = self.scheduler.data_store.get_active_schedules()
+            for s in schedules:
+                if s.get('container') == container_name:
+                    return s.get('spray_type', 'Unknown')
+        except Exception:
+            pass
+        return 'Unknown'
+
     def _check_tank_low_level_sms(self, tank_num, level):
         if level is None:
             return
@@ -895,18 +907,23 @@ class DashboardPanel(ctk.CTkFrame):
                 if not recipients:
                     print(f"[SMS] No recipients configured — skipping tank {tank_num} low alert")
                     return
-                liters  = (level / 100.0) * 16.0
-                message = (
-                    f"ALERT: Container {tank_num} is critically low! "
-                    f"Level: {level:.1f}% ({liters:.1f}L remaining). "
-                    f"Please refill soon."
-                )
+                spray_type = self._get_spray_type_for_tank(tank_num)
+                if level == 0.0:
+                    message = (
+                        f"Alert: Empty {spray_type} container detected. "
+                        f"Refill required before continuing spraying."
+                    )
+                else:
+                    message = (
+                        f"Alert: Critical {spray_type} level detected. "
+                        f"Refill required before continuing spraying."
+                    )
                 if self.hardware and self.hardware.connected:
                     for r in recipients:
                         phone = r.get('phone', '')
                         if phone:
                             self.hardware.send_sms(phone, message)
-                            print(f"[SMS] Tank {tank_num} low alert sent to {phone}")
+                            print(f"[SMS] Tank {tank_num} {spray_type} alert sent to {phone}")
                 else:
                     print(f"[SMS] Hardware not connected — could not send tank {tank_num} low alert")
             except Exception as e:
