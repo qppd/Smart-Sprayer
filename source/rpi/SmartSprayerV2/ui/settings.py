@@ -9,7 +9,7 @@ import shutil
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from core.data_store import get_recipients, add_recipient, delete_recipient, save_location
+from core.data_store import get_recipients, add_recipient, delete_recipient, save_location, get_location
 from hardware.hardware_interface import get_hardware
 
 
@@ -367,6 +367,27 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         )
         self.location_label.pack()
 
+        # Pre-populate from saved location
+        self._load_saved_location_into_ui()
+
+    def _load_saved_location_into_ui(self):
+        """Read location.json and set the comboboxes + badge to the saved values."""
+        try:
+            loc = get_location()
+            muni = loc.get("municipality", "")
+            brgy = loc.get("barangay", "")
+            if muni:
+                self.muni.set(muni)
+                self.update_barangays(muni)
+            if brgy:
+                self.brgy.set(brgy)
+            if muni and brgy:
+                self.location_label.configure(
+                    text=f"Location Set: {brgy}, {muni}"
+                )
+        except Exception as e:
+            print(f"Could not load saved location: {e}")
+
     def update_barangays(self, value):
         if "Lucena" in value:
             self.brgy.configure(values=self.lucena_barangays)
@@ -383,6 +404,12 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         self.location_label.configure(
             text=f"Location Set: {self.brgy.get()}, {self.muni.get()}"
         )
+        # Reload weather service so all API calls immediately use the new location
+        try:
+            from core.weather_service import get_weather_service
+            get_weather_service().reload_location()
+        except Exception as e:
+            print(f"Could not reload weather service after location save: {e}")
         self.show_toast("Weather location saved successfully")
 
     # ══════════════════════════════════════════════════════

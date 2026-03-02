@@ -57,6 +57,48 @@ class WeatherService:
         # Forecast cache
         self.cached_forecast = None
         self.last_forecast_cache_hour = None
+
+        # Override URLs with the user-saved location from data/location.json (if present)
+        self.reload_location()
+
+    def reload_location(self):
+        """
+        Re-read data/location.json and rebuild the API URLs with the saved
+        barangay + municipality.  Clears the weather cache so the next fetch
+        uses the new location.  Safe to call at any time (e.g. after the user
+        saves a new location in Settings).
+        """
+        if not self.api_key:
+            return
+        try:
+            import json as _json
+            loc_file = os.path.join(_parent_dir, "data", "location.json")
+            if not os.path.exists(loc_file):
+                return
+            with open(loc_file, "r", encoding="utf-8") as f:
+                loc = _json.load(f)
+            barangay     = (loc.get("barangay") or "").strip()
+            municipality = (loc.get("municipality") or "").strip()
+            if not barangay or not municipality:
+                return
+            q = f"{barangay}, {municipality}"
+            self.api_url      = (
+                f"https://api.weatherapi.com/v1/current.json"
+                f"?key={self.api_key}&q={q}&aqi=no"
+            )
+            self.forecast_url = (
+                f"https://api.weatherapi.com/v1/forecast.json"
+                f"?key={self.api_key}&q={q}&days=5&aqi=no"
+            )
+            self.available = bool(self.api_key)
+            # Invalidate cache so next poll fetches for the new location
+            self.cached_weather           = None
+            self.cached_forecast          = None
+            self.last_cache_hour          = None
+            self.last_forecast_cache_hour = None
+            print(f"Weather service location set to: {q}")
+        except Exception as e:
+            print(f"Could not reload weather location: {e}")
     
     def check_weather_for_rain(self) -> bool:
         """
