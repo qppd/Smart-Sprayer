@@ -19,14 +19,17 @@ BUZZER_PIN = 12
 
 # Container Level Configuration
 # Distance measurement: sensor at top of container
-# 22 cm distance from sensor = FULL (liquid close to sensor, 16L)
-# 40 cm distance from sensor = EMPTY (liquid far from sensor, 0L)
-CONTAINER_EMPTY_DISTANCE = 40.0  # cm - distance when empty
-CONTAINER_FULL_DISTANCE = 22.0   # cm - distance when full
+# Total container height = 38 cm
+# Sensor blind zone (minimum range) = 22 cm — readings below this are INVALID
+# Usable measurable range = 38 - 22 = 16 cm (bottom 16 cm of container)
+# 22 cm distance from sensor = FULL (100%, liquid at usable range top)
+# 38 cm distance from sensor = EMPTY (0%, liquid at bottom)
+CONTAINER_EMPTY_DISTANCE = 38.0  # cm - distance when tank is empty (equals total height)
+CONTAINER_FULL_DISTANCE = 22.0   # cm - sensor minimum range / full level distance
 CONTAINER_CAPACITY_LITERS = 16.0 # Tank capacity in liters
 
 # For backward compatibility
-CONTAINER_HEIGHT = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE  # 18 cm of usable fill height
+CONTAINER_HEIGHT = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE  # 16 cm of usable fill height
 
 # Pump specifications
 PUMP_FLOW_RATE_ML_PER_MIN = 5000.0  # 5 liters per minute

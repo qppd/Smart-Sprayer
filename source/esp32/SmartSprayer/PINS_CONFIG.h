@@ -28,10 +28,13 @@
 
 // Container Level Configuration
 // Ultrasonic measures from top of container
-// 22cm distance = Full (liquid at top, 16L)
-// 40cm distance = Empty (liquid at bottom, 0L)
-#define CONTAINER_EMPTY_DISTANCE 40.0  // Distance when tank is empty (cm)
-#define CONTAINER_FULL_DISTANCE 22.0   // Distance when tank is full (cm)
+// Total container height = 38 cm
+// Sensor blind zone (minimum range) = 22 cm — readings below this are INVALID
+// Usable measurable range = 38 - 22 = 16 cm (bottom 16 cm of container)
+// 22cm distance = Full (100%, liquid at top of usable range)
+// 38cm distance = Empty (0%, liquid at bottom)
+#define CONTAINER_EMPTY_DISTANCE 38.0  // Distance when tank is empty (cm) — equals total height
+#define CONTAINER_FULL_DISTANCE 22.0   // Sensor minimum range / full level distance (cm)
 #define CONTAINER_CAPACITY_LITERS 16.0 // Tank capacity in liters
 
 // Pump Configuration

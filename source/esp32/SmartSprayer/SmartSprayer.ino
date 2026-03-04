@@ -217,8 +217,8 @@ void loop() {
           long dist1 = readDistanceReliable(1, 3);
           long dist2 = readDistanceReliable(2, 3);
           
-          float pct1 = (dist1 > 0) ? calculateFillPercentage(dist1) : -1.0;
-          float pct2 = (dist2 > 0) ? calculateFillPercentage(dist2) : -1.0;
+          float pct1 = (dist1 > 0) ? calculateFillPercentage(dist1, 1) : -1.0;
+          float pct2 = (dist2 > 0) ? calculateFillPercentage(dist2, 2) : -1.0;
           
           // Build response data: dist1,pct1,dist2,pct2
           String responseData = String(dist1) + "," + String(pct1, 2) + "," + 
@@ -363,8 +363,8 @@ void loop() {
       
       long dist1 = readDistanceReliable(1, 3);
       long dist2 = readDistanceReliable(2, 3);
-      float pct1 = (dist1 > 0) ? calculateFillPercentage(dist1) : -1.0;
-      float pct2 = (dist2 > 0) ? calculateFillPercentage(dist2) : -1.0;
+      float pct1 = (dist1 > 0) ? calculateFillPercentage(dist1, 1) : -1.0;
+      float pct2 = (dist2 > 0) ? calculateFillPercentage(dist2, 2) : -1.0;
       
       Serial.print("[STATUS] Time=");
       Serial.print(year);
@@ -452,8 +452,8 @@ void loop() {
       Serial.print(dist2);
       Serial.print("cm ");
       
-      float pct1 = (dist1 > 0) ? calculateFillPercentage(dist1) : -1.0;
-      float pct2 = (dist2 > 0) ? calculateFillPercentage(dist2) : -1.0;
+      float pct1 = (dist1 > 0) ? calculateFillPercentage(dist1, 1) : -1.0;
+      float pct2 = (dist2 > 0) ? calculateFillPercentage(dist2, 2) : -1.0;
       
       // Debug prints
       Serial.print("Pct1=");

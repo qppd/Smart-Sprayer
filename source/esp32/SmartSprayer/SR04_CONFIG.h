@@ -137,45 +137,95 @@ long calculateMovingAverage(int sensorNum) {
 }
 
 // Container level calculation functions
-// Rules:
-// - 0 cm = INVALID reading (sensor error)
-// - 1-22 cm = FULL (100%, 16L)
-// - 22-40 cm = Proportional (0-100%)
-// - >40 cm = EMPTY (0%, 0L)
-float calculateFillPercentage(long distance) {
-  // Handle invalid readings (0cm = sensor error)
+// Container specs:
+//   Total height        = 38 cm  (CONTAINER_EMPTY_DISTANCE = 38)
+//   Sensor blind zone   = 22 cm  (CONTAINER_FULL_DISTANCE  = 22)
+//                         Any reading < 22 cm is INVALID (below sensor minimum range)
+//   Usable range        = 38 - 22 = 16 cm  (bottom 16 cm of container)
+// Distance → percentage mapping:
+//   < 22 cm   → INVALID (-1.0)  blind zone — do NOT treat as full
+//   22 cm     → 100%   liquid at 16 cm (maximum measurable height)
+//   22–38 cm  → proportional, based on 16 cm usable range
+//   >= 38 cm  → 0%     container empty, liquid at 0 cm
+// SMS alert thresholds (fired once per drop; re-armed when level recovers):
+//   Critical : liquid height <= 7.6 cm  (= 20% of total 38 cm container)
+//   Empty    : liquid height  = 0 cm    (distance >= 38 cm)
+
+// Critical liquid-height threshold in cm (20% × 38 cm = 7.6 cm)
+#define CRITICAL_LIQUID_HEIGHT_CM 7.6f
+
+// Per-sensor SMS debounce flags  [index 0 unused; 1 = Tank 1, 2 = Tank 2]
+static bool s_critical_sent[3] = {false, false, false};
+static bool s_empty_sent[3]    = {false, false, false};
+
+// Forward declaration — sendSMSToAll is defined in GSM_CONFIG.h (included first)
+void sendSMSToAll(const String& message);
+
+// sensorNum: 0 = no SMS alerts, 1 = Tank 1, 2 = Tank 2  (default 0)
+float calculateFillPercentage(long distance, int sensorNum = 0) {
+  // Hardware error / no echo
   if (distance <= 0) {
-    return -1.0; // Invalid reading marker
+    return -1.0;
   }
-  
-  // If distance 1-22cm: tank is full (100%)
-  if (distance > 0 && distance <= CONTAINER_FULL_DISTANCE) {
-    return 100.0;
+
+  // Below sensor minimum range (blind zone) → INVALID.
+  // Previously returned 100%, which caused Container 2 to always read 100%
+  // when the sensor fired an echo shorter than 22 cm.
+  if (distance < CONTAINER_FULL_DISTANCE) {
+    return -1.0;
   }
-  
-  // If distance >= 40cm: tank is empty (0%)
+
+  // Usable range = 16 cm  (22 cm full → 38 cm empty)
+  float usableRange  = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE; // 16 cm
+  float liquidHeight = CONTAINER_EMPTY_DISTANCE - (float)distance;         // cm from bottom
+
+  // At or beyond empty distance → 0%
   if (distance >= CONTAINER_EMPTY_DISTANCE) {
+    liquidHeight = 0.0f;
+
+    if (sensorNum > 0 && sensorNum <= 2) {
+      if (!s_empty_sent[sensorNum]) {
+        sendSMSToAll("Tank " + String(sensorNum) +
+                     " alert: Empty container: 0% remaining.");
+        s_empty_sent[sensorNum]    = true;
+        s_critical_sent[sensorNum] = true; // suppress duplicate critical when already empty
+      }
+    }
     return 0.0;
   }
-  
-  // For distances between 22-40cm: interpolate percentage
-  // 22cm = 100%, 40cm = 0%
-  float usableRange = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE;  // 40 - 22 = 18cm
-  float currentLevel = CONTAINER_EMPTY_DISTANCE - distance;  // How much above empty
-  
-  float percentage = (currentLevel / usableRange) * 100.0;
-  
-  // Clamp to 0-100 (extra safety)
-  if (percentage > 100.0) percentage = 100.0;
-  if (percentage < 0.0) percentage = 0.0;
-  
+
+  // Interpolate percentage within the 16 cm usable range
+  float percentage = (liquidHeight / usableRange) * 100.0f;
+  if (percentage > 100.0f) percentage = 100.0f;
+  if (percentage <   0.0f) percentage =   0.0f;
+
+  if (sensorNum > 0 && sensorNum <= 2) {
+    // Reset empty alert when level recovers above 0
+    s_empty_sent[sensorNum] = false;
+
+    // Critical alert: liquid height <= 7.6 cm (20% of 38 cm total container)
+    if (liquidHeight <= CRITICAL_LIQUID_HEIGHT_CM) {
+      if (!s_critical_sent[sensorNum]) {
+        sendSMSToAll("Tank " + String(sensorNum) +
+                     " alert: Critical level: 20% remaining.");
+        s_critical_sent[sensorNum] = true;
+      }
+    } else {
+      // Level recovered above critical threshold — re-arm for next drop
+      s_critical_sent[sensorNum] = false;
+    }
+  }
+
   return percentage;
 }
 
 float calculateFillLevel(long distance) {
-  // Return the actual liquid level in cm from bottom
-  float level = CONTAINER_EMPTY_DISTANCE - distance;
-  if (level < 0) level = 0;
+  // Return the liquid level in cm from the bottom of the container
+  float level = CONTAINER_EMPTY_DISTANCE - (float)distance;
+  if (level < 0.0f) level = 0.0f;
+  if (level > (CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE)) {
+    level = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE; // cap at 16 cm
+  }
   return level;
 }
 
