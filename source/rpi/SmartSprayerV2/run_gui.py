@@ -389,13 +389,32 @@ class LoginScreen(ctk.CTk):
     def login(self):
         username = self.user.get()
         password = self.passw.get()
-        # Validate against stored credentials (default: sprayer / 1234)
+        # Validate against Firebase RTDB (falls back to local if offline)
+        valid = False
         try:
-            from core.session import get_username, verify_password, set_user, update_last_login
-            valid = (username == get_username()) and verify_password(password)
+            from core.firebase_service import get_firebase_service
+            fb = get_firebase_service()
+            rtdb_account = fb.get_account_from_rtdb() if fb.connected else None
+            if rtdb_account:
+                valid = (
+                    username == rtdb_account.get("username", "") and
+                    password == rtdb_account.get("password", "")
+                )
+                if not valid:
+                    print("⚠️ RTDB credentials did not match")
+            else:
+                # Firebase offline — fall back to local credentials
+                print("ℹ️ Firebase offline — using local credentials")
+                from core.session import get_username, verify_password
+                valid = (username == get_username()) and verify_password(password)
         except Exception as e:
-            print(f"⚠️ Session error: {e}")
-            valid = (username == "sprayer" and password == "1234")
+            print(f"⚠️ Firebase auth error: {e}")
+            try:
+                from core.session import get_username, verify_password
+                valid = (username == get_username()) and verify_password(password)
+            except Exception as e2:
+                print(f"⚠️ Session error: {e2}")
+                valid = (username == "sprayer" and password == "1234")
 
         if valid:
             try:
@@ -547,6 +566,16 @@ def _send_login_sms(phone: str):
 def _run_session():
     """Run login → optional phone setup → main UI.
     Returns 'logout' if the user logged out, None otherwise."""
+    # Ensure account credentials are synced to Firebase RTDB before showing login
+    try:
+        from core.firebase_service import get_firebase_service
+        from core.session import get_username, get_password
+        fb = get_firebase_service()
+        if fb.connected:
+            fb.sync_account_to_rtdb(get_username(), get_password())
+    except Exception as e:
+        print(f"⚠️ RTDB account sync error: {e}")
+
     LoginScreen().mainloop()
 
     saved_phone = ""

@@ -490,7 +490,8 @@ from datetime import datetime
 
 from core.session import (
     get_username, get_phone, set_user, set_phone,
-    get_last_login, get_created_at, clear_session
+    get_last_login, get_created_at, clear_session,
+    get_password, set_password, verify_password,
 )
 
 # ══════════════════════════════════════════════════════
@@ -730,19 +731,45 @@ class SprayerAccountPanel(ctk.CTkScrollableFrame):
     # ══════════════════════════════════════════════════════
 
     def _change_password(self):
-        if not self.new_pass.get() or not self.confirm_pass.get():
-            show_error_modal(self, "Error", "Please fill all fields")
+        current = self.current_pass.get()
+        new     = self.new_pass.get()
+        confirm = self.confirm_pass.get()
+
+        if not current or not new or not confirm:
+            show_error_modal(self, "Missing Fields",
+                             "Please fill in all password fields.")
             return
 
-        if self.new_pass.get() != self.confirm_pass.get():
-            show_error_modal(self, "Error", "Passwords do not match")
+        if not verify_password(current):
+            show_error_modal(self, "Wrong Password",
+                             "Current password is incorrect.")
             return
 
-        show_success_modal(self, "Success", "Password updated successfully")
+        if len(new) < 4:
+            show_error_modal(self, "Too Short",
+                             "New password must be at least 4 characters.")
+            return
+
+        if new != confirm:
+            show_error_modal(self, "Mismatch",
+                             "New passwords do not match.")
+            return
+
+        set_password(new)
+        # Sync new password to Firebase RTDB immediately
+        try:
+            from core.firebase_service import get_firebase_service
+            fb = get_firebase_service()
+            if fb.connected:
+                fb.update_password_in_rtdb(new)
+        except Exception as e:
+            print(f"⚠️ RTDB password sync error: {e}")
 
         self.current_pass.delete(0, "end")
         self.new_pass.delete(0, "end")
         self.confirm_pass.delete(0, "end")
+        show_success_modal(self, "Password Changed",
+                           "Your password has been updated successfully.")
 
     # ══════════════════════════════════════════════════════
     # LOGOUT MODAL
@@ -795,5 +822,9 @@ class SprayerAccountPanel(ctk.CTkScrollableFrame):
     def _confirm_logout(self, modal):
         modal.destroy()
         clear_session()
-        print("User logged out, session cleared")
-        self.winfo_toplevel().destroy()
+        print("[ACCOUNT] User logged out — returning to login screen")
+        toplevel = self.winfo_toplevel()
+        if hasattr(toplevel, "_request_logout"):
+            toplevel._request_logout()
+        else:
+            toplevel.destroy()
