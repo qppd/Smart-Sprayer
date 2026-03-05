@@ -131,7 +131,7 @@ class DashboardPanel(ctk.CTkFrame):
 
         self._tank1_low_alert_sent = False
         self._tank2_low_alert_sent = False
-        self._TANK_LOW_THRESHOLD = 10.0
+        self._TANK_LOW_THRESHOLD = 20.0  # Fixed: was 10.0 — must match the 20% critical threshold
 
         self.configure(fg_color=BG)
 

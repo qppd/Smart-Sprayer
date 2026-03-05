@@ -424,7 +424,7 @@ void loop() {
       long dist = readDistanceReliable(1, 3);  // Use reliable reading with 3 attempts
       if (dist > 0) {
         float level = calculateFillLevel(dist);
-        float percentage = calculateFillPercentage(dist);
+        float percentage = calculateFillPercentage(dist, 1);  // sensorNum=1 so SMS alert fires
         if (percentage >= 0) {  // Valid percentage (not -1 for invalid readings)
           Serial.print("Dist=");
           Serial.print(dist);
