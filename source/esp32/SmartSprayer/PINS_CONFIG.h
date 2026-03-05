@@ -27,14 +27,17 @@
 #define WIFI_RESET_BUTTON_PIN 13
 
 // Container Level Configuration
-// Ultrasonic measures from top of container
-// Total container height = 38 cm
-// Sensor blind zone (minimum range) = 22 cm — readings below this are INVALID
-// Usable measurable range = 38 - 22 = 16 cm (bottom 16 cm of container)
-// 22cm distance = Full (100%, liquid at top of usable range)
-// 38cm distance = Empty (0%, liquid at bottom)
-#define CONTAINER_EMPTY_DISTANCE 38.0  // Distance when tank is empty (cm) — equals total height
-#define CONTAINER_FULL_DISTANCE 22.0   // Sensor minimum range / full level distance (cm)
+// Sensor: Standard HC-SR04 (non-waterproof), min range ~2 cm
+// Ultrasonic measures downward from sensor to liquid surface.
+// Full tank (16 L) → sensor reads ~12–15 cm; nominal FULL distance = 13 cm
+// Empty tank        → sensor reads ~38 cm
+// Usable range      = 38 - 13 = 25 cm
+// 13 cm  → 100%  (any reading ≤ 13 cm is clamped to 100%)
+// 38 cm  → 0%
+// 20% critical threshold:
+//   liquid height = 25 × 0.20 = 5.0 cm → distance = 38 - 5 = 33 cm
+#define CONTAINER_EMPTY_DISTANCE 38.0  // Distance when tank is empty (cm)
+#define CONTAINER_FULL_DISTANCE  13.0  // Distance when tank is full / 100% (cm)
 #define CONTAINER_CAPACITY_LITERS 16.0 // Tank capacity in liters
 
 // Pump Configuration

@@ -137,22 +137,21 @@ long calculateMovingAverage(int sensorNum) {
 }
 
 // Container level calculation functions
+// Sensor: Standard HC-SR04 (non-waterproof), min range ~2 cm
 // Container specs:
-//   Total height        = 38 cm  (CONTAINER_EMPTY_DISTANCE = 38)
-//   Sensor blind zone   = 22 cm  (CONTAINER_FULL_DISTANCE  = 22)
-//                         Any reading < 22 cm is INVALID (below sensor minimum range)
-//   Usable range        = 38 - 22 = 16 cm  (bottom 16 cm of container)
+//   Full  (100% / 16 L) : sensor reads ~12–15 cm → nominal CONTAINER_FULL_DISTANCE  = 13 cm
+//   Empty (0%)          : sensor reads ~38 cm    → CONTAINER_EMPTY_DISTANCE = 38 cm
+//   Usable range        : 38 − 13 = 25 cm
 // Distance → percentage mapping:
-//   < 22 cm   → INVALID (-1.0)  blind zone — do NOT treat as full
-//   22 cm     → 100%   liquid at 16 cm (maximum measurable height)
-//   22–38 cm  → proportional, based on 16 cm usable range
-//   >= 38 cm  → 0%     container empty, liquid at 0 cm
+//   ≤ 13 cm   → 100%   (liquid at or above the full mark)
+//   13–38 cm  → proportional over the 25 cm usable range
+//   ≥ 38 cm   → 0%    (tank empty)
 // SMS alert thresholds (fired once per drop; re-armed when level recovers):
-//   Critical : liquid height <= 7.6 cm  (= 20% of total 38 cm container)
-//   Empty    : liquid height  = 0 cm    (distance >= 38 cm)
+//   Critical : liquid height ≤ 5.0 cm  (= 20% of 25 cm usable range)
+//   Empty    : distance ≥ 38 cm  (liquid height = 0 cm)
 
-// Critical liquid-height threshold in cm (20% × 38 cm = 7.6 cm)
-#define CRITICAL_LIQUID_HEIGHT_CM 7.6f
+// Critical liquid-height threshold in cm (20% × 25 cm usable range = 5.0 cm)
+#define CRITICAL_LIQUID_HEIGHT_CM 5.0f
 
 // Per-sensor SMS debounce flags  [index 0 unused; 1 = Tank 1, 2 = Tank 2]
 static bool s_critical_sent[3] = {false, false, false};
@@ -165,15 +164,14 @@ float calculateFillPercentage(long distance, int sensorNum = 0) {
     return -1.0;
   }
 
-  // Below sensor minimum range (blind zone) → INVALID.
-  // Previously returned 100%, which caused Container 2 to always read 100%
-  // when the sensor fired an echo shorter than 22 cm.
-  if (distance < CONTAINER_FULL_DISTANCE) {
-    return -1.0;
+  // At or below the full-distance mark → clamp to 100%.
+  // (Regular HC-SR04 has ~2 cm min range so readings ≤ 13 cm mean the tank is full.)
+  if (distance <= CONTAINER_FULL_DISTANCE) {
+    return 100.0f;
   }
 
-  // Usable range = 16 cm  (22 cm full → 38 cm empty)
-  float usableRange  = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE; // 16 cm
+  // Usable range = 25 cm  (13 cm full → 38 cm empty)
+  float usableRange  = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE; // 25 cm
   float liquidHeight = CONTAINER_EMPTY_DISTANCE - (float)distance;         // cm from bottom
 
   // At or beyond empty distance → 0%
@@ -191,7 +189,7 @@ float calculateFillPercentage(long distance, int sensorNum = 0) {
     return 0.0;
   }
 
-  // Interpolate percentage within the 16 cm usable range
+  // Interpolate percentage within the 25 cm usable range
   float percentage = (liquidHeight / usableRange) * 100.0f;
   if (percentage > 100.0f) percentage = 100.0f;
   if (percentage <   0.0f) percentage =   0.0f;
@@ -200,7 +198,7 @@ float calculateFillPercentage(long distance, int sensorNum = 0) {
     // Reset empty alert when level recovers above 0
     s_empty_sent[sensorNum] = false;
 
-    // Critical alert: liquid height <= 7.6 cm (20% of 38 cm total container)
+    // Critical alert: liquid height <= 5.0 cm (20% of 25 cm usable range)
     if (liquidHeight <= CRITICAL_LIQUID_HEIGHT_CM) {
       if (!s_critical_sent[sensorNum]) {
         sendSMSToAll("Tank " + String(sensorNum) +
@@ -221,7 +219,7 @@ float calculateFillLevel(long distance) {
   float level = CONTAINER_EMPTY_DISTANCE - (float)distance;
   if (level < 0.0f) level = 0.0f;
   if (level > (CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE)) {
-    level = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE; // cap at 16 cm
+    level = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE; // cap at 25 cm
   }
   return level;
 }
