@@ -158,9 +158,6 @@ long calculateMovingAverage(int sensorNum) {
 static bool s_critical_sent[3] = {false, false, false};
 static bool s_empty_sent[3]    = {false, false, false};
 
-// Forward declaration — sendSMSToAll is defined in GSM_CONFIG.h (included first)
-void sendSMSToAll(const String& message);
-
 // sensorNum: 0 = no SMS alerts, 1 = Tank 1, 2 = Tank 2  (default 0)
 float calculateFillPercentage(long distance, int sensorNum = 0) {
   // Hardware error / no echo
