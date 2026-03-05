@@ -1,12 +1,13 @@
 # main_ui.py
-# Main application UI - Smart Sprayer GUI
+# Sprayer System GUI – Image Matched Layout
 
 import customtkinter as ctk
 from tkinter import messagebox
 import sys
 import os
+from datetime import datetime
+from PIL import Image
 
-# Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from hardware.hardware_interface import get_hardware
@@ -15,272 +16,318 @@ from core.data_store import get_data_store
 from core.scheduler import get_scheduler
 from core.reschedule_logic import get_reschedule_manager
 
+# Module-level flag set by _request_logout so main() can return "logout"
+_logout_requested = False
+
 from ui.dashboard import DashboardPanel
 from ui.scheduling import SchedulingPanel
 from ui.previous_data import PreviousDataPanel
 from ui.notifications import NotificationsPanel
-from ui.spraying_events_logs_viewer import SprayingEventsLogsViewerPanel
 from ui.settings import SettingsFrame
+from ui.account import SprayerAccountPanel
+
 
 
 class SmartSprayerUI(ctk.CTk):
-    """Main Smart Sprayer GUI Application"""
-    
+
     def __init__(self):
         super().__init__()
-        
-        # Window configuration
-        self.title("Smart Sprayer Control System")
-        self.geometry("1400x900")
-        
-        # Set theme
+
+        # Window
+        self.title("Sprayer System Control")
+        self.attributes("-fullscreen", True)
+
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("green")
-        
-        # Initialize backend components
+
+        # Core
         self.logger = get_logger()
-        self.logger.log_info("=== Smart Sprayer GUI Started ===")
-        
         self.hardware = get_hardware()
         self.data_store = get_data_store()
         self.scheduler = get_scheduler(self.hardware)
         self.reschedule_mgr = get_reschedule_manager()
-        
-        # Start scheduler
+
         self.scheduler.start()
-        
-        # Sync ESP32 on startup (time and recipients)
         self._sync_esp32_on_startup()
-        
-        # Create UI
+
+        # ---------------- COLOR PALETTE ----------------
+        self.COL_TOPBAR_BG = "#ECF6F1"
+        self.COL_SIDEBAR_BG = "#EDF7F2"
+        self.COL_CONTENT_BG = "#F6FBF9"
+
+        self.COL_TEXT_DARK = "#1B5E20"
+        self.COL_TEXT_MID = "#2E7D32"
+        self.COL_TEXT_GRAY = "#6D6D6D"
+
+        self.COL_ACTIVE_BG = "#D6EEE0"
+        self.COL_ACTIVE_BAR = "#4CAF50"
+        self.COL_HOVER = "#E4F5EC"
+
+        self.COL_DIVIDER = "#CDE6D7"
+
         self._create_ui()
-        
-        # Handle window close
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
-        
-        self.logger.log_info("GUI initialization complete")
-    
+
+    # =====================================================
+
     def _create_ui(self):
-        """Create main UI layout"""
-        # Configure grid
+
+        self.grid_columnconfigure(0, weight=0)
         self.grid_columnconfigure(1, weight=1)
-        self.grid_rowconfigure(0, weight=1)
-        
-        # LEFT SIDEBAR - Navigation
-        self.sidebar = ctk.CTkFrame(self, width=250, corner_radius=0, fg_color="#E8F5E9")
-        self.sidebar.grid(row=0, column=0, sticky="nsew")
-        self.sidebar.grid_rowconfigure(7, weight=1)
-        
-        # Logo/Title
-        logo_frame = ctk.CTkFrame(self.sidebar, fg_color="#4CAF50", height=100)
-        logo_frame.grid(row=0, column=0, padx=20, pady=20, sticky="ew")
-        logo_frame.grid_propagate(False)
-        
+        self.grid_rowconfigure(1, weight=1)
+
+        # ================= TOP BAR =================
+        self.topbar = ctk.CTkFrame(
+            self,
+            fg_color=self.COL_TOPBAR_BG,
+            height=120,
+            corner_radius=0
+        )
+        self.topbar.grid(row=0, column=0, columnspan=2, sticky="ew")
+        self.topbar.grid_columnconfigure(1, weight=1)
+
+        left = ctk.CTkFrame(self.topbar, fg_color="transparent")
+        left.grid(row=0, column=0, sticky="w", padx=28, pady=20)
+
+        logo_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "logo.png")
+
+        self.logo_img = None
+
+        if os.path.exists(logo_path):
+            self.logo_img = ctk.CTkImage(
+                light_image=Image.open(logo_path),
+                dark_image=Image.open(logo_path),
+                size=(72, 72)
+            )
+
+        ctk.CTkLabel(left, text="", image=self.logo_img).grid(row=0, column=0, padx=(0, 18))
+
         ctk.CTkLabel(
-            logo_frame,
-            text="🌱",
-            font=ctk.CTkFont(size=40)
-        ).pack(pady=5)
-        
-        ctk.CTkLabel(
-            logo_frame,
-            text="SMART SPRAYER",
-            font=ctk.CTkFont(size=16, weight="bold"),
-            text_color="#FFFFFF"
-        ).pack()
-        
-        # Navigation buttons
+            left,
+            text="AUTOMATED SPRAYER SYSTEM",
+            font=ctk.CTkFont(size=50, weight="bold"),
+            text_color=self.COL_TEXT_DARK
+        ).grid(row=0, column=1, sticky="w")
+
+        self.datetime_lbl = ctk.CTkLabel(
+            self.topbar,
+            font=ctk.CTkFont(size=26, weight="bold"),
+            text_color=self.COL_TEXT_GRAY
+        )
+        self.datetime_lbl.grid(row=0, column=1, sticky="e", padx=28)
+
+        self._update_clock()
+
+        divider = ctk.CTkFrame(self, height=2, fg_color=self.COL_DIVIDER)
+        divider.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(118, 0))
+
+        # ================= SIDEBAR =================
+        self.sidebar = ctk.CTkFrame(
+            self,
+            width=420,
+            fg_color=self.COL_SIDEBAR_BG,
+            corner_radius=0
+        )
+        self.sidebar.grid(row=1, column=0, sticky="nsew")
+        self.sidebar.grid_rowconfigure(20, weight=1)
+
         self.nav_buttons = {}
-        
+        self.nav_indicators = {}
+
+        # Load navigation icons
+        icons_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "icons")
+
         nav_items = [
-            ("Dashboard", "📊", "dashboard"),
-            ("Scheduling", "📅", "scheduling"),
-            ("Previous Data", "📋", "previous_data"),
-            ("Notifications", "🔔", "notifications"),
-            ("Spraying Events Logs", "📝", "spraying_events_logs"),
-            ("Settings", "⚙️", "settings")
+            ("Dashboard",     "dashboard",     "dashboard.png"),
+            ("Scheduling",    "scheduling",    "scheduling.png"),
+            ("Previous Data", "previous_data", "previous.png"),
+            ("Notifications", "notifications", "notifications.png"),
+            ("Settings",      "settings",      "settings.png"),
         ]
-        
-        for i, (text, icon, key) in enumerate(nav_items):
+
+        for i, (label, key, icon_file) in enumerate(nav_items):
+
+            container = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+            container.grid(row=i, column=0, sticky="ew",
+                           padx=16, pady=(20 if i == 0 else 10, 0))
+            container.grid_columnconfigure(1, weight=1)
+
+            indicator = ctk.CTkFrame(
+                container,
+                width=8,
+                height=72,
+                fg_color="transparent",
+                corner_radius=6
+            )
+            indicator.grid(row=0, column=0, sticky="ns", padx=(0, 14))
+
+            # Try to load icon image
+            icon_img = None
+            icon_path = os.path.join(icons_path, icon_file)
+            if os.path.exists(icon_path):
+                try:
+                    icon_img = ctk.CTkImage(
+                        light_image=Image.open(icon_path),
+                        dark_image=Image.open(icon_path),
+                        size=(36, 36)
+                    )
+                except:
+                    pass
+
             btn = ctk.CTkButton(
-                self.sidebar,
-                text=f"{icon}  {text}",
-                font=ctk.CTkFont(size=16),
-                height=50,
+                container,
+                text=f"  {label}",
+                image=icon_img,
+                compound="left",
+                height=72,
                 corner_radius=10,
                 fg_color="transparent",
-                text_color="#1B5E20",
-                hover_color="#C8E6C9",
+                text_color=self.COL_TEXT_MID,
+                hover_color=self.COL_HOVER,
+                font=ctk.CTkFont(size=32, weight="bold"),
                 anchor="w",
                 command=lambda k=key: self._show_panel(k)
             )
-            btn.grid(row=i+1, column=0, padx=15, pady=5, sticky="ew")
+            btn.grid(row=0, column=1, sticky="ew")
+
             self.nav_buttons[key] = btn
-        
-        # System info at bottom
-        self.system_info = ctk.CTkLabel(
+            self.nav_indicators[key] = indicator
+
+        # Account button with icon
+        account_icon = None
+        account_icon_path = os.path.join(icons_path, "account.png")
+        if os.path.exists(account_icon_path):
+            try:
+                account_icon = ctk.CTkImage(
+                    light_image=Image.open(account_icon_path),
+                    dark_image=Image.open(account_icon_path),
+                    size=(36, 36)
+                )
+            except:
+                pass
+
+        account_btn = ctk.CTkButton(
             self.sidebar,
-            text="System: PC Mode\nStatus: Running",
-            font=ctk.CTkFont(size=12),
-            text_color="#2E7D32",
-            justify="left"
+            text="  Sprayer Account",
+            image=account_icon,
+            compound="left",
+            height=72,
+            corner_radius=10,
+            fg_color="transparent",
+            text_color=self.COL_TEXT_MID,
+            hover_color=self.COL_HOVER,
+            font=ctk.CTkFont(size=32, weight="bold"),
+            anchor="w",
+            command=self._show_account
         )
-        self.system_info.grid(row=8, column=0, padx=20, pady=20, sticky="s")
-        
-        # About button
-        about_btn = ctk.CTkButton(
-            self.sidebar,
-            text="ℹ About",
-            font=ctk.CTkFont(size=14),
-            height=40,
-            fg_color="#757575",
-            hover_color="#616161",
-            command=self._show_about
+        account_btn.grid(row=21, column=0, sticky="ew", padx=16, pady=(0, 24))
+
+        # ================= CONTENT =================
+        self.content_frame = ctk.CTkFrame(
+            self,
+            fg_color=self.COL_CONTENT_BG,
+            corner_radius=0
         )
-        about_btn.grid(row=9, column=0, padx=15, pady=10, sticky="ew")
-        
-        # RIGHT CONTENT AREA
-        self.content_frame = ctk.CTkFrame(self, fg_color="#F5F5F5", corner_radius=0)
-        self.content_frame.grid(row=0, column=1, sticky="nsew")
-        
-        # Create panels (hidden initially)
-        self.panels = {}
-        
-        self.panels["dashboard"] = DashboardPanel(
-            self.content_frame, 
-            self.hardware, 
-            self.scheduler
-        )
-        
-        self.panels["scheduling"] = SchedulingPanel(
-            self.content_frame,
-            self.scheduler,
-            self.reschedule_mgr,
-            self.logger
-        )
-        
-        self.panels["previous_data"] = PreviousDataPanel(
-            self.content_frame,
-            self.data_store
-        )
-        
-        self.panels["notifications"] = NotificationsPanel(
-            self.content_frame,
-            self.scheduler,
-            self.data_store,
-            self.hardware
-        )
-        
-        self.panels["spraying_events_logs"] = SprayingEventsLogsViewerPanel(
-            self.content_frame,
-            self.logger
-        )
-        
-        self.panels["settings"] = SettingsFrame(
-            self.content_frame
-        )
-        
-        # Show dashboard by default
+        self.content_frame.grid(row=1, column=1, sticky="nsew")
+        self.content_frame.grid_rowconfigure(0, weight=1)
+        self.content_frame.grid_columnconfigure(0, weight=1)
+
+        self.panels = {
+            "dashboard":    DashboardPanel(self.content_frame, self.hardware, self.scheduler),
+            "scheduling":   SchedulingPanel(self.content_frame, self.scheduler, self.reschedule_mgr, self.logger),
+            "previous_data": PreviousDataPanel(self.content_frame, self.data_store),
+            "notifications": NotificationsPanel(self.content_frame, self.scheduler, self.data_store, self.hardware),
+            "settings":     SettingsFrame(self.content_frame),
+            "account":      SprayerAccountPanel(self.content_frame)
+        }
+
         self._show_panel("dashboard")
-    
-    def _show_panel(self, panel_key):
-        """Show selected panel and hide others"""
-        # Hide all panels
-        for key, panel in self.panels.items():
+
+    # =====================================================
+
+    def _update_clock(self):
+        now = datetime.now()
+        formatted = now.strftime("%A, %B %d, %Y - %I:%M:%S %p")
+        self.datetime_lbl.configure(text=formatted)
+        self.after(1000, self._update_clock)
+
+    # =====================================================
+
+    def _show_panel(self, key):
+
+        for panel in self.panels.values():
             panel.pack_forget()
-        
-        # Reset all button colors
-        for key, btn in self.nav_buttons.items():
-            btn.configure(fg_color="transparent")
-        
-        # Show selected panel
-        if panel_key in self.panels:
-            self.panels[panel_key].pack(fill="both", expand=True)
-            
-            # Highlight selected button
-            if panel_key in self.nav_buttons:
-                self.nav_buttons[panel_key].configure(fg_color="#4CAF50")
-            
-            self.logger.log_debug(f"Switched to panel: {panel_key}")
-    
+
+        for k in self.nav_buttons:
+            self.nav_buttons[k].configure(
+                fg_color="transparent",
+                text_color=self.COL_TEXT_MID
+            )
+            self.nav_indicators[k].configure(fg_color="transparent")
+
+        self.panels[key].pack(fill="both", expand=True)
+        if key in self.nav_buttons:
+            self.nav_buttons[key].configure(
+                fg_color=self.COL_ACTIVE_BG,
+                text_color=self.COL_TEXT_DARK
+            )
+            self.nav_indicators[key].configure(
+                fg_color=self.COL_ACTIVE_BAR
+            )
+
+    # =====================================================
+
     def _sync_esp32_on_startup(self):
-        """Sync ESP32 with RPI on startup (time and recipients)"""
         try:
             if self.hardware and self.hardware.connected:
-                self.logger.log_info("Syncing ESP32 on startup...")
-                
-                # 1. Sync time from RPI to ESP32 RTC
-                self.logger.log_info("Syncing time to ESP32 RTC...")
                 self.hardware.sync_time()
-                
-                # 2. Sync recipients from data store to ESP32
-                self.logger.log_info("Syncing recipients to ESP32...")
+
                 from core.data_store import get_recipients
                 recipients = get_recipients()
-                
-                if recipients:
-                    phone_numbers = [r.get('phone', '') for r in recipients if r.get('phone')]
-                    self.hardware.sync_recipients_bulk(phone_numbers)
-                    self.logger.log_info(f"Synced {len(phone_numbers)} recipients to ESP32")
-                else:
-                    self.hardware.sync_recipients_bulk([])
-                    self.logger.log_info("No recipients to sync")
-                
-                # 3. Get ESP32 status for logging
-                status = self.hardware.get_status()
-                if status:
-                    self.logger.log_info(f"ESP32 Status: {status}")
-                
-                self.logger.log_info("ESP32 startup sync complete!")
-            else:
-                self.logger.log_warning("ESP32 not connected - skipping startup sync")
+                phones = [r.get("phone") for r in recipients if r.get("phone")]
+                self.hardware.sync_recipients_bulk(phones)
         except Exception as e:
-            self.logger.log_error(f"ESP32 startup sync failed: {e}")
-    
-    def _show_about(self):
-        """Show about dialog"""
-        about_text = (
-            "Smart Sprayer Control System\n\n"
-            "Version: 1.0.0\n"
-            "Developed for: Agricultural Automation\n\n"
-            "Features:\n"
-            "• Automated spray scheduling\n"
-            "• Tank level monitoring\n"
-            "• Reschedule with auto-adjust\n"
-            "• Comprehensive logging\n"
-            "• Farmer-friendly UI\n\n"
-            "Mode: PC Testing (Mock Hardware)\n"
-            "Ready for Raspberry Pi deployment"
-        )
-        
-        messagebox.showinfo("About Smart Sprayer", about_text)
-    
-    def _on_closing(self):
-        """Handle window close event"""
-        if messagebox.askokcancel("Quit", "Do you want to quit Smart Sprayer?"):
-            self.logger.log_info("=== Shutting down Smart Sprayer ===")
-            
-            # Stop scheduler
+            self.logger.log_error(f"ESP32 sync failed: {e}")
+
+    # =====================================================
+
+    def _show_account(self):
+        self._show_panel("account")
+        # Refresh account info every time the panel is opened
+        try:
+            self.panels["account"].refresh()
+        except Exception as e:
+            print(f"[ACCOUNT] Refresh error: {e}")
+
+    def _request_logout(self):
+        """Called by the account panel when the user confirms logout."""
+        global _logout_requested
+        _logout_requested = True
+        try:
             self.scheduler.stop()
-            
-            # Cleanup hardware
+        except Exception:
+            pass
+        try:
             if self.hardware:
                 self.hardware.cleanup()
-            
-            # Cleanup panels
-            for panel in self.panels.values():
-                if hasattr(panel, 'cleanup'):
-                    panel.cleanup()
-            
-            self.logger.log_info("Shutdown complete")
+        except Exception:
+            pass
+        self.destroy()
+
+    def _on_closing(self):
+        if messagebox.askokcancel("Quit", "Exit Sprayer System?"):
+            self.scheduler.stop()
+            if self.hardware:
+                self.hardware.cleanup()
             self.destroy()
 
 
 def main():
-    """Main entry point"""
-    # Create and run application
+    global _logout_requested
+    _logout_requested = False
     app = SmartSprayerUI()
     app.mainloop()
+    return "logout" if _logout_requested else None
 
 
 if __name__ == "__main__":

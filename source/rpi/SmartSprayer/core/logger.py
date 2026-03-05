@@ -66,15 +66,30 @@ class SmartSprayerLogger:
                f"Container: {schedule_data['container']}")
         self.log_info(msg)
     
-    def log_schedule_rescheduled(self, old_date, new_date, reschedule_count):
+    def log_schedule_rescheduled(self, old_date, new_date, reschedule_count,
+                                  spray_type='Unknown', max_reschedule=3):
         """Log schedule reschedule"""
-        msg = (f"SCHEDULE RESCHEDULED - Old date: {old_date}, "
-               f"New date: {new_date}, Reschedule count: {reschedule_count}")
+        remaining = max_reschedule - reschedule_count
+        if remaining > 0:
+            detail = "Remaining schedule adjusted."
+        else:
+            detail = "No remaining reschedules."
+        msg = (
+            f"Spraying session rescheduled: {reschedule_count}/{max_reschedule}. "
+            f"Spray type: {spray_type}. {detail} "
+            f"Date: {new_date}."
+        )
         self.log_warning(msg)
     
-    def log_schedule_cancelled(self, schedule_id, reason="User cancelled"):
+    def log_schedule_cancelled(self, schedule_id, reason='User cancelled',
+                                spray_type='Unknown', max_reschedule=3, date=''):
         """Log schedule cancellation"""
-        msg = f"SCHEDULE CANCELLED - ID: {schedule_id}, Reason: {reason}"
+        date_part = f" Date: {date}." if date else ''
+        msg = (
+            f"Spraying session for {spray_type} has been cancelled. "
+            f"All {max_reschedule} reschedules have been used.{date_part} "
+            f"ID: {schedule_id}."
+        )
         self.log_warning(msg)
     
     def log_auto_adjust(self, affected_schedules):
@@ -84,16 +99,26 @@ class SmartSprayerLogger:
         for sched in affected_schedules:
             self.log_debug(f"  - Schedule {sched['id']} moved from {sched['old_date']} to {sched['new_date']}")
     
-    def log_spray_executed(self, schedule_data):
-        """Log spray execution"""
-        msg = (f"SPRAY EXECUTED - Date: {schedule_data['date']}, "
-               f"Time: {schedule_data['time']}, Type: {schedule_data['spray_type']}, "
-               f"Container: {schedule_data['container']}")
+    def log_spray_executed(self, schedule_data, volume_ml=None, duration_sec=None):
+        """Log spray execution start"""
+        spray_type  = schedule_data.get('spray_type', 'Unknown')
+        vol         = volume_ml  if volume_ml  is not None else schedule_data.get('volume_ml', '--')
+        dur         = f"{duration_sec:.1f}" if duration_sec is not None else '--'
+        date        = schedule_data.get('date', '--')
+        msg = (
+            f"Spraying started: {vol} mL of {spray_type} "
+            f"for {dur} seconds. "
+            f"Date: {date}."
+        )
         self.log_info(msg)
     
-    def log_spray_completed(self, schedule_id, duration):
+    def log_spray_completed(self, schedule_id, duration, spray_type='Unknown', volume_ml=None):
         """Log spray completion"""
-        msg = f"SPRAY COMPLETED - ID: {schedule_id}, Duration: {duration}s"
+        vol = f"{int(volume_ml)}" if volume_ml is not None else '--'
+        msg = (
+            f"Spraying completed: {vol} mL of {spray_type} applied. "
+            f"ID: {schedule_id}, Duration: {duration:.1f} seconds."
+        )
         self.log_info(msg)
     
     def log_system_status(self, status):

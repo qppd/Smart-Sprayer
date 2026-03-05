@@ -33,14 +33,25 @@ class RescheduleManager:
         if reschedule_count >= self.MAX_RESCHEDULES:
             # Cancel all schedules in the series
             self._cancel_all_related_schedules(schedule)
+            spray_type = schedule.get('spray_type', 'Unknown')
+            cancel_date = schedule.get('date', '')
             self.logger.log_warning(
-                f"Maximum reschedules ({self.MAX_RESCHEDULES}) reached. "
-                f"All related schedules cancelled."
+                f"Spraying session for {spray_type} has been cancelled. "
+                f"All {self.MAX_RESCHEDULES} reschedules have been used. "
+                f"Date: {cancel_date}."
             )
-            return False, f"Maximum {self.MAX_RESCHEDULES} reschedules reached. All schedules cancelled.", []
+            return False, (
+                f"Spraying session for {spray_type} has been cancelled. "
+                f"All {self.MAX_RESCHEDULES} reschedules have been used."
+            ), []
         
         old_date = schedule['date']
         old_time = schedule['time']
+        
+        print(f"🔍 Rescheduling {schedule_id} from {old_date} {old_time} to {new_date} {new_time}")
+        
+        # Add to rescheduled schedules list
+        self.data_store.add_rescheduled_schedule(schedule, new_date, new_time)
         
         # Calculate date shift
         date_shift = self._calculate_date_shift(old_date, new_date)
@@ -56,7 +67,15 @@ class RescheduleManager:
         }
         
         self.data_store.update_schedule(schedule_id, updates)
-        self.logger.log_schedule_rescheduled(old_date, new_date, reschedule_count + 1)
+        self.logger.log_schedule_rescheduled(
+            old_date,
+            new_date,
+            reschedule_count + 1,
+            spray_type=schedule.get('spray_type', 'Unknown'),
+            max_reschedule=self.MAX_RESCHEDULES
+        )
+        
+        print(f"✓ Schedule rescheduled successfully")
         
         # Auto-adjust dependent schedules
         affected_schedules = self._auto_adjust_schedules(
@@ -168,48 +187,80 @@ class RescheduleManager:
             
             for sched in all_schedules:
                 if sched.get('series_id') == series_id:
+                    # Add to cancelled list before updating status
+                    self.data_store.add_cancelled_schedule(sched)
+                    
                     self.data_store.update_schedule(sched['id'], {
                         'status': 'cancelled',
-                        'cancel_reason': 'Max reschedules exceeded'
+                        'cancel_reason': 'Max reschedules exceeded',
+                        'cancelled_at': datetime.now().isoformat()
                     })
                     self.logger.log_schedule_cancelled(
-                        sched['id'], 
-                        "Max reschedules exceeded in series"
+                        sched['id'],
+                        reason='Max reschedules exceeded',
+                        spray_type=sched.get('spray_type', 'Unknown'),
+                        max_reschedule=self.MAX_RESCHEDULES,
+                        date=sched.get('date', '')
                     )
         else:
             # Just cancel this single schedule
+            self.data_store.add_cancelled_schedule(schedule)
+            
             self.data_store.update_schedule(schedule['id'], {
                 'status': 'cancelled',
-                'cancel_reason': 'Max reschedules exceeded'
+                'cancel_reason': 'Max reschedules exceeded',
+                'cancelled_at': datetime.now().isoformat()
             })
             self.logger.log_schedule_cancelled(
-                schedule['id'], 
-                "Max reschedules exceeded"
+                schedule['id'],
+                reason='Max reschedules exceeded',
+                spray_type=schedule.get('spray_type', 'Unknown'),
+                max_reschedule=self.MAX_RESCHEDULES,
+                date=schedule.get('date', '')
             )
     
     def cancel_schedule(self, schedule_id: str, reason: str = "User cancelled") -> bool:
         """Cancel a single schedule"""
+        # Get the schedule BEFORE updating it
         schedule = self.data_store.get_schedule_by_id(schedule_id)
         
         if not schedule:
+            print(f"❌ Schedule {schedule_id} not found")
             return False
         
+        print(f"🔍 Found schedule to cancel: {schedule.get('id')}")
+        
+        # Add to cancelled schedules list FIRST
+        self.data_store.add_cancelled_schedule(schedule)
+        
+        # Update status to cancelled
         self.data_store.update_schedule(schedule_id, {
             'status': 'cancelled',
-            'cancel_reason': reason
+            'cancel_reason': reason,
+            'cancelled_at': datetime.now().isoformat()
         })
         
-        self.logger.log_schedule_cancelled(schedule_id, reason)
+        self.logger.log_schedule_cancelled(
+            schedule_id,
+            reason=reason,
+            spray_type=schedule.get('spray_type', 'Unknown'),
+            max_reschedule=self.MAX_RESCHEDULES,
+            date=schedule.get('date', '')
+        )
+        print(f"✓ Schedule {schedule_id} cancelled successfully")
         return True
     
     def cancel_all_schedules(self):
         """Cancel all active schedules"""
         all_schedules = self.data_store.get_active_schedules()
         
+        print(f"🔍 Found {len(all_schedules)} active schedules to cancel")
+        
         for sched in all_schedules:
             self.cancel_schedule(sched['id'], "User cancelled all")
         
         self.logger.log_info(f"Cancelled all {len(all_schedules)} active schedules")
+        print(f"✓ Cancelled {len(all_schedules)} schedules")
 
 
 # Global reschedule manager instance

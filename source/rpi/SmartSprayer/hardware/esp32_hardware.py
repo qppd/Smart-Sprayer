@@ -240,7 +240,7 @@ class ESP32Hardware(HardwareInterface):
         
         Tank configuration (from PINS_CONFIG.py):
         - 22cm distance = 100% FULL (liquid close to sensor, 16L)
-        - 50cm distance = 0% EMPTY (liquid far from sensor, 0L)
+        - 40cm distance = 0% EMPTY (liquid far from sensor, 0L)
         """
         # Use get-levels so parsing is consistent for both tanks.
         # This also avoids accidentally grabbing Tank2's percentage when Tank1 is INVALID.
@@ -250,6 +250,14 @@ class ESP32Hardware(HardwareInterface):
         if key in levels:
             return levels[key]
         return None
+    
+    def get_tank1_level(self):
+        """Get tank 1 level as percentage"""
+        return self.get_tank_level_percentage(1)
+    
+    def get_tank2_level(self):
+        """Get tank 2 level as percentage"""
+        return self.get_tank_level_percentage(2)
     
     def buzzer_on(self):
         """Turn buzzer ON via ESP32"""
@@ -287,11 +295,14 @@ class ESP32Hardware(HardwareInterface):
         return response
     
     def send_sms(self, number, message):
-        """Send SMS via ESP32 GSM module"""
-        # Note: This requires extending ESP32 firmware to accept SMS parameters
-        # For now, use the basic command
-        response = self._send_command("send-sms")
-        print(f"[ESP32] SMS command sent")
+        """Send SMS via ESP32 GSM module using send-sms-custom command"""
+        if not self.connected:
+            print("[ESP32] Not connected. Cannot send SMS.")
+            return None
+        # Use the custom SMS command: send-sms-custom_{number}_{message}
+        command = f"send-sms-custom_{number}_{message}"
+        response = self._send_command(command)
+        print(f"[ESP32] SMS sent to {number}")
         return response
     
     def send_sms_to_all(self, message):
@@ -473,13 +484,14 @@ class ESP32Hardware(HardwareInterface):
         
         return levels
     
-    def spray(self, relay_num, duration_seconds, volume_ml):
+    def spray(self, relay_num, duration_seconds, volume_ml, spray_type='Unknown'):
         """Execute spray operation on ESP32
         
         Args:
             relay_num: Which relay to use (1 or 2)
             duration_seconds: How long to spray in seconds
             volume_ml: Volume being sprayed in mL (for logging/SMS)
+            spray_type: Type of spray (Pesticide or Fertilizer) for SMS messages
         
         Returns:
             Response from ESP32
@@ -488,10 +500,10 @@ class ESP32Hardware(HardwareInterface):
             print("[ESP32] Not connected. Cannot execute spray.")
             return None
         
-        command = f"spray_{relay_num}_{int(duration_seconds)}_{int(volume_ml)}"
+        command = f"spray_{relay_num}_{int(duration_seconds)}_{int(volume_ml)}_{spray_type}"
         response = self._send_command(command)
         
-        print(f"[ESP32] Spray executed: Relay {relay_num}, {duration_seconds}s, {volume_ml}mL")
+        print(f"[ESP32] Spray executed: Relay {relay_num}, {duration_seconds}s, {volume_ml}mL, Type: {spray_type}")
         return response
     
     def sync_recipients_bulk(self, phone_numbers):
@@ -516,7 +528,9 @@ class ESP32Hardware(HardwareInterface):
         
         print(f"[ESP32] Bulk synced {len(phone_numbers)} recipients")
         return response
-
+    
+    def cleanup(self):
+        """Cleanup serial connection"""
         if self.serial_connection and self.connected:
             self.serial_connection.close()
             print("[ESP32] Serial connection closed")

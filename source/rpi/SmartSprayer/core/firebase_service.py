@@ -432,6 +432,62 @@ class FirebaseService:
             return {}
 
 
+    # ── Account / Auth Helpers (RTDB) ────────────────────────────────────
+
+    def sync_account_to_rtdb(self, username: str, password: str) -> bool:
+        """Write username+password to users/account in RTDB if the node
+        does not already exist.  Never overwrites an existing entry."""
+        if not self.connected:
+            return False
+        try:
+            existing = self.db.child("users").child("account").get(
+                self.user['idToken'] if self.user else None
+            ).val()
+            if existing:
+                print(f"✓ RTDB account already exists — skipping seed")
+                return True
+            # Node is absent — write initial credentials
+            self.db.child("users").child("account").set(
+                {"username": username, "password": password},
+                self.user['idToken'] if self.user else None
+            )
+            print(f"✓ Account seeded to RTDB: users/account")
+            return True
+        except Exception as e:
+            print(f"⚠️ sync_account_to_rtdb failed: {e}")
+            return False
+
+    def get_account_from_rtdb(self) -> Optional[Dict]:
+        """Return {'username': ..., 'password': ...} from RTDB, or None."""
+        if not self.connected:
+            return None
+        try:
+            data = self.db.child("users").child("account").get(
+                self.user['idToken'] if self.user else None
+            ).val()
+            if data and isinstance(data, dict):
+                return data
+            return None
+        except Exception as e:
+            print(f"⚠️ get_account_from_rtdb failed: {e}")
+            return None
+
+    def update_password_in_rtdb(self, new_password: str) -> bool:
+        """Update the password field in users/account in RTDB."""
+        if not self.connected:
+            return False
+        try:
+            self.db.child("users").child("account").update(
+                {"password": new_password},
+                self.user['idToken'] if self.user else None
+            )
+            print(f"✓ Password updated in RTDB: users/account")
+            return True
+        except Exception as e:
+            print(f"⚠️ update_password_in_rtdb failed: {e}")
+            return False
+
+
 # Global Firebase service instance
 _firebase_service = None
 

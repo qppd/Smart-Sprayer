@@ -23,6 +23,8 @@ class DataStore:
         
         self.schedules_file = self.data_dir / "schedules.json"
         self.history_file = self.data_dir / "history.json"
+        self.cancelled_file = self.data_dir / "cancelled_schedules.json"
+        self.rescheduled_file = self.data_dir / "rescheduled_schedules.json"
         
         # Initialize files if they don't exist
         self._init_files()
@@ -41,6 +43,12 @@ class DataStore:
         
         if not self.history_file.exists():
             self._save_json(self.history_file, [])
+            
+        if not self.cancelled_file.exists():
+            self._save_json(self.cancelled_file, [])
+            
+        if not self.rescheduled_file.exists():
+            self._save_json(self.rescheduled_file, [])
     
     def _load_json(self, file_path):
         """Load JSON from file"""
@@ -137,6 +145,61 @@ class DataStore:
         """Clear all schedules"""
         self._save_json(self.schedules_file, [])
     
+    # ==================== CANCELLED SCHEDULES ====================
+    
+    def add_cancelled_schedule(self, schedule: Dict):
+        """Add a schedule to cancelled list"""
+        cancelled = self._load_json(self.cancelled_file)
+        
+        # Add timestamp when cancelled
+        cancelled_schedule = schedule.copy()
+        cancelled_schedule["cancelled_at"] = datetime.now().isoformat()
+        
+        cancelled.append(cancelled_schedule)
+        self._save_json(self.cancelled_file, cancelled)
+        print(f"✓ Added to cancelled schedules: {schedule.get('id')}")
+    
+    def get_cancelled_schedules(self) -> List[Dict]:
+        """Get all cancelled schedules"""
+        cancelled = self._load_json(self.cancelled_file)
+        print(f"📋 Retrieved {len(cancelled)} cancelled schedules")
+        return cancelled
+    
+    def clear_cancelled_schedules(self):
+        """Clear all cancelled schedules"""
+        self._save_json(self.cancelled_file, [])
+    
+    # ==================== RESCHEDULED SCHEDULES ====================
+    
+    def add_rescheduled_schedule(self, original_schedule: Dict, new_date: str, new_time: str):
+        """Add a schedule to rescheduled list"""
+        rescheduled = self._load_json(self.rescheduled_file)
+        
+        rescheduled_entry = original_schedule.copy()
+        rescheduled_entry["original_date"] = original_schedule["date"]
+        rescheduled_entry["original_time"] = original_schedule["time"]
+        rescheduled_entry["new_date"] = new_date
+        rescheduled_entry["new_time"] = new_time
+        rescheduled_entry["rescheduled_at"] = datetime.now().isoformat()
+        
+        # For display purposes, update the date and time to the new values
+        rescheduled_entry["date"] = new_date
+        rescheduled_entry["time"] = new_time
+        
+        rescheduled.append(rescheduled_entry)
+        self._save_json(self.rescheduled_file, rescheduled)
+        print(f"✓ Added to rescheduled schedules: {original_schedule.get('id')}")
+    
+    def get_rescheduled_schedules(self) -> List[Dict]:
+        """Get all rescheduled schedules"""
+        rescheduled = self._load_json(self.rescheduled_file)
+        print(f"📋 Retrieved {len(rescheduled)} rescheduled schedules")
+        return rescheduled
+    
+    def clear_rescheduled_schedules(self):
+        """Clear all rescheduled schedules"""
+        self._save_json(self.rescheduled_file, [])
+    
     # History Management
     def get_history(self, limit: Optional[int] = None) -> List[Dict]:
         """Get spray history"""
@@ -189,6 +252,8 @@ class DataStore:
         data = {
             'schedules': self.get_all_schedules(),
             'history': self.get_history(),
+            'cancelled_schedules': self.get_cancelled_schedules(),
+            'rescheduled_schedules': self.get_rescheduled_schedules(),
             'exported_at': datetime.now().isoformat()
         }
         
@@ -226,6 +291,7 @@ def get_data_store():
     if _data_store_instance is None:
         _data_store_instance = DataStore()
     return _data_store_instance
+
 # Convenience functions for recipients management
 def get_recipients():
     """Get all SMS recipients"""
@@ -346,3 +412,22 @@ def update_recipient(phone: str, new_name: str) -> bool:
     except Exception as e:
         print(f"Error updating recipient: {e}")
         return False
+        
+        # ── PASTE THESE TWO FUNCTIONS AT THE BOTTOM OF data_store.py ──
+
+def save_location(barangay: str, municipality: str):
+    """Save the user's selected weather location."""
+    store = get_data_store()
+    location_file = store.data_dir / "location.json"
+    store._save_json(location_file, {
+        "barangay": barangay,
+        "municipality": municipality
+    })
+
+def get_location() -> dict:
+    """Get the saved weather location. Returns dict with 'barangay' and 'municipality', or {}."""
+    store = get_data_store()
+    location_file = store.data_dir / "location.json"
+    if not location_file.exists():
+        return {}
+    return store._load_json(location_file) or {}

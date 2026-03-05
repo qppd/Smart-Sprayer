@@ -1,340 +1,208 @@
 # previous_data.py
-# Previous spray data viewer panel
+# Automated Sprayer System – Previous Data (Modernized)
 
 import customtkinter as ctk
 from datetime import datetime
 
+
 class PreviousDataPanel(ctk.CTkFrame):
-    """Previous data panel showing spray history"""
-    
+
     def __init__(self, parent, data_store):
         super().__init__(parent)
         self.data_store = data_store
-        
-        self.configure(fg_color="transparent")
-        
+        self.configure(fg_color="#F3F8F6")
         self._create_widgets()
         self.refresh_data()
-    
-    def _create_widgets(self):
-        """Create data viewer widgets"""
-        # Title
-        title = ctk.CTkLabel(
-            self,
-            text="PREVIOUS SPRAY DATA",
-            font=ctk.CTkFont(size=32, weight="bold"),
-            text_color="#4CAF50"
+        self._run_clock()
+
+    def _soft_card(self, parent, corner=16):
+        return ctk.CTkFrame(parent, fg_color="#E2EFEA", corner_radius=corner)
+
+    def _label(self, parent, text, size, weight="normal", color="#616161", **kw):
+        return ctk.CTkLabel(
+            parent,
+            text=text,
+            font=ctk.CTkFont(size=size, weight=weight),
+            text_color=color,
+            **kw
         )
-        title.pack(pady=(10, 20))
-        
-        # Controls frame
-        controls_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
-        controls_frame.pack(fill="x", padx=20, pady=10)
-        
-        controls_inner = ctk.CTkFrame(controls_frame, fg_color="transparent")
-        controls_inner.pack(fill="x", padx=15, pady=15)
-        
-        # Filter options
-        filter_label = ctk.CTkLabel(
-            controls_inner,
-            text="Filter by:",
-            font=ctk.CTkFont(size=16, weight="bold")
-        )
-        filter_label.pack(side="left", padx=10)
-        
-        self.filter_var = ctk.StringVar(value="All")
-        
-        filter_all = ctk.CTkRadioButton(
-            controls_inner,
-            text="All",
-            variable=self.filter_var,
-            value="All",
-            font=ctk.CTkFont(size=14),
-            command=self.refresh_data
-        )
-        filter_all.pack(side="left", padx=10)
-        
-        filter_fert = ctk.CTkRadioButton(
-            controls_inner,
-            text="Fertilizer",
-            variable=self.filter_var,
-            value="Fertilizer",
-            font=ctk.CTkFont(size=14),
-            command=self.refresh_data
-        )
-        filter_fert.pack(side="left", padx=10)
-        
-        filter_pest = ctk.CTkRadioButton(
-            controls_inner,
-            text="Pesticide",
-            variable=self.filter_var,
-            value="Pesticide",
-            font=ctk.CTkFont(size=14),
-            command=self.refresh_data
-        )
-        filter_pest.pack(side="left", padx=10)
-        
-        # Action buttons
-        btn_frame = ctk.CTkFrame(controls_inner, fg_color="transparent")
-        btn_frame.pack(side="right", padx=10)
-        
-        refresh_btn = ctk.CTkButton(
-            btn_frame,
-            text="🔄 Refresh",
-            command=self.refresh_data,
-            font=ctk.CTkFont(size=14),
-            height=35,
-            width=120,
-            fg_color="#2196F3",
-            hover_color="#1976D2"
-        )
-        refresh_btn.pack(side="left", padx=5)
-        
-        export_btn = ctk.CTkButton(
-            btn_frame,
-            text="📥 Export",
-            command=self._export_data,
-            font=ctk.CTkFont(size=14),
-            height=35,
-            width=120,
-            fg_color="#4CAF50",
-            hover_color="#45A049"
-        )
-        export_btn.pack(side="left", padx=5)
-        
-        # Statistics frame
-        stats_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
-        stats_frame.pack(fill="x", padx=20, pady=10)
-        
-        ctk.CTkLabel(
-            stats_frame,
-            text="STATISTICS",
-            font=ctk.CTkFont(size=20, weight="bold"),
-            text_color="#4CAF50"
-        ).pack(pady=10)
-        
-        stats_grid = ctk.CTkFrame(stats_frame, fg_color="transparent")
-        stats_grid.pack(fill="x", padx=20, pady=(0, 15))
-        
-        # Total sprays
-        total_frame = ctk.CTkFrame(stats_grid, fg_color="#E8F5E9", corner_radius=10)
-        total_frame.pack(side="left", expand=True, fill="both", padx=5)
-        
-        ctk.CTkLabel(
-            total_frame,
-            text="Total Sprays",
-            font=ctk.CTkFont(size=14),
-            text_color="#616161"
-        ).pack(pady=(10, 5))
-        
-        self.total_count_label = ctk.CTkLabel(
-            total_frame,
-            text="0",
-            font=ctk.CTkFont(size=28, weight="bold"),
-            text_color="#4CAF50"
-        )
-        self.total_count_label.pack(pady=(5, 10))
-        
-        # Fertilizer count
-        fert_frame = ctk.CTkFrame(stats_grid, fg_color="#E8F5E9", corner_radius=10)
-        fert_frame.pack(side="left", expand=True, fill="both", padx=5)
-        
-        ctk.CTkLabel(
-            fert_frame,
-            text="Fertilizer",
-            font=ctk.CTkFont(size=14),
-            text_color="#616161"
-        ).pack(pady=(10, 5))
-        
-        self.fert_count_label = ctk.CTkLabel(
-            fert_frame,
-            text="0",
-            font=ctk.CTkFont(size=28, weight="bold"),
-            text_color="#2196F3"
-        )
-        self.fert_count_label.pack(pady=(5, 10))
-        
-        # Pesticide count
-        pest_frame = ctk.CTkFrame(stats_grid, fg_color="#E8F5E9", corner_radius=10)
-        pest_frame.pack(side="left", expand=True, fill="both", padx=5)
-        
-        ctk.CTkLabel(
-            pest_frame,
-            text="Pesticide",
-            font=ctk.CTkFont(size=14),
-            text_color="#616161"
-        ).pack(pady=(10, 5))
-        
-        self.pest_count_label = ctk.CTkLabel(
-            pest_frame,
-            text="0",
-            font=ctk.CTkFont(size=28, weight="bold"),
-            text_color="#FF9800"
-        )
-        self.pest_count_label.pack(pady=(5, 10))
-        
-        # Data list
-        data_frame = ctk.CTkFrame(self, fg_color="#FFFFFF", corner_radius=15)
-        data_frame.pack(fill="both", expand=True, padx=20, pady=10)
-        
-        ctk.CTkLabel(
-            data_frame,
-            text="SPRAY HISTORY",
-            font=ctk.CTkFont(size=20, weight="bold"),
-            text_color="#4CAF50"
-        ).pack(pady=10)
-        
-        self.data_list = ctk.CTkScrollableFrame(
-            data_frame,
-            fg_color="#F5F5F5"
-        )
-        self.data_list.pack(fill="both", expand=True, padx=15, pady=(0, 15))
-    
-    def refresh_data(self):
-        """Refresh data display"""
-        # Clear existing
-        for widget in self.data_list.winfo_children():
-            widget.destroy()
-        
-        # Get history
-        history = self.data_store.get_history()
-        
-        # Apply filter
-        filter_type = self.filter_var.get()
-        if filter_type != "All":
-            history = [h for h in history if h['spray_type'] == filter_type]
-        
-        # Update statistics
-        all_history = self.data_store.get_history()
-        total = len(all_history)
-        fert_count = len([h for h in all_history if h['spray_type'] == 'Fertilizer'])
-        pest_count = len([h for h in all_history if h['spray_type'] == 'Pesticide'])
-        
-        self.total_count_label.configure(text=str(total))
-        self.fert_count_label.configure(text=str(fert_count))
-        self.pest_count_label.configure(text=str(pest_count))
-        
-        # Display history
-        if not history:
-            no_data_label = ctk.CTkLabel(
-                self.data_list,
-                text="No spray history available",
-                font=ctk.CTkFont(size=14),
-                text_color="#616161"
+
+    # ══════════════════════════════════════════════════════
+    # MOUSE-WHEEL SCROLL
+    # ══════════════════════════════════════════════════════
+
+    def _bind_mousewheel(self, scrollable_frame):
+        def _scroll(event):
+            scrollable_frame._parent_canvas.yview_scroll(
+                int(-1 * (event.delta / 120)), "units"
             )
-            no_data_label.pack(pady=20)
-            return
-        
-        # Reverse to show most recent first
-        history.reverse()
-        
-        for item in history:
-            self._create_history_card(item)
-    
-    def _create_history_card(self, item):
-        """Create a card for history item"""
-        card = ctk.CTkFrame(self.data_list, fg_color="#FFFFFF", corner_radius=10)
-        card.pack(fill="x", padx=5, pady=5)
-        
-        # Header
-        header = ctk.CTkFrame(card, fg_color="transparent")
-        header.pack(fill="x", padx=15, pady=10)
-        
-        # Date/Time
-        date_time = f"{item['date']} at {item['time']}"
-        date_label = ctk.CTkLabel(
-            header,
-            text=date_time,
-            font=ctk.CTkFont(size=16, weight="bold"),
+        def _scroll_up(event):
+            scrollable_frame._parent_canvas.yview_scroll(-1, "units")
+        def _scroll_down(event):
+            scrollable_frame._parent_canvas.yview_scroll(1, "units")
+
+        def _bind_all(widget):
+            widget.bind("<MouseWheel>", _scroll,    add="+")
+            widget.bind("<Button-4>",   _scroll_up,   add="+")
+            widget.bind("<Button-5>",   _scroll_down, add="+")
+            for child in widget.winfo_children():
+                _bind_all(child)
+
+        _bind_all(scrollable_frame)
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: _bind_all(scrollable_frame),
+            add="+"
+        )
+
+    def _create_widgets(self):
+
+        # FILTER BAR
+        filter_card = self._soft_card(self)
+        filter_card.pack(fill="x", padx=30, pady=(14, 6))
+
+        row = ctk.CTkFrame(filter_card, fg_color="transparent")
+        row.pack(fill="x", padx=20, pady=16)
+
+        self._label(row, "Filter:", size=30, weight="bold").pack(side="left")
+
+        self.filter_var = ctk.StringVar(value="All")
+
+        pill_row = ctk.CTkFrame(row, fg_color="transparent")
+        pill_row.pack(side="left", padx=10)
+
+        for name in ["All", "Fertilizer", "Pesticide"]:
+            self._radio_pill(pill_row, name)
+
+        ctk.CTkButton(
+            row,
+            text="\u21bb  Refresh",
+            width=200, height=62,
+            corner_radius=14,
+            fg_color="#2196F3",
+            hover_color="#1E88E5",
+            font=ctk.CTkFont(size=26, weight="bold"),
+            command=self.refresh_data
+        ).pack(side="right")
+
+        # STATISTICS
+        self._label(self, "Statistics:", size=32, weight="bold").pack(anchor="w", padx=30, pady=(20, 10))
+
+        stats_row = ctk.CTkFrame(self, fg_color="transparent")
+        stats_row.pack(fill="x", padx=30)
+
+        self.total_lbl = self._stat_card(stats_row, "Total Sprays", accent="#1B5E20")
+        self.fert_lbl  = self._stat_card(stats_row, "Fertilizer",   accent="#2196F3")
+        self.pest_lbl  = self._stat_card(stats_row, "Pesticide",    accent="#F4B400")
+
+        # HISTORY HEADER
+        hist_hdr = ctk.CTkFrame(self, fg_color="transparent")
+        hist_hdr.pack(fill="x", padx=30, pady=(24, 8))
+
+        self._label(hist_hdr, "History", size=32, weight="bold").pack(side="left")
+
+        # HISTORY LIST
+        self.list_frame = ctk.CTkScrollableFrame(self, fg_color="transparent")
+        self.list_frame.pack(fill="both", expand=True, padx=30, pady=(0, 20))
+        self._bind_mousewheel(self.list_frame)
+
+    def _radio_pill(self, parent, name):
+        ctk.CTkRadioButton(
+            parent,
+            text=name,
+            variable=self.filter_var,
+            value=name,
+            command=self.refresh_data,
+            font=ctk.CTkFont(size=28),
+            radiobutton_width=32,
+            radiobutton_height=32,
+            fg_color="#1B5E20",
+            hover_color="#2E7D32",
+            border_color="#1B5E20",
+        ).pack(side="left", padx=12)
+
+    def _stat_card(self, parent, title, accent="#1B5E20"):
+        outer = ctk.CTkFrame(parent, fg_color="transparent")
+        outer.pack(side="left", expand=True, fill="x", padx=6)
+
+        strip = ctk.CTkFrame(outer, fg_color=accent, corner_radius=12, height=6)
+        strip.pack(fill="x")
+        strip.pack_propagate(False)
+
+        card = self._soft_card(outer, corner=12)
+        card.pack(fill="x")
+
+        self._label(card, title, size=26, color="#616161").pack(pady=(16, 6))
+
+        value_lbl = ctk.CTkLabel(
+            card, text="0",
+            font=ctk.CTkFont(size=48, weight="bold"),
             text_color="#1B5E20"
         )
-        date_label.pack(side="left")
-        
-        # Spray type badge
-        spray_type = item['spray_type']
-        badge_color = "#2196F3" if spray_type == "Fertilizer" else "#FF9800"
-        
-        badge = ctk.CTkLabel(
-            header,
-            text=spray_type,
-            font=ctk.CTkFont(size=12, weight="bold"),
-            text_color="#FFFFFF",
-            fg_color=badge_color,
-            corner_radius=5,
-            padx=10,
-            pady=5
-        )
-        badge.pack(side="right")
-        
-        # Details
-        details = ctk.CTkFrame(card, fg_color="transparent")
-        details.pack(fill="x", padx=15, pady=(0, 10))
-        
-        # Container info
-        container_text = f"Container: {item['container']}"
-        ctk.CTkLabel(
-            details,
-            text=container_text,
-            font=ctk.CTkFont(size=13),
-            text_color="#616161"
-        ).pack(side="left", padx=5)
-        
-        # Volume
-        volume_ml = item.get('volume_ml', 'N/A')
-        volume_text = f"Volume: {volume_ml} mL" if volume_ml != 'N/A' else "Volume: N/A"
-        ctk.CTkLabel(
-            details,
-            text=volume_text,
-            font=ctk.CTkFont(size=13),
-            text_color="#616161"
-        ).pack(side="left", padx=5)
-        
-        # Duration
-        duration = item.get('duration', 'N/A')
-        duration_text = f"Duration: {duration}s" if duration != 'N/A' else "Duration: N/A"
-        ctk.CTkLabel(
-            details,
-            text=duration_text,
-            font=ctk.CTkFont(size=13),
-            text_color="#616161"
-        ).pack(side="left", padx=5)
-        
-        # Completed time
-        completed = item.get('completed_at', 'Unknown')
+        value_lbl.pack(pady=(0, 16))
+
+        return value_lbl
+
+    def refresh_data(self):
+        for w in self.list_frame.winfo_children():
+            w.destroy()
+
+        history     = self.data_store.get_history()
+        all_history = history.copy()
+
+        f = self.filter_var.get()
+        if f != "All":
+            history = [h for h in history if h["spray_type"] == f]
+
+        self.total_lbl.configure(text=str(len(all_history)))
+        self.fert_lbl.configure(text=str(len([h for h in all_history if h["spray_type"] == "Fertilizer"])))
+        self.pest_lbl.configure(text=str(len([h for h in all_history if h["spray_type"] == "Pesticide"])))
+
+        if not history:
+            self._empty_state()
+            return
+
+        for item in reversed(history):
+            self._history_row(item)
+
+        # Re-bind after new children are added
+        self._bind_mousewheel(self.list_frame)
+
+    def _empty_state(self):
+        frame = ctk.CTkFrame(self.list_frame, fg_color="transparent")
+        frame.pack(fill="both", expand=True, pady=60)
+        self._label(frame, "No spray records found for this filter.", size=28, color="#616161").pack()
+
+    def _history_row(self, item):
+        row = self._soft_card(self.list_frame)
+        row.pack(fill="x", pady=8)
+
+        top = ctk.CTkFrame(row, fg_color="transparent")
+        top.pack(fill="x", padx=24, pady=(16, 8))
+
         try:
-            dt = datetime.fromisoformat(completed)
-            completed_str = dt.strftime('%I:%M:%S %p')
-        except:
-            completed_str = completed
-        
-        completed_text = f"Completed: {completed_str}"
+            dt = datetime.strptime(f"{item['date']} {item['time']}", "%Y-%m-%d %H:%M")
+            display = dt.strftime("%b %d, %Y  at  %I:%M %p")
+        except Exception:
+            display = f"{item['date']} {item['time']}"
+
+        self._label(top, f"\U0001f550  {display}", size=28, weight="bold", color="#1B5E20").pack(side="left")
+
+        badge_color = "#2196F3" if item["spray_type"] == "Fertilizer" else "#F4B400"
         ctk.CTkLabel(
-            details,
-            text=completed_text,
-            font=ctk.CTkFont(size=13),
-            text_color="#757575"
-        ).pack(side="right", padx=5)
-    
-    def _export_data(self):
-        """Export data to JSON file"""
-        try:
-            from tkinter import filedialog
-            import json
-            
-            # Ask for save location
-            file_path = filedialog.asksaveasfilename(
-                defaultextension=".json",
-                filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
-                initialfile=f"spray_history_{datetime.now().strftime('%Y%m%d')}.json"
-            )
-            
-            if file_path:
-                # Export data
-                self.data_store.export_data(file_path)
-                
-                from tkinter import messagebox
-                messagebox.showinfo("Success", f"Data exported to:\n{file_path}")
-        
-        except Exception as e:
-            from tkinter import messagebox
-            messagebox.showerror("Error", f"Export failed: {e}")
+            top, text=item["spray_type"],
+            fg_color=badge_color, text_color="white",
+            corner_radius=10, padx=22, pady=10,
+            font=ctk.CTkFont(size=26, weight="bold")
+        ).pack(side="right")
+
+        ctk.CTkFrame(row, fg_color="#C8DDD4", height=2).pack(fill="x", padx=24)
+
+        bottom = ctk.CTkFrame(row, fg_color="transparent")
+        bottom.pack(fill="x", padx=24, pady=(10, 18))
+
+        for text in [f"Container: {item['container']}", f"Volume: {item['volume_ml']} ml", f"Duration: {item['duration']} s"]:
+            self._label(bottom, text, size=25, color="#616161").pack(side="left", padx=20)
+
+    def _run_clock(self):
+        self.after(1000, self._run_clock)
