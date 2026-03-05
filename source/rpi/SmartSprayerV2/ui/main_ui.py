@@ -16,6 +16,9 @@ from core.data_store import get_data_store
 from core.scheduler import get_scheduler
 from core.reschedule_logic import get_reschedule_manager
 
+# Module-level flag set by _request_logout so main() can return "logout"
+_logout_requested = False
+
 from ui.dashboard import DashboardPanel
 from ui.scheduling import SchedulingPanel
 from ui.previous_data import PreviousDataPanel
@@ -290,6 +293,26 @@ class SmartSprayerUI(ctk.CTk):
 
     def _show_account(self):
         self._show_panel("account")
+        # Refresh account info every time the panel is opened
+        try:
+            self.panels["account"].refresh()
+        except Exception as e:
+            print(f"[ACCOUNT] Refresh error: {e}")
+
+    def _request_logout(self):
+        """Called by the account panel when the user confirms logout."""
+        global _logout_requested
+        _logout_requested = True
+        try:
+            self.scheduler.stop()
+        except Exception:
+            pass
+        try:
+            if self.hardware:
+                self.hardware.cleanup()
+        except Exception:
+            pass
+        self.destroy()
 
     def _on_closing(self):
         if messagebox.askokcancel("Quit", "Exit Sprayer System?"):
@@ -300,8 +323,11 @@ class SmartSprayerUI(ctk.CTk):
 
 
 def main():
+    global _logout_requested
+    _logout_requested = False
     app = SmartSprayerUI()
     app.mainloop()
+    return "logout" if _logout_requested else None
 
 
 if __name__ == "__main__":

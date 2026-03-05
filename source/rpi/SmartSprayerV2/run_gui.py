@@ -387,10 +387,20 @@ class LoginScreen(ctk.CTk):
         self.eye_btn.configure(text="🙈" if self._show_pass else "👁")
 
     def login(self):
-        if self.user.get() == "sprayer" and self.passw.get() == "1234":
+        username = self.user.get()
+        password = self.passw.get()
+        # Validate against stored credentials (default: sprayer / 1234)
+        try:
+            from core.session import get_username, verify_password, set_user, update_last_login
+            valid = (username == get_username()) and verify_password(password)
+        except Exception as e:
+            print(f"⚠️ Session error: {e}")
+            valid = (username == "sprayer" and password == "1234")
+
+        if valid:
             try:
                 from core.session import set_user, update_last_login
-                set_user(self.user.get())
+                set_user(username)
                 update_last_login()
             except Exception as e:
                 print(f"⚠️ Session error: {e}")
@@ -534,9 +544,9 @@ def _send_login_sms(phone: str):
         print(f"⚠️ Login SMS error: {e}")
 
 
-def main():
-    show_splash_screen()
-    WelcomeScreen().mainloop()
+def _run_session():
+    """Run login → optional phone setup → main UI.
+    Returns 'logout' if the user logged out, None otherwise."""
     LoginScreen().mainloop()
 
     saved_phone = ""
@@ -553,9 +563,21 @@ def main():
 
     try:
         from ui.main_ui import main as ui_main
-        ui_main()
+        return ui_main()   # returns 'logout' or None
     except Exception as e:
         print(f"Error: {e}")
+        return None
+
+
+def main():
+    show_splash_screen()
+    WelcomeScreen().mainloop()
+
+    # Loop so that logging out always returns to the login screen
+    while True:
+        result = _run_session()
+        if result != "logout":
+            break
 
 
 if __name__ == "__main__":
