@@ -341,19 +341,6 @@ class LoginScreen(ctk.CTk):
         )
         self.user.place(relx=0.5, rely=0.5, anchor="center")
 
-        # Add keyboard icon next to username entry
-        kb_icon_user = ctk.CTkButton(
-            user_frame,
-            text="⌨",
-            width=60, height=60,
-            corner_radius=30,
-            fg_color=D.G700,
-            hover_color=D.G800,
-            text_color=D.T_WHITE,
-            font=F(28),
-            command=lambda: self._kb.show(self.user)
-        )
-        kb_icon_user.place(relx=1.0, x=-8, rely=0.5, anchor="e")
 
         # Password field
         pass_outer = ctk.CTkFrame(
@@ -388,19 +375,6 @@ class LoginScreen(ctk.CTk):
         )
         self.eye_btn.place(relx=1.0, x=-14, rely=0.5, anchor="e")
 
-        # Add keyboard icon next to password entry
-        kb_icon_pass = ctk.CTkButton(
-            pass_outer,
-            text="⌨",
-            width=60, height=60,
-            corner_radius=30,
-            fg_color=D.G700,
-            hover_color=D.G800,
-            text_color=D.T_WHITE,
-            font=F(28),
-            command=lambda: self._kb.show(self.passw)
-        )
-        kb_icon_pass.place(relx=1.0, x=-80, rely=0.5, anchor="e")
 
         ctk.CTkButton(
             inner, text="LOG IN",
