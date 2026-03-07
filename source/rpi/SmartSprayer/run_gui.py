@@ -14,6 +14,13 @@ ctk.set_default_color_theme("green")
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, current_dir)
 
+# Import keyboard utilities (KeyboardManager for standalone windows)
+try:
+    from ui.keyboard_utils import KeyboardManager
+    _KB_AVAILABLE = True
+except Exception:
+    _KB_AVAILABLE = False
+
 # ---------------------------------------------------------
 # DESIGN TOKENS
 # ---------------------------------------------------------
@@ -381,6 +388,11 @@ class LoginScreen(ctk.CTk):
         ctk.CTkLabel(inner, text="You can change your password after login",
                      font=F(22), text_color=D.T_LIGHT).pack(pady=(22, 0))
 
+        # Attach in-app virtual keyboard to all entry fields in this window
+        if _KB_AVAILABLE:
+            self._kb = KeyboardManager(self)
+            self._kb.bind_all(self)
+
     def _toggle_password(self):
         self._show_pass = not self._show_pass
         self.passw.configure(show="" if self._show_pass else "•")
@@ -508,6 +520,11 @@ class MobileNumberScreen(ctk.CTk):
             text="Your number is only used for system alerts.\nWe never share your information.",
             font=F(22), text_color=D.T_LIGHT, justify="center"
         ).pack(pady=(22, 0))
+
+        # Attach in-app virtual keyboard to all entry fields in this window
+        if _KB_AVAILABLE:
+            self._kb = KeyboardManager(self)
+            self._kb.bind_all(self)
 
     def submit(self):
         phone = self.phone_entry.get().strip()
