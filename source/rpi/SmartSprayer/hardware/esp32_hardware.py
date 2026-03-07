@@ -2,10 +2,8 @@
 # Hardware implementation that communicates with ESP32 via USB serial
 # ESP32 handles all physical hardware components
 #
-# Common serial port names:
-#   Linux/Raspberry Pi: /dev/ttyUSB0, /dev/ttyACM0
-#   Windows: COM3, COM4, COM5, etc.
-#   macOS: /dev/cu.usbserial-XXXX
+# Serial transport is managed by hardware.esp32_connection.ESP32Connection
+# which handles auto-detection, auto-reconnect, and port persistence.
 
 import serial
 import time
@@ -13,6 +11,11 @@ import threading
 import sys
 import os
 from hardware.hardware_interface import HardwareInterface
+from hardware.esp32_connection import (
+    ESP32Connection,
+    STATE_CONNECTED,
+    _list_serial_ports,
+)
 
 # Import container configuration
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -80,83 +83,105 @@ def validate_frame(frame: str) -> tuple:
     return (False, None, None)
 
 class ESP32Hardware(HardwareInterface):
-    """Hardware implementation that communicates with ESP32 via USB serial"""
-    
+    """Hardware implementation that communicates with ESP32 via USB serial.
+
+    Serial transport is delegated to ESP32Connection which handles:
+    - Auto-detection of available USB ports
+    - Persistent last-port preference
+    - Background auto-reconnect
+    """
+
     def __init__(self, port='/dev/ttyUSB0', baudrate=9600, timeout=1):
         super().__init__()
-        self.port = port
         self.baudrate = baudrate
-        self.timeout = timeout
-        self.serial_connection = None
-        self.connected = False
-        self.use_framed_protocol = True  # Try framed protocol first
-        
-        # Try to connect to ESP32
-        self._connect()
-        
+        self.timeout  = timeout
+        self.use_framed_protocol = True
+
+        # Build connection manager; seed with the caller-supplied port hint
+        self._conn = ESP32Connection(
+            baudrate=baudrate,
+            timeout=float(timeout),
+        )
+        if port and port != '/dev/ttyUSB0':
+            # Honour an explicitly supplied port override
+            self._conn.LAST_CONNECTED_PORT = port
+
+        # Start background auto-connect + monitor loop
+        self._conn.start()
+
+        # Convenience aliases kept for callers that access them directly
+        # (e.g. settings UI probing hardware.connected / hardware.port)
+
+    # ── compatibility shims ──────────────────────────────────────────────
+    @property
+    def connected(self) -> bool:
+        return self._conn.is_connected
+
+    @property
+    def port(self) -> str | None:
+        return self._conn.port
+
+    @property
+    def serial_connection(self):
+        """Direct access to the underlying serial.Serial (may be None)."""
+        return self._conn.serial_connection
+
+    # ── internal ─────────────────────────────────────────────────────────
     def _connect(self):
-        """Establish serial connection with ESP32"""
-        try:
-            self.serial_connection = serial.Serial(
-                self.port, 
-                self.baudrate, 
-                timeout=self.timeout
-            )
-            time.sleep(2)  # Wait for connection to stabilize
-            self.connected = True
-            print(f"[ESP32] Connected to ESP32 on {self.port}")
-        except Exception as e:
-            print(f"[ESP32] Failed to connect to ESP32: {e}")
-            print(f"[ESP32] Make sure ESP32 is connected to {self.port}")
-            self.connected = False
+        """Legacy method: delegate to connection manager."""
+        self._conn.reconnect()
     
     def _send_command(self, command):
-        """Send command to ESP32 and return response"""
-        if not self.connected or not self.serial_connection:
+        """Send command to ESP32 and return response."""
+        if not self.connected:
             print(f"[ESP32] Not connected. Command '{command}' not sent.")
             return None
-        
+
         try:
-            # Send command
-            self.serial_connection.write(f"{command}\n".encode())
-            # Read response (some commands take time and return multi-line output)
-            response_lines = []
-            deadline = time.monotonic() + max(0.5, float(self.timeout))
-            last_data_time = None
-            idle_grace_seconds = 0.15
+            with self._conn._lock:
+                ser = self._conn.serial_connection
+                if not ser:
+                    return None
+                ser.write(f"{command}\n".encode())
+                response_lines = []
+                deadline = time.monotonic() + max(0.5, float(self.timeout))
+                last_data_time = None
+                idle_grace_seconds = 0.15
 
-            while time.monotonic() < deadline:
-                if self.serial_connection.in_waiting > 0:
-                    raw = self.serial_connection.readline().decode('utf-8', errors='ignore').strip()
-                    if raw:
-                        response_lines.append(raw)
-                        last_data_time = time.monotonic()
-                    continue
+                while time.monotonic() < deadline:
+                    if ser.in_waiting > 0:
+                        raw = ser.readline().decode('utf-8', errors='ignore').strip()
+                        if raw:
+                            response_lines.append(raw)
+                            last_data_time = time.monotonic()
+                        continue
 
-                # No data available right now
-                if response_lines and last_data_time is not None:
-                    if (time.monotonic() - last_data_time) >= idle_grace_seconds:
-                        break
+                    if response_lines and last_data_time is not None:
+                        if (time.monotonic() - last_data_time) >= idle_grace_seconds:
+                            break
 
-                time.sleep(0.01)
+                    time.sleep(0.01)
 
             response = "\n".join(response_lines).strip() if response_lines else None
-            
-            # Debug print for non-ultrasonic commands only
+
             if any(cmd in command for cmd in ['get-status']) and not command.startswith('<'):
                 print(f"[ESP32 DEBUG] Command: '{command}' -> Response: '{response}'")
-            
+
             return response
+        except serial.SerialException as e:
+            print(f"[ESP32] Serial error on command '{command}': {e}")
+            self._conn._handle_disconnect(str(e))
+            return None
         except Exception as e:
             print(f"[ESP32] Error sending command '{command}': {e}")
             return None
     
     def _send_framed_command(self, command: str, data: str = "") -> str:
-        """Send framed command with checksum and return response"""
-        if not self.connected or not self.serial_connection:
+        """Send framed command with checksum and return response."""
+        if not self.connected:
             print(f"[ESP32] Not connected. Framed command '{command}' not sent.")
             return None
-        
+
         try:
             # Build frame
             payload = f"{command}:{data}"
@@ -164,21 +189,27 @@ class ESP32Hardware(HardwareInterface):
             frame = f"<{payload}:{checksum:X}>"
             
             # Send frame
-            self.serial_connection.write(f"{frame}\n".encode())
-            
-            # Read framed response with SHORT timeout (UI-friendly)
-            # Reduced from 1 second to 0.15 seconds to prevent UI lag
-            deadline = time.monotonic() + 0.15
-            
-            while time.monotonic() < deadline:
-                if self.serial_connection.in_waiting > 0:
-                    line = self.serial_connection.readline().decode('utf-8', errors='ignore').strip()
-                    if line.startswith('<') and line.endswith('>'):
-                        return line
-                time.sleep(0.01)
-            
-            # Don't print timeout message every time - too spammy
-            # print(f"[FRAME TIMEOUT] No framed response for: {frame}")
+            with self._conn._lock:
+                ser = self._conn.serial_connection
+                if not ser:
+                    return None
+                ser.write(f"{frame}\n".encode())
+
+                # Read framed response with SHORT timeout (UI-friendly)
+                # Reduced from 1 second to 0.15 seconds to prevent UI lag
+                deadline = time.monotonic() + 0.15
+
+                while time.monotonic() < deadline:
+                    if ser.in_waiting > 0:
+                        line = ser.readline().decode('utf-8', errors='ignore').strip()
+                        if line.startswith('<') and line.endswith('>'):
+                            return line
+                    time.sleep(0.01)
+
+            return None
+        except serial.SerialException as e:
+            print(f"[ESP32] Serial error on framed command '{command}': {e}")
+            self._conn._handle_disconnect(str(e))
             return None
         except Exception as e:
             print(f"[ESP32] Error sending framed command '{command}': {e}")
@@ -530,9 +561,7 @@ class ESP32Hardware(HardwareInterface):
         return response
     
     def cleanup(self):
-        """Cleanup serial connection"""
-        if self.serial_connection and self.connected:
-            self.serial_connection.close()
-            print("[ESP32] Serial connection closed")
-        self.connected = False
+        """Cleanup serial connection and stop background monitor."""
+        self._conn.stop()
+        print("[ESP32] Serial connection closed")
 

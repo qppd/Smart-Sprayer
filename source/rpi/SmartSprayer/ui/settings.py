@@ -11,6 +11,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.data_store import get_recipients, add_recipient, delete_recipient, save_location, get_location
 from hardware.hardware_interface import get_hardware
+from hardware.esp32_connection import (
+    ESP32Connection,
+    STATE_CONNECTED,
+    STATE_DISCONNECTED,
+    STATE_ERROR,
+    STATE_CONNECTING,
+    _list_serial_ports,
+)
 
 
 # ══════════════════════════════════════════════════════
@@ -88,6 +96,7 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         self.create_weather_card()
         self.create_sms_card()
         self.create_wifi_card()
+        self.create_esp32_card()
         # Enable mouse-wheel scrolling anywhere in the panel
         self._bind_mousewheel(self)
 
@@ -1050,6 +1059,367 @@ class SettingsFrame(ctk.CTkScrollableFrame):
                 ))
         except Exception:
             pass
+
+    # ══════════════════════════════════════════════════════
+    # ESP32 CONNECTION CARD
+    # ══════════════════════════════════════════════════════
+
+    def create_esp32_card(self):
+        """Build the ESP32 Controller Connection settings card."""
+
+        # ── state flags
+        self._esp_scanning   = False
+        self._esp_connecting = False
+
+        # ── resolve the ESP32Connection object from the shared hardware instance
+        # hardware may expose a ._conn attribute (ESP32Hardware wraps it)
+        self._esp_conn: ESP32Connection | None = getattr(
+            self.hardware, "_conn", None
+        )
+
+        # ── outer card
+        card = ctk.CTkFrame(
+            self, fg_color=DS.WHITE, corner_radius=16,
+            border_width=1, border_color=DS.N200
+        )
+        card.pack(fill="x", padx=30, pady=(0, 30))
+
+        self._card_title(card, "ESP32 Controller")
+
+        ctk.CTkLabel(
+            card,
+            text="Manage the USB serial connection to the ESP32 hardware controller.\n"
+                 "The app will auto-detect and reconnect when the device is plugged in.",
+            font=_font(26),
+            text_color=GRAY,
+            justify="left"
+        ).pack(anchor="w", padx=22, pady=(0, 10))
+
+        self._divider(card)
+
+        # ── live status badge row ─────────────────────────────────────────
+        status_row = ctk.CTkFrame(card, fg_color="transparent")
+        status_row.pack(fill="x", padx=22, pady=(0, 14))
+
+        ctk.CTkLabel(
+            status_row, text="Status:",
+            font=_font(28, "bold"), text_color=DS.G800
+        ).pack(side="left")
+
+        self._esp_status_badge = ctk.CTkLabel(
+            status_row,
+            text="  Checking…  ",
+            fg_color=DS.N200, corner_radius=8,
+            text_color=DS.N600,
+            font=_font(22, "bold"),
+            padx=14, pady=5
+        )
+        self._esp_status_badge.pack(side="left", padx=(12, 0))
+
+        self._esp_port_label = ctk.CTkLabel(
+            status_row,
+            text="",
+            font=_font(22),
+            text_color=DS.N400
+        )
+        self._esp_port_label.pack(side="left", padx=(10, 0))
+
+        # Reconnect-now hint label (hidden when connected)
+        self._esp_hint_label = ctk.CTkLabel(
+            status_row,
+            text="",
+            font=_font(20),
+            text_color=DS.AMBER
+        )
+        self._esp_hint_label.pack(side="left", padx=(16, 0))
+
+        self._divider(card)
+
+        # ── port selector row ─────────────────────────────────────────────
+        port_row = ctk.CTkFrame(card, fg_color="transparent")
+        port_row.pack(fill="x", padx=22, pady=(0, 12))
+
+        ctk.CTkLabel(
+            port_row, text="USB Port:",
+            font=_font(28), text_color=GRAY
+        ).pack(side="left")
+
+        self._esp_port_var = ctk.StringVar(value="")
+        self._esp_port_menu = ctk.CTkComboBox(
+            port_row,
+            variable=self._esp_port_var,
+            values=["Click \"Scan\" to refresh ports"],
+            width=380, height=58,
+            font=_font(26),
+            dropdown_font=_font(24),
+            fg_color=FIELD_BG,
+            button_color=DS.G500,
+            border_color=DS.G400,
+            border_width=2,
+            corner_radius=10,
+            state="readonly"
+        )
+        self._esp_port_menu.pack(side="left", padx=(14, 14))
+
+        self._esp_scan_btn = ctk.CTkButton(
+            port_row,
+            text="⟳  Scan",
+            fg_color=DS.N100, hover_color=DS.N200,
+            text_color=DS.N800,
+            width=160, height=58,
+            corner_radius=10,
+            font=_font(26, "bold"),
+            command=self._on_esp_scan
+        )
+        self._esp_scan_btn.pack(side="left")
+
+        # ── action buttons row ────────────────────────────────────────────
+        action_row = ctk.CTkFrame(card, fg_color="transparent")
+        action_row.pack(fill="x", padx=22, pady=(0, 14))
+
+        self._esp_connect_btn = ctk.CTkButton(
+            action_row,
+            text="Connect",
+            fg_color=DS.G500, hover_color=DS.G600,
+            text_color=DS.WHITE,
+            width=200, height=62,
+            corner_radius=10,
+            font=_font(28, "bold"),
+            command=self._on_esp_connect
+        )
+        self._esp_connect_btn.pack(side="left", padx=(0, 10))
+
+        self._esp_disconnect_btn = ctk.CTkButton(
+            action_row,
+            text="Disconnect",
+            fg_color=DS.N100, hover_color=DS.N200,
+            text_color=DS.N800,
+            width=200, height=62,
+            corner_radius=10,
+            font=_font(28, "bold"),
+            command=self._on_esp_disconnect
+        )
+        self._esp_disconnect_btn.pack(side="left", padx=(0, 18))
+
+        self._esp_op_label = ctk.CTkLabel(
+            action_row,
+            text="",
+            font=_font(24),
+            text_color=DS.N400
+        )
+        self._esp_op_label.pack(side="left")
+
+        # ── auto-reconnect toggle ─────────────────────────────────────────
+        ar_row = ctk.CTkFrame(card, fg_color=DS.G50, corner_radius=10,
+                               border_width=1, border_color=DS.N200)
+        ar_row.pack(fill="x", padx=22, pady=(0, 20))
+
+        ctk.CTkLabel(
+            ar_row,
+            text="Auto-Reconnect",
+            font=_font(26, "bold"),
+            text_color=DS.G800
+        ).pack(side="left", padx=(18, 10), pady=14)
+
+        ctk.CTkLabel(
+            ar_row,
+            text="Automatically reconnects if the ESP32 is unplugged and re-plugged.",
+            font=_font(22),
+            text_color=DS.N600
+        ).pack(side="left", pady=14)
+
+        ar_enabled = self._esp_conn.AUTO_RECONNECT_ENABLED if self._esp_conn else True
+        self._esp_ar_switch = ctk.CTkSwitch(
+            ar_row,
+            text="",
+            width=60,
+            command=self._on_esp_ar_toggle,
+            onvalue=True, offvalue=False
+        )
+        self._esp_ar_switch.pack(side="right", padx=18, pady=14)
+        if ar_enabled:
+            self._esp_ar_switch.select()
+        else:
+            self._esp_ar_switch.deselect()
+
+        # ── kick off initial scan and register status callback ────────────
+        if self._esp_conn:
+            # Patch the connection manager to notify this UI panel on state changes
+            self._esp_conn._on_status_change = self._esp_status_callback
+
+        threading.Thread(target=self._esp_initial_refresh, daemon=True).start()
+
+    # ── ESP32 helpers ─────────────────────────────────────────────────────────
+
+    def _esp_initial_refresh(self):
+        """Background: populate the port list + sync current status badge."""
+        ports = _list_serial_ports()
+        try:
+            self._esp_update_port_menu(ports)
+            if self._esp_conn:
+                self._esp_status_callback(
+                    self._esp_conn.state,
+                    self._esp_conn.port,
+                    ""
+                )
+        except Exception:
+            pass
+
+    def _esp_status_callback(self, state: str, port, message: str):
+        """Called by ESP32Connection whenever the connection state changes.
+        Must schedule all Tkinter updates via after() since it runs on bg thread.
+        """
+        color_map = {
+            STATE_CONNECTED:    (DS.G100, DS.G800),
+            STATE_DISCONNECTED: (DS.N200, DS.N600),
+            STATE_ERROR:        ("#FEE2E2", DS.RED),
+            STATE_CONNECTING:   ("#FFF8E1", "#795548"),
+        }
+        bg, fg = color_map.get(state, (DS.N200, DS.N600))
+
+        def _update():
+            try:
+                self._esp_status_badge.configure(
+                    text=f"  {state}  ", fg_color=bg, text_color=fg
+                )
+                self._esp_port_label.configure(
+                    text=f"({port})" if port else ""
+                )
+                if state == STATE_CONNECTED:
+                    self._esp_hint_label.configure(text="")
+                    self._esp_op_label.configure(
+                        text=f"✓  Connected to {port}.", text_color=DS.G800
+                    )
+                elif state == STATE_CONNECTING:
+                    self._esp_hint_label.configure(text="")
+                    self._esp_op_label.configure(
+                        text=message or "Connecting…", text_color=DS.N400
+                    )
+                elif state == STATE_ERROR:
+                    self._esp_hint_label.configure(
+                        text="Auto-reconnect active" if (
+                            self._esp_conn and self._esp_conn.AUTO_RECONNECT_ENABLED
+                        ) else "Tap Connect to retry.",
+                        text_color=DS.AMBER
+                    )
+                    self._esp_op_label.configure(
+                        text=f"✕  {message}" if message else "✕  Connection error.",
+                        text_color=DS.RED
+                    )
+                else:  # DISCONNECTED
+                    self._esp_hint_label.configure(
+                        text="Select a port and tap Connect.",
+                        text_color=DS.N400
+                    )
+                    self._esp_op_label.configure(text="", text_color=DS.N400)
+            except Exception:
+                pass
+
+        try:
+            self.after(0, _update)
+        except Exception:
+            pass
+
+    def _esp_update_port_menu(self, ports: list[str]):
+        """Update the port ComboBox from a list of port names (thread-safe via after)."""
+        def _do():
+            try:
+                if ports:
+                    self._esp_port_menu.configure(values=ports)
+                    # Pre-select last-known port or first available
+                    pref = self._esp_conn.LAST_CONNECTED_PORT if self._esp_conn else None
+                    if pref and pref in ports:
+                        self._esp_port_var.set(pref)
+                    else:
+                        self._esp_port_var.set(ports[0])
+                else:
+                    self._esp_port_menu.configure(values=["No ports found — plug in ESP32"])
+                    self._esp_port_var.set("No ports found — plug in ESP32")
+            except Exception:
+                pass
+        try:
+            self.after(0, _do)
+        except Exception:
+            pass
+
+    def _on_esp_scan(self):
+        """Trigger port list refresh in background."""
+        if self._esp_scanning:
+            return
+        self._esp_scanning = True
+        self._esp_scan_btn.configure(state="disabled", text="Scanning…")
+        threading.Thread(target=self._esp_scan_bg, daemon=True).start()
+
+    def _esp_scan_bg(self):
+        try:
+            ports = _list_serial_ports()
+        finally:
+            self._esp_scanning = False
+        try:
+            self.after(0, lambda: self._esp_scan_btn.configure(
+                state="normal", text="⟳  Scan"
+            ))
+            self._esp_update_port_menu(ports)
+            count = len(ports)
+            msg = f"{count} port(s) found." if count else "No ports found."
+            self.after(0, lambda: self._esp_op_label.configure(
+                text=msg, text_color=DS.G800 if count else DS.AMBER
+            ))
+        except Exception:
+            pass
+
+    def _on_esp_connect(self):
+        """Manual connect to the selected port."""
+        if self._esp_connecting or not self._esp_conn:
+            return
+        port = self._esp_port_var.get().strip()
+        if not port or "No ports" in port or "Click" in port:
+            self._esp_op_label.configure(
+                text="Please select a valid port first.", text_color=DS.AMBER
+            )
+            return
+        self._esp_connecting = True
+        self._esp_connect_btn.configure(state="disabled")
+        self._esp_op_label.configure(
+            text=f"Connecting to {port}…", text_color=DS.N400
+        )
+        threading.Thread(
+            target=self._esp_connect_bg,
+            args=(port,),
+            daemon=True
+        ).start()
+
+    def _esp_connect_bg(self, port: str):
+        ok = self._esp_conn.connect(port)
+        try:
+            self._esp_connecting = False
+            self.after(0, lambda: self._esp_connect_btn.configure(state="normal"))
+            if ok:
+                self.after(0, lambda: self.show_toast(f"Connected to ESP32 on {port}"))
+            else:
+                state_msg = self._esp_conn.state
+                self.after(0, lambda: self.show_toast(
+                    f"Could not connect to {port}", mode="error"
+                ))
+        except Exception:
+            pass
+
+    def _on_esp_disconnect(self):
+        """Manually disconnect."""
+        if not self._esp_conn:
+            return
+        self._esp_conn.disconnect()
+        self._esp_op_label.configure(
+            text="Disconnected.", text_color=DS.N600
+        )
+        self.show_toast("ESP32 disconnected")
+
+    def _on_esp_ar_toggle(self):
+        """Toggle auto-reconnect on the connection manager."""
+        if self._esp_conn:
+            self._esp_conn.AUTO_RECONNECT_ENABLED = bool(self._esp_ar_switch.get())
+            state = "enabled" if self._esp_conn.AUTO_RECONNECT_ENABLED else "disabled"
+            self.show_toast(f"Auto-reconnect {state}")
 
 
 # ══════════════════════════════════════════════════════

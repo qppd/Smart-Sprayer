@@ -25,6 +25,7 @@ from ui.previous_data import PreviousDataPanel
 from ui.notifications import NotificationsPanel
 from ui.settings import SettingsFrame
 from ui.account import SprayerAccountPanel
+from ui.keyboard_utils import attach_floating_icon, bind_all_entries
 
 
 
@@ -66,6 +67,7 @@ class SmartSprayerUI(ctk.CTk):
         self.COL_DIVIDER = "#CDE6D7"
 
         self._create_ui()
+        attach_floating_icon(self)
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
 
     # =====================================================
@@ -274,6 +276,11 @@ class SmartSprayerUI(ctk.CTk):
             self.nav_indicators[key].configure(
                 fg_color=self.COL_ACTIVE_BAR
             )
+        # Ensure every text field in the newly shown panel gets keyboard binding
+        try:
+            bind_all_entries(self.panels[key])
+        except Exception:
+            pass
 
     # =====================================================
 
