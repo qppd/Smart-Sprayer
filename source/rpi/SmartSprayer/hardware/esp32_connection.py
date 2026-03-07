@@ -216,6 +216,10 @@ class ESP32Connection:
 
     def _connect_port(self, port: str) -> bool:
         """Internal connect — must be called with self._lock held."""
+        # Never connect to hardware UART / serial console ports
+        if port and (port.startswith("/dev/ttyS") or port in {"/dev/ttyAMA0", "/dev/serial0"}):
+            self._log(f"[ESP32] Blocked: {port} is a system serial port, skipping.")
+            return False
         self._close_serial()
         self._set_state(STATE_CONNECTING, port, f"Connecting to {port}…")
         try:
@@ -356,7 +360,15 @@ def _list_serial_ports(allowed: "list[str] | None" = None) -> list[str]:
         On Linux the default class constant restricts scanning to
         /dev/ttyUSB0, /dev/ttyUSB1, /dev/ttyUSB2.
         Pass None to return all detected ports.
+
+    Notes
+    -----
+    /dev/ttyS* (hardware UART / serial console) ports are always excluded
+    to prevent accidentally connecting to the Raspberry Pi serial console.
     """
+    # Ports that must never be connected to (e.g. RPi serial console)
+    _BLOCKED = {"/dev/ttyS0", "/dev/ttyS1", "/dev/ttyS2", "/dev/ttyS3"}
+
     ports = []
 
     if sys.platform.startswith("linux"):
@@ -365,13 +377,16 @@ def _list_serial_ports(allowed: "list[str] | None" = None) -> list[str]:
             f"/dev/ttyUSB{i}" for i in range(10)
         ]
         for p in candidates:
+            if p in _BLOCKED:
+                continue
             if glob.glob(p):          # exists in /dev
                 if p not in ports:
                     ports.append(p)
     else:
         # Windows / macOS: use pyserial enumerator
         for p in serial.tools.list_ports.comports():
-            ports.append(p.device)
+            if p.device not in _BLOCKED:
+                ports.append(p.device)
 
     # Deduplicate and sort (ttyUSB0 < ttyUSB1 < ttyUSB2 etc.)
     return sorted(set(ports))
