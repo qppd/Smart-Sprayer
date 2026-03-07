@@ -63,17 +63,18 @@ class HardwareInterface:
         raise NotImplementedError
 
 
+_hardware_instance = None
+
 def get_hardware(port='/dev/ttyUSB0', baudrate=9600, timeout=1):
-    """Factory function to get ESP32 hardware implementation
-    
-    Args:
-        port: Serial port for ESP32 connection (default: /dev/ttyUSB0)
-        baudrate: Serial communication speed (default: 9600)
-        timeout: Serial read timeout in seconds (default: 1)
-    
-    Returns:
-        ESP32Hardware instance
+    """Singleton factory — always returns the same ESP32Hardware instance.
+
+    The first call creates the instance. Subsequent calls (e.g. from settings.py
+    when run standalone) return the existing object, ensuring all parts of the
+    application share one serial connection.
     """
-    from hardware.esp32_hardware import ESP32Hardware
-    return ESP32Hardware(port=port, baudrate=baudrate, timeout=timeout)
+    global _hardware_instance
+    if _hardware_instance is None:
+        from hardware.esp32_hardware import ESP32Hardware
+        _hardware_instance = ESP32Hardware(port=port, baudrate=baudrate, timeout=timeout)
+    return _hardware_instance
 

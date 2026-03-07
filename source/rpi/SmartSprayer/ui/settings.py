@@ -67,11 +67,13 @@ DIVIDER   = DS.G200
 
 class SettingsFrame(ctk.CTkScrollableFrame):
 
-    def __init__(self, parent):
+    def __init__(self, parent, hardware=None):
         super().__init__(parent, fg_color=BG)
         self.pack(fill="both", expand=True)
 
-        self.hardware = get_hardware()
+        # Use the shared hardware instance passed in from main_ui.
+        # Fall back to creating a local one only when run standalone (e.g. tests).
+        self.hardware = hardware if hardware is not None else get_hardware()
 
         self.lucban_barangays = [
             "Barangay 1","Barangay 2","Barangay 3","Barangay 4","Barangay 5",

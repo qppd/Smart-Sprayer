@@ -247,7 +247,7 @@ class SmartSprayerUI(ctk.CTk):
             "scheduling":   SchedulingPanel(self.content_frame, self.scheduler, self.reschedule_mgr, self.logger),
             "previous_data": PreviousDataPanel(self.content_frame, self.data_store),
             "notifications": NotificationsPanel(self.content_frame, self.scheduler, self.data_store, self.hardware),
-            "settings":     SettingsFrame(self.content_frame),
+            "settings":     SettingsFrame(self.content_frame, self.hardware),
             "account":      SprayerAccountPanel(self.content_frame)
         }
 
