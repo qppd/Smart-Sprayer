@@ -150,8 +150,7 @@ class KeyboardManager:
         if self._frame is None:
             return
         # Place at the very bottom of the root window
-        self._frame.place(x=0, y=self._root.winfo_height() - self.KB_H,
-                          width=self.KB_W, height=self.KB_H)
+        self._frame.place(x=0, y=self._root.winfo_height() - self.KB_H)
         self._frame.lift()
         self._visible = True
         self._hide_toggle_icon()
@@ -180,6 +179,8 @@ class KeyboardManager:
             self._root,
             fg_color=_KB_BG,
             corner_radius=0,
+            width=self.KB_W,
+            height=self.KB_H,
         )
         # Header strip: title label + close button
         header = ctk.CTkFrame(self._frame, fg_color=_KB_BG, height=24, corner_radius=0)
@@ -215,7 +216,8 @@ class KeyboardManager:
         self._toggle_btn = ctk.CTkButton(
             self._root,
             text="⌨",
-            width=s, height=s,
+            width=s,
+            height=s,
             corner_radius=s // 2,
             fg_color="#2E7D32",
             hover_color="#388E3C",
@@ -368,7 +370,7 @@ class KeyboardManager:
             rh = self._root.winfo_height() or 600
             y = rh - self.KB_H - s - 8
             x = self.KB_W - s - 8
-            self._toggle_btn.place(x=x, y=y, width=s, height=s)
+            self._toggle_btn.place(x=x, y=y)
             self._toggle_btn.lift()
         except Exception as exc:
             print(f"[KeyboardManager] toggle icon show failed: {exc}")
