@@ -292,6 +292,15 @@ class SmartSprayerUI(ctk.CTk):
     # =====================================================
 
     def _sync_esp32_on_startup(self):
+        # Auto-connect to /dev/ttyUSB0 or /dev/ttyUSB1 on startup
+        try:
+            if self.hardware and not self.hardware.connected:
+                conn = getattr(self.hardware, '_conn', None)
+                if conn is not None:
+                    conn.reconnect()
+        except Exception as e:
+            print(f"[Auto-connect] {e}")
+
         try:
             if self.hardware and self.hardware.connected:
                 self.hardware.sync_time()
