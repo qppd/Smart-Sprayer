@@ -211,7 +211,7 @@ class KeyboardManager:
         """
         s = self._ICON_SIZE
         rh = self._root.winfo_height() or 600
-        x = self.KB_W - s - 8        # just inside right edge
+        x = 8                        # just inside left edge
         y = rh - self.KB_H - s - 8   # just above where keyboard would be
         self._toggle_btn = ctk.CTkButton(
             self._root,
@@ -369,7 +369,7 @@ class KeyboardManager:
             s = self._ICON_SIZE
             rh = self._root.winfo_height() or 600
             y = rh - self.KB_H - s - 8
-            x = self.KB_W - s - 8
+            x = 8
             self._toggle_btn.place(x=x, y=y)
             self._toggle_btn.lift()
         except Exception as exc:
