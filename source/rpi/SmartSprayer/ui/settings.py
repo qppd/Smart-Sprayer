@@ -1253,7 +1253,8 @@ class SettingsFrame(ctk.CTkScrollableFrame):
 
     def _esp_initial_refresh(self):
         """Background: populate the port list + sync current status badge."""
-        ports = _list_serial_ports()
+        allowed = self._esp_conn.ALLOWED_PORTS if self._esp_conn else None
+        ports = _list_serial_ports(allowed)
         try:
             self._esp_update_port_menu(ports)
             if self._esp_conn:
@@ -1352,7 +1353,8 @@ class SettingsFrame(ctk.CTkScrollableFrame):
 
     def _esp_scan_bg(self):
         try:
-            ports = _list_serial_ports()
+            allowed = self._esp_conn.ALLOWED_PORTS if self._esp_conn else None
+            ports = _list_serial_ports(allowed)
         finally:
             self._esp_scanning = False
         try:

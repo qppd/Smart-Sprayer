@@ -58,6 +58,14 @@ class ESP32Connection:
     AUTO_RECONNECT_ENABLED: bool  = True
     LAST_CONNECTED_PORT:    str | None = None
 
+    # On Linux only these three ttyUSB ports are considered for ESP32.
+    # Set to None to allow all detected ports.
+    ALLOWED_PORTS: list[str] | None = [
+        "/dev/ttyUSB0",
+        "/dev/ttyUSB1",
+        "/dev/ttyUSB2",
+    ]
+
     # ── serial parameters ──────────────────────────────────────────────────
     DEFAULT_BAUDRATE: int = 9600
     DEFAULT_TIMEOUT:  float = 1.0
@@ -131,7 +139,7 @@ class ESP32Connection:
 
     def scan_ports(self) -> list[str]:
         """Return a sorted list of available USB serial port names."""
-        return _list_serial_ports()
+        return _list_serial_ports(self.ALLOWED_PORTS)
 
     def write(self, data: bytes) -> bool:
         """Non-blocking write.  Returns False if not connected."""
@@ -250,7 +258,7 @@ class ESP32Connection:
 
     def _auto_connect(self) -> bool:
         """Try last-known port; on failure try all available ports."""
-        candidates = _list_serial_ports()
+        candidates = _list_serial_ports(self.ALLOWED_PORTS)
 
         # Put last-known port at front of the list
         if self.LAST_CONNECTED_PORT:
@@ -338,22 +346,34 @@ class ESP32Connection:
 # MODULE-LEVEL HELPERS
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _list_serial_ports() -> list[str]:
-    """Return sorted list of USB serial port names on the current platform."""
+def _list_serial_ports(allowed: "list[str] | None" = None) -> list[str]:
+    """Return sorted list of USB serial port names on the current platform.
+
+    Parameters
+    ----------
+    allowed:
+        When provided, only return ports whose device name is in this list.
+        On Linux the default class constant restricts scanning to
+        /dev/ttyUSB0, /dev/ttyUSB1, /dev/ttyUSB2.
+        Pass None to return all detected ports.
+    """
     ports = []
 
-    # Use pyserial's cross-platform enumerator first
-    for p in serial.tools.list_ports.comports():
-        ports.append(p.device)
-
-    # On Linux also glob for ports that may not appear yet in pyserial listing
     if sys.platform.startswith("linux"):
-        for pattern in ("/dev/ttyUSB*", "/dev/ttyACM*"):
-            for p in glob.glob(pattern):
+        # On Linux use only the explicitly allowed ttyUSB ports (if set)
+        candidates = allowed if allowed is not None else [
+            f"/dev/ttyUSB{i}" for i in range(10)
+        ]
+        for p in candidates:
+            if glob.glob(p):          # exists in /dev
                 if p not in ports:
                     ports.append(p)
+    else:
+        # Windows / macOS: use pyserial enumerator
+        for p in serial.tools.list_ports.comports():
+            ports.append(p.device)
 
-    # Deduplicate and sort (ttyUSB0 < ttyUSB1 < ttyACM0 etc.)
+    # Deduplicate and sort (ttyUSB0 < ttyUSB1 < ttyUSB2 etc.)
     return sorted(set(ports))
 
 
