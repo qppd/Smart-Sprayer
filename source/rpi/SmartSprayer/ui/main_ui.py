@@ -34,9 +34,17 @@ class SmartSprayerUI(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        # Window
+        # Window — fixed 1024×600, not resizable / minimizable / maximizable
         self.title("Sprayer System Control")
-        self.attributes("-fullscreen", True)
+        self.geometry("1024x600")
+        self.resizable(False, False)
+        # Center the window on screen
+        self.update_idletasks()
+        sw = self.winfo_screenwidth()
+        sh = self.winfo_screenheight()
+        self.geometry(f"1024x600+{(sw - 1024) // 2}+{(sh - 600) // 2}")
+        # Prevent minimize and maximize (intercept Iconify / Zoom state changes)
+        self.bind("<Unmap>", lambda e: self.deiconify() if str(e.widget) == str(self) else None)
 
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("green")
