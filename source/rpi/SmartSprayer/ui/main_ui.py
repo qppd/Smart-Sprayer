@@ -74,6 +74,9 @@ class SmartSprayerUI(ctk.CTk):
 
         self.COL_DIVIDER = "#CDE6D7"
 
+        # Make app fullscreen on Raspberry Pi
+        self.attributes("-fullscreen", True)
+
         self._create_ui()
         attach_floating_icon(self)
         self.protocol("WM_DELETE_WINDOW", self._on_closing)
