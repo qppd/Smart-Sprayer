@@ -1209,45 +1209,15 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         )
         self._esp_op_label.pack(side="left")
 
-        # ── auto-reconnect toggle ─────────────────────────────────────────
-        ar_row = ctk.CTkFrame(card, fg_color=DS.G50, corner_radius=10,
-                               border_width=1, border_color=DS.N200)
-        ar_row.pack(fill="x", padx=22, pady=(0, 20))
-
-        ctk.CTkLabel(
-            ar_row,
-            text="Auto-Reconnect",
-            font=_font(26, "bold"),
-            text_color=DS.G800
-        ).pack(side="left", padx=(18, 10), pady=14)
-
-        ctk.CTkLabel(
-            ar_row,
-            text="Automatically reconnects if the ESP32 is unplugged and re-plugged.",
-            font=_font(22),
-            text_color=DS.N600
-        ).pack(side="left", pady=14)
-
-        ar_enabled = self._esp_conn.AUTO_RECONNECT_ENABLED if self._esp_conn else True
-        self._esp_ar_switch = ctk.CTkSwitch(
-            ar_row,
-            text="",
-            width=60,
-            command=self._on_esp_ar_toggle,
-            onvalue=True, offvalue=False
-        )
-        self._esp_ar_switch.pack(side="right", padx=18, pady=14)
-        if ar_enabled:
-            self._esp_ar_switch.select()
-        else:
-            self._esp_ar_switch.deselect()
-
         # ── kick off initial scan and register status callback ────────────
         if self._esp_conn:
             # Patch the connection manager to notify this UI panel on state changes
             self._esp_conn._on_status_change = self._esp_status_callback
 
-        threading.Thread(target=self._esp_initial_refresh, daemon=True).start()
+        # Delay slightly so the widget tree is fully rendered before populating
+        self.after(200, lambda: threading.Thread(
+            target=self._esp_initial_refresh, daemon=True
+        ).start())
 
     # ── ESP32 helpers ─────────────────────────────────────────────────────────
 
@@ -1298,9 +1268,7 @@ class SettingsFrame(ctk.CTkScrollableFrame):
                     )
                 elif state == STATE_ERROR:
                     self._esp_hint_label.configure(
-                        text="Auto-reconnect active" if (
-                            self._esp_conn and self._esp_conn.AUTO_RECONNECT_ENABLED
-                        ) else "Tap Connect to retry.",
+                        text="Tap Connect to retry.",
                         text_color=DS.AMBER
                     )
                     self._esp_op_label.configure(
@@ -1330,12 +1298,12 @@ class SettingsFrame(ctk.CTkScrollableFrame):
                     # Pre-select last-known port or first available
                     pref = self._esp_conn.LAST_CONNECTED_PORT if self._esp_conn else None
                     if pref and pref in ports:
-                        self._esp_port_var.set(pref)
+                        self._esp_port_menu.set(pref)
                     else:
-                        self._esp_port_var.set(ports[0])
+                        self._esp_port_menu.set(ports[0])
                 else:
                     self._esp_port_menu.configure(values=["No ports found — plug in ESP32"])
-                    self._esp_port_var.set("No ports found — plug in ESP32")
+                    self._esp_port_menu.set("No ports found — plug in ESP32")
             except Exception:
                 pass
         try:
@@ -1416,12 +1384,7 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         )
         self.show_toast("ESP32 disconnected")
 
-    def _on_esp_ar_toggle(self):
-        """Toggle auto-reconnect on the connection manager."""
-        if self._esp_conn:
-            self._esp_conn.AUTO_RECONNECT_ENABLED = bool(self._esp_ar_switch.get())
-            state = "enabled" if self._esp_conn.AUTO_RECONNECT_ENABLED else "disabled"
-            self.show_toast(f"Auto-reconnect {state}")
+
 
 
 # ══════════════════════════════════════════════════════

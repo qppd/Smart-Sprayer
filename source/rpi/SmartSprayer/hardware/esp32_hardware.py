@@ -106,8 +106,8 @@ class ESP32Hardware(HardwareInterface):
             # Honour an explicitly supplied port override
             self._conn.LAST_CONNECTED_PORT = port
 
-        # Start background auto-connect + monitor loop
-        self._conn.start()
+        # Do NOT auto-connect on startup — user connects manually via Settings.
+        # Monitor thread is not started; connection is fully manual.
 
         # Convenience aliases kept for callers that access them directly
         # (e.g. settings UI probing hardware.connected / hardware.port)

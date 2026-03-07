@@ -55,7 +55,7 @@ class ESP32Connection:
 
     # ── configurable defaults ──────────────────────────────────────────────
     USB_SCAN_INTERVAL:      float = 5.0   # seconds between reconnect probes
-    AUTO_RECONNECT_ENABLED: bool  = True
+    AUTO_RECONNECT_ENABLED: bool  = False  # manual connect via Settings only
     LAST_CONNECTED_PORT:    str | None = None
 
     # On Linux only these three ttyUSB ports are considered for ESP32.
@@ -294,11 +294,7 @@ class ESP32Connection:
     # ══════════════════════════════════════════════════════════════════════
 
     def _monitor_loop(self):
-        """Daemon thread: initial connect then periodic health-check + reconnect."""
-        # Initial auto-connect attempt
-        with self._lock:
-            self._auto_connect()
-
+        """Daemon thread: periodic health-check only (no auto-connect on start)."""
         while not self._stop_event.is_set():
             time.sleep(self.USB_SCAN_INTERVAL)
             if self._stop_event.is_set():
