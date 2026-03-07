@@ -34,9 +34,10 @@ class SmartSprayerUI(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        # Window — fixed 1024×600, not resizable / minimizable / maximizable
         self.title("Sprayer System Control")
-        self.resizable(False, False)
+
+        # Make app fullscreen on Raspberry Pi
+        self.attributes("-fullscreen", True)
         # Center the window on screen
         self.update_idletasks()
         # Prevent minimize and maximize (intercept Iconify / Zoom state changes)
@@ -70,8 +71,7 @@ class SmartSprayerUI(ctk.CTk):
 
         self.COL_DIVIDER = "#CDE6D7"
 
-        # Make app fullscreen on Raspberry Pi
-        self.attributes("-fullscreen", True)
+        
 
         self._create_ui()
         attach_floating_icon(self)
