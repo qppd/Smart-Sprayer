@@ -301,6 +301,32 @@ class SmartSprayerUI(ctk.CTk):
         except Exception as e:
             print(f"[Auto-connect] {e}")
 
+        self._push_recipients_to_esp32()
+
+        # Re-sync recipients whenever ESP32 (re)connects so recipients are
+        # never lost after a cable unplug / ESP32 reset.
+        try:
+            conn = getattr(self.hardware, '_conn', None)
+            if conn is not None:
+                _orig_status_cb = conn._on_status_change
+
+                def _on_reconnect(state, port, message):
+                    if _orig_status_cb:
+                        _orig_status_cb(state, port, message)
+                    if state == "Connected":
+                        print("[Auto-sync] ESP32 reconnected — re-syncing time and recipients")
+                        try:
+                            self.hardware.sync_time()
+                        except Exception:
+                            pass
+                        self._push_recipients_to_esp32()
+
+                conn._on_status_change = _on_reconnect
+        except Exception as e:
+            self.logger.log_error(f"Reconnect hook setup failed: {e}")
+
+    def _push_recipients_to_esp32(self):
+        """Sync time and recipients list to ESP32 if connected."""
         try:
             if self.hardware and self.hardware.connected:
                 self.hardware.sync_time()
@@ -309,6 +335,7 @@ class SmartSprayerUI(ctk.CTk):
                 recipients = get_recipients()
                 phones = [r.get("phone") for r in recipients if r.get("phone")]
                 self.hardware.sync_recipients_bulk(phones)
+                print(f"[Sync] Pushed {len(phones)} recipient(s) to ESP32")
         except Exception as e:
             self.logger.log_error(f"ESP32 sync failed: {e}")
 

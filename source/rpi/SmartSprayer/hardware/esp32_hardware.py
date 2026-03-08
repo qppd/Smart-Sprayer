@@ -338,8 +338,15 @@ class ESP32Hardware(HardwareInterface):
     
     def send_sms_to_all(self, message):
         """Send SMS to all recipients via ESP32"""
-        response = self._send_command("send-sms-to-all")
-        print(f"[ESP32] SMS sent to all recipients")
+        if not self.connected:
+            print("[ESP32] Not connected. Cannot send SMS to all.")
+            return None
+        # Build a custom broadcast: send to each known recipient by syncing
+        # through the send-sms-custom command so the correct message is used.
+        # Fall back to the simple broadcast when no message override is needed.
+        command = f"send-sms-to-all_{message}" if message else "send-sms-to-all"
+        response = self._send_command(command)
+        print(f"[ESP32] SMS broadcast sent")
         return response
     
     def sync_recipients(self, recipients_list):

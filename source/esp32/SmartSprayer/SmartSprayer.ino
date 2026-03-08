@@ -261,6 +261,11 @@ void loop() {
       Serial.println("[GSM] Sending SMS to all recipients...");
       sendSMSToAll("Test SMS to all from Smart Sprayer");
       Serial.println("[GSM] Broadcast complete");
+    } else if (command.startsWith("send-sms-to-all_")) {
+      String customMsg = command.substring(16);
+      Serial.println("[GSM] Sending custom SMS to all recipients...");
+      sendSMSToAll(customMsg);
+      Serial.println("[GSM] Broadcast complete");
     } else if (command == "test-gsm") {
       testGSMConnection();
     } else if (command == "check-network") {

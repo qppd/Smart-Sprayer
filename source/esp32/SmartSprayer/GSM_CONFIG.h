@@ -89,40 +89,72 @@ void sendSMS(String number, String message) {
 }
 
 bool sendSMSWithResponse(String number, String message) {
+  // Step 1: Set text mode and wait for OK
+  while (sim.available()) sim.read();  // flush stale bytes
   sim.println("AT+CMGF=1");
-  delay(100);
-  
-  // Clear any previous responses
-  while (sim.available()) sim.read();
-  
+  unsigned long t0 = millis();
+  String modeResp = "";
+  while (millis() - t0 < 3000) {
+    while (sim.available()) modeResp += (char)sim.read();
+    if (modeResp.indexOf("OK") >= 0) break;
+    delay(10);
+  }
+  if (modeResp.indexOf("OK") < 0) {
+    Serial.println("[SMS] AT+CMGF=1 failed: " + modeResp);
+    return false;
+  }
+
+  // Step 2: Send recipient and wait for ">" prompt
+  while (sim.available()) sim.read();  // flush
   sim.println("AT+CMGS=\"" + number + "\"");
-  delay(100);
-  sim.println(message);
-  delay(100);
-  sim.write(26); // Ctrl+Z
-  
-  // Wait for response
+  unsigned long t1 = millis();
+  String promptResp = "";
+  while (millis() - t1 < 5000) {
+    while (sim.available()) promptResp += (char)sim.read();
+    if (promptResp.indexOf(">") >= 0) break;
+    if (promptResp.indexOf("ERROR") >= 0) {
+      Serial.println("[SMS] AT+CMGS error: " + promptResp);
+      return false;
+    }
+    delay(10);
+  }
+  if (promptResp.indexOf(">") < 0) {
+    Serial.println("[SMS] No '>' prompt received: " + promptResp);
+    return false;
+  }
+
+  // Step 3: Send message body then Ctrl+Z
+  sim.print(message);
+  sim.write(26);  // Ctrl+Z
+
+  // Step 4: Wait for +CMGS confirmation and OK
   unsigned long startTime = millis();
   String response = "";
-  
-  while (millis() - startTime < 10000) {  // 10 second timeout
+  while (millis() - startTime < 10000) {
     while (sim.available()) {
       char c = sim.read();
       response += c;
       if (response.indexOf("OK") >= 0) {
+        Serial.println("[SMS] Sent OK: " + response);
         return true;
       }
       if (response.indexOf("ERROR") >= 0) {
+        Serial.println("[SMS] Send ERROR: " + response);
         return false;
       }
     }
     delay(10);
   }
-  
-  return false;  // Timeout or no valid response
+
+  Serial.println("[SMS] Timeout waiting for OK. Response so far: " + response);
+  return false;  // Timeout
 }
 
 void sendSMSToAll(String message) {
+  if (numRecipients == 0) {
+    Serial.println("[SMS] No recipients configured — SMS not sent.");
+    return;
+  }
   bool allSent = true;
   for (int i = 0; i < numRecipients; i++) {
     if (recipients[i] != "") {  // Only send to non-empty numbers
@@ -146,6 +178,10 @@ void sendSMSToAll(String message) {
 }
 
 bool sendSMSToAllWithStatus(String message) {
+  if (numRecipients == 0) {
+    Serial.println("[SMS] No recipients configured — SMS not sent.");
+    return false;
+  }
   bool allSent = true;
   for (int i = 0; i < numRecipients; i++) {
     if (recipients[i] != "") {
