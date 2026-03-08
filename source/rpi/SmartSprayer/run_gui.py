@@ -571,13 +571,36 @@ def _send_login_sms(phone: str):
     try:
         from hardware.hardware_interface import get_hardware
         hw = get_hardware()
-        if hw and hw.connected:
+        if hw is None:
+            print("⚠️ Login SMS skipped: hardware not available")
+            return
+
+        # If not connected yet, attempt a one-shot reconnect before sending.
+        if not hw.connected:
+            print("[Login SMS] Hardware not connected — attempting reconnect...")
+            try:
+                hw._conn.reconnect()
+            except Exception as conn_exc:
+                print(f"⚠️ Reconnect failed: {conn_exc}")
+
+        if hw.connected:
+            # Sync recipients before sending so ESP32 has them for future spray SMS too.
+            try:
+                from core.data_store import get_recipients
+                phones = [r.get("phone") for r in get_recipients() if r.get("phone")]
+                if phones:
+                    hw.sync_recipients_bulk(phones)
+            except Exception as sync_exc:
+                print(f"⚠️ Recipient sync during login SMS: {sync_exc}")
+
             from datetime import datetime as _dt
             timestamp = _dt.now().strftime("%b %d, %Y at %I:%M %p")
             hw.send_sms(phone,
                 f"Smart Sprayer: Logged in successfully on {timestamp}. "
                 "If this was not you, please check the system.")
             print(f"✓ Login SMS sent to {phone}")
+        else:
+            print("⚠️ Login SMS skipped: ESP32 not reachable")
     except Exception as e:
         print(f"⚠️ Login SMS error: {e}")
 
