@@ -282,6 +282,18 @@ class Scheduler:
                     )
                 })
             
+            # Send SMS notification about cancellation
+            if self.hardware and self.hardware.connected:
+                try:
+                    sms_message = (
+                        f"Notice: Spraying schedule for {spray_type} has been cancelled "
+                        f"due to weather conditions. All reschedule attempts have been used. "
+                        f"Please reschedule manually."
+                    )
+                    self.hardware.send_sms_to_all(sms_message)
+                except Exception as e:
+                    self.logger.log_error(f"Failed to send weather cancellation SMS: {e}")
+            
             return
         
         # Calculate new date (postpone by 1 day)
@@ -327,6 +339,18 @@ class Scheduler:
                 'reschedule_count': new_count,
                 'message': reschedule_msg
             })
+        
+        # Send SMS notification about reschedule
+        if self.hardware and self.hardware.connected:
+            try:
+                sms_message = (
+                    f"Notice: Spraying schedule for {spray_type} has been rescheduled "
+                    f"to {new_date_str} due to weather conditions. "
+                    f"Please check the updated schedule."
+                )
+                self.hardware.send_sms_to_all(sms_message)
+            except Exception as e:
+                self.logger.log_error(f"Failed to send weather reschedule SMS: {e}")
     
     def calculate_spray_duration(self, volume_ml: float) -> float:
         """Calculate spray duration in seconds based on volume and pump rate"""
