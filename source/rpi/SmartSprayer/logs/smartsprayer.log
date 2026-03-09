@@ -2908,3 +2908,35 @@
 2026-03-08 20:11:38 - INFO - Smart Sprayer Logger initialized
 2026-03-08 20:11:38 - INFO - Scheduler initialized
 2026-03-08 20:11:38 - INFO - Scheduler started
+2026-03-08 20:22:34 - INFO - Smart Sprayer Logger initialized
+2026-03-08 20:22:34 - INFO - Scheduler initialized
+2026-03-08 20:22:34 - INFO - Scheduler started
+2026-03-08 20:49:50 - INFO - Smart Sprayer Logger initialized
+2026-03-08 20:49:50 - INFO - Scheduler initialized
+2026-03-08 20:49:50 - INFO - Scheduler started
+2026-03-08 20:52:39 - INFO - Smart Sprayer Logger initialized
+2026-03-08 20:52:39 - INFO - Scheduler initialized
+2026-03-08 20:52:39 - INFO - Scheduler started
+2026-03-09 08:29:21 - INFO - Smart Sprayer Logger initialized
+2026-03-09 08:29:21 - INFO - Scheduler initialized
+2026-03-09 08:29:21 - INFO - Scheduler started
+2026-03-09 08:30:01 - INFO - Checking weather before spray...
+2026-03-09 08:30:01 - WARNING - Weather check failed (rain). Rescheduling spray for schedule SCH_100.
+2026-03-09 08:30:01 - INFO - Weather reschedule attempt #2 for schedule SCH_100
+2026-03-09 08:30:01 - INFO - Spraying session rescheduled: 2/3. Spray type: Fertilizer. Remaining schedule adjusted. Date: 2026-03-10.
+2026-03-09 08:30:01 - INFO - Checking weather before spray...
+2026-03-09 08:30:01 - WARNING - Weather check failed (rain). Rescheduling spray for schedule SCH_101.
+2026-03-09 08:30:01 - INFO - Weather reschedule attempt #2 for schedule SCH_101
+2026-03-09 08:30:02 - INFO - Spraying session rescheduled: 2/3. Spray type: Fertilizer. Remaining schedule adjusted. Date: 2026-03-10.
+2026-03-09 10:18:08 - INFO - Smart Sprayer Logger initialized
+2026-03-09 10:18:08 - INFO - Scheduler initialized
+2026-03-09 10:18:08 - INFO - Scheduler started
+2026-03-09 10:23:21 - INFO - Smart Sprayer Logger initialized
+2026-03-09 10:23:21 - INFO - Scheduler initialized
+2026-03-09 10:23:21 - INFO - Scheduler started
+2026-03-09 10:26:56 - INFO - Smart Sprayer Logger initialized
+2026-03-09 10:26:56 - INFO - Scheduler initialized
+2026-03-09 10:26:56 - INFO - Scheduler started
+2026-03-09 10:35:36 - INFO - Smart Sprayer Logger initialized
+2026-03-09 10:35:36 - INFO - Scheduler initialized
+2026-03-09 10:35:36 - INFO - Scheduler started
