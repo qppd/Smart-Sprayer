@@ -2940,3 +2940,20 @@
 2026-03-09 10:35:36 - INFO - Smart Sprayer Logger initialized
 2026-03-09 10:35:36 - INFO - Scheduler initialized
 2026-03-09 10:35:36 - INFO - Scheduler started
+2026-03-09 12:35:27 - INFO - Smart Sprayer Logger initialized
+2026-03-09 12:35:27 - INFO - Scheduler initialized
+2026-03-09 12:35:27 - INFO - Scheduler started
+2026-03-09 12:46:31 - INFO - Smart Sprayer Logger initialized
+2026-03-09 12:46:31 - INFO - Scheduler initialized
+2026-03-09 12:46:31 - INFO - Scheduler started
+2026-03-09 13:20:00 - INFO - Checking weather before spray...
+2026-03-09 13:20:01 - WARNING - Weather check failed (rain). Rescheduling spray for schedule SCH_102.
+2026-03-09 13:20:01 - INFO - Weather reschedule attempt #2 for schedule SCH_102
+2026-03-09 13:20:02 - INFO - Spraying session rescheduled: 2/3. Spray type: Fertilizer. Remaining schedule adjusted. Date: 2026-03-10.
+2026-03-09 13:20:04 - INFO - Checking weather before spray...
+2026-03-09 13:20:04 - WARNING - Weather check failed (rain). Rescheduling spray for schedule SCH_103.
+2026-03-09 13:20:04 - INFO - Weather reschedule attempt #2 for schedule SCH_103
+2026-03-09 13:20:04 - INFO - Spraying session rescheduled: 2/3. Spray type: Fertilizer. Remaining schedule adjusted. Date: 2026-03-10.
+2026-03-09 18:53:12 - INFO - Smart Sprayer Logger initialized
+2026-03-09 18:53:12 - INFO - Scheduler initialized
+2026-03-09 18:53:12 - INFO - Scheduler started

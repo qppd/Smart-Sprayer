@@ -1480,7 +1480,7 @@
     "updated_at": "2026-03-09T08:30:01.816611"
   },
   {
-    "date": "2026-03-09",
+    "date": "2026-03-10",
     "time": "13:20",
     "spray_type": "Fertilizer",
     "container": "Container 1",
@@ -1488,15 +1488,15 @@
     "status": "rescheduled",
     "id": "SCH_102",
     "created_at": "2026-03-08T13:19:31.294487",
-    "reschedule_count": 1,
+    "reschedule_count": 2,
     "reschedule_reason": "weather",
-    "weather_checked_at": "2026-03-08T13:20:13.688715",
+    "weather_checked_at": "2026-03-09T13:20:01.161284",
     "original_date": "2026-03-08",
     "original_time": "13:20",
-    "updated_at": "2026-03-08T13:20:13.690222"
+    "updated_at": "2026-03-09T13:20:01.162580"
   },
   {
-    "date": "2026-03-09",
+    "date": "2026-03-10",
     "time": "13:20",
     "spray_type": "Fertilizer",
     "container": "Container 1",
@@ -1504,11 +1504,11 @@
     "status": "rescheduled",
     "id": "SCH_103",
     "created_at": "2026-03-08T13:19:41.864464",
-    "reschedule_count": 1,
+    "reschedule_count": 2,
     "reschedule_reason": "weather",
-    "weather_checked_at": "2026-03-08T13:20:24.454987",
+    "weather_checked_at": "2026-03-09T13:20:04.232056",
     "original_date": "2026-03-08",
     "original_time": "13:20",
-    "updated_at": "2026-03-08T13:20:24.461221"
+    "updated_at": "2026-03-09T13:20:04.236407"
   }
 ]
