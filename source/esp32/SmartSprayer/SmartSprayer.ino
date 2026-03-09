@@ -171,6 +171,20 @@ void loop() {
     sendSMSToAll(spray_sms_msg);
   }
 
+  // ── GSM NETWORK RECONNECT CHECK ──────────────────────────────────────────
+  // Rate-limited to once every 15 seconds. Skipped while an SMS is in progress.
+  if (!smsInProgress && (long)(millis() - lastReconnectAttempt) >= 15000L) {
+    lastReconnectAttempt = millis();
+    checkNetwork();
+    if (gsmNetworkState == NETWORK_DISCONNECTED ||
+        gsmNetworkState == NETWORK_SEARCHING    ||
+        gsmNetworkState == NETWORK_DENIED) {
+      attemptReconnect();
+    } else {
+      readSignalStrength();
+    }
+  }
+
   // ── SIM800L unsolicited responses ────────────────────────────────────────
   if (sim.available() > 0) {
     String simResponse = sim.readStringUntil('\n');
@@ -271,6 +285,9 @@ void loop() {
     } else if (command == "check-network") {
       Serial.println("[GSM] Checking network status...");
       checkNetwork();
+    } else if (command == "get-gsm-status") {
+      readSignalStrength();
+      printGSMStatus();
     } else if (command == "get-distance1") {
       Serial.print("[SR04] Reading Sensor 1... ");
       long dist = readDistanceReliable(1, 3);  // Use reliable reading with 3 attempts

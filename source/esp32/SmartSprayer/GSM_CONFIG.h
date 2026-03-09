@@ -8,9 +8,87 @@
 
 HardwareSerial sim(1); // UART1 for ESP32
 
+// ── GSM Network State ─────────────────────────────────────────────────────
+enum GSMNetworkState {
+  NETWORK_DISCONNECTED,   // Not registered, not searching
+  NETWORK_SEARCHING,      // Searching for a network
+  NETWORK_CONNECTED,      // Registered (home or roaming)
+  NETWORK_DENIED,         // Registration denied
+  NETWORK_RECONNECTING    // Actively attempting reconnection
+};
+
+GSMNetworkState gsmNetworkState   = NETWORK_DISCONNECTED;
+bool            smsInProgress     = false;   // Reconnect guard: skip while sending SMS
+unsigned long   lastReconnectAttempt = 0;   // millis() timestamp of last reconnect cycle
+int             csqValue          = 99;      // Last RSSI reading (99 = unknown)
+String          cregResponse      = "";     // Last raw +CREG stat field (e.g. "0,1")
+
 // Dynamic recipients array (managed by RPI via serial commands)
 String recipients[MAX_RECIPIENTS];
 int numRecipients = 0;
+
+// ── GSM Helper / Monitoring Functions ──────────────────────────────────────
+
+String getSignalLevelString(int rssi) {
+  if (rssi == 99) return "UNKNOWN";
+  if (rssi <= 9)  return "POOR";
+  if (rssi <= 14) return "WEAK";
+  if (rssi <= 19) return "GOOD";
+  return "EXCELLENT";
+}
+
+String getNetworkStateString() {
+  switch (gsmNetworkState) {
+    case NETWORK_CONNECTED:    return "CONNECTED";
+    case NETWORK_SEARCHING:    return "SEARCHING";
+    case NETWORK_DISCONNECTED: return "FAILED TO CONNECT";
+    case NETWORK_DENIED:       return "REGISTRATION DENIED";
+    case NETWORK_RECONNECTING: return "RECONNECTING";
+    default:                   return "UNKNOWN";
+  }
+}
+
+void readSignalStrength() {
+  while (sim.available()) sim.read(); // Flush stale bytes
+  sim.println("AT+CSQ");
+  unsigned long t = millis();
+  String resp = "";
+  while (millis() - t < 3000) {
+    while (sim.available()) resp += (char)sim.read();
+    if (resp.indexOf("OK") >= 0 || resp.indexOf("ERROR") >= 0) break;
+    delay(10);
+  }
+  int csqIdx = resp.indexOf("+CSQ:");
+  if (csqIdx >= 0) {
+    int commaIdx = resp.indexOf(',', csqIdx);
+    if (commaIdx > csqIdx) {
+      String rssiStr = resp.substring(csqIdx + 5, commaIdx);
+      rssiStr.trim();
+      csqValue = rssiStr.toInt();
+    }
+  }
+  Serial.print("[GSM] Signal level: ");
+  Serial.print(getSignalLevelString(csqValue));
+  Serial.print(" (CSQ=");
+  Serial.print(csqValue);
+  Serial.println(")");
+}
+
+void printGSMStatus() {
+  Serial.println("GSM STATUS");
+  Serial.println("----------");
+  Serial.print("Network: ");
+  Serial.println(getNetworkStateString());
+  Serial.print("Signal: ");
+  Serial.print(getSignalLevelString(csqValue));
+  Serial.print(" (CSQ: ");
+  Serial.print(csqValue);
+  Serial.println(")");
+  Serial.print("Registration: ");
+  Serial.println(cregResponse.length() > 0 ? cregResponse : "UNKNOWN");
+  Serial.print("Reconnect: ");
+  Serial.println(gsmNetworkState == NETWORK_RECONNECTING ? "ACTIVE" : "IDLE");
+}
 
 void initGSM() {
   sim.begin(9600, SERIAL_8N1, GSM_RX_PIN, GSM_TX_PIN);
@@ -78,6 +156,7 @@ void listRecipients() {
 }
 
 void sendSMS(String number, String message) {
+  smsInProgress = true;
   sim.println("AT+CMGF=1");
   delay(100);
   sim.println("AT+CMGS=\"" + number + "\"");
@@ -86,6 +165,7 @@ void sendSMS(String number, String message) {
   delay(100);
   sim.write(26); // Ctrl+Z
   delay(3000); // Wait for response
+  smsInProgress = false;
 }
 
 bool sendSMSWithResponse(String number, String message) {
@@ -155,6 +235,7 @@ void sendSMSToAll(String message) {
     Serial.println("[SMS] No recipients configured — SMS not sent.");
     return;
   }
+  smsInProgress = true;
   bool allSent = true;
   for (int i = 0; i < numRecipients; i++) {
     if (recipients[i] != "") {  // Only send to non-empty numbers
@@ -175,6 +256,7 @@ void sendSMSToAll(String message) {
   } else {
     Serial.println("All SMS messages sent successfully");
   }
+  smsInProgress = false;
 }
 
 bool sendSMSToAllWithStatus(String message) {
@@ -182,6 +264,7 @@ bool sendSMSToAllWithStatus(String message) {
     Serial.println("[SMS] No recipients configured — SMS not sent.");
     return false;
   }
+  smsInProgress = true;
   bool allSent = true;
   for (int i = 0; i < numRecipients; i++) {
     if (recipients[i] != "") {
@@ -191,16 +274,81 @@ bool sendSMSToAllWithStatus(String message) {
       delay(5000);
     }
   }
+  smsInProgress = false;
   return allSent;
 }
 
 void checkNetwork() {
+  while (sim.available()) sim.read(); // Flush stale bytes
   sim.println("AT+CREG?");
-  delay(100);
-  // Response would be read, but for now, print to Serial
-  while (sim.available()) {
-    Serial.write(sim.read());
+  unsigned long t = millis();
+  String resp = "";
+  while (millis() - t < 3000) {
+    while (sim.available()) resp += (char)sim.read();
+    if (resp.indexOf("OK") >= 0 || resp.indexOf("ERROR") >= 0) break;
+    delay(10);
+  }
+  int cregIdx = resp.indexOf("+CREG:");
+  if (cregIdx >= 0) {
+    String cregPart = resp.substring(cregIdx + 6);
+    cregPart.trim();
+    int nlIdx = cregPart.indexOf('\n');
+    if (nlIdx >= 0) cregPart = cregPart.substring(0, nlIdx);
+    cregPart.trim();
+    cregResponse = cregPart;
+
+    // Extract stat: response may be "n,stat" (mode 1) or just "stat" (mode 0)
+    int stat = -1;
+    int commaIdx = cregPart.indexOf(',');
+    if (commaIdx >= 0) {
+      String statStr = cregPart.substring(commaIdx + 1);
+      statStr.trim();
+      stat = statStr.toInt();
+    } else {
+      stat = cregPart.toInt();
+    }
+
+    GSMNetworkState prevState = gsmNetworkState;
+    switch (stat) {
+      case 1:  gsmNetworkState = NETWORK_CONNECTED;    break; // Registered, home
+      case 5:  gsmNetworkState = NETWORK_CONNECTED;    break; // Registered, roaming
+      case 2:  gsmNetworkState = NETWORK_SEARCHING;    break; // Searching
+      case 3:  gsmNetworkState = NETWORK_DENIED;       break; // Denied
+      default: gsmNetworkState = NETWORK_DISCONNECTED; break; // 0 = not registered
+    }
+
+    if (prevState != NETWORK_CONNECTED && gsmNetworkState == NETWORK_CONNECTED) {
+      Serial.println("[GSM] Network registered");
+    } else if (prevState == NETWORK_CONNECTED && gsmNetworkState != NETWORK_CONNECTED) {
+      Serial.println("[GSM] Network lost");
+    }
   }
 }
 
+<<<<<<< HEAD
 #endif
+=======
+void attemptReconnect() {
+  if (gsmNetworkState == NETWORK_CONNECTED) return;
+  gsmNetworkState = NETWORK_RECONNECTING;
+  Serial.println("[GSM] Attempting reconnection...");
+
+  while (sim.available()) sim.read(); // Flush stale bytes
+
+  // Force automatic operator selection to trigger fresh registration
+  sim.println("AT+COPS=0");
+  unsigned long t = millis();
+  String resp = "";
+  while (millis() - t < 3000) {
+    while (sim.available()) resp += (char)sim.read();
+    if (resp.indexOf("OK") >= 0 || resp.indexOf("ERROR") >= 0) break;
+    delay(10);
+  }
+
+  // Give the module a moment to start searching before checking status
+  delay(2000);
+  checkNetwork();
+}
+
+#endif
+>>>>>>> 2ffe66806f28e6ed691fb199fa8962622a1b899d
