@@ -2957,3 +2957,73 @@
 2026-03-09 18:53:12 - INFO - Smart Sprayer Logger initialized
 2026-03-09 18:53:12 - INFO - Scheduler initialized
 2026-03-09 18:53:12 - INFO - Scheduler started
+2026-03-09 20:40:21 - INFO - Smart Sprayer Logger initialized
+2026-03-09 20:40:21 - INFO - Scheduler initialized
+2026-03-09 20:40:21 - INFO - Scheduler started
+2026-03-09 20:42:19 - INFO - Smart Sprayer Logger initialized
+2026-03-09 20:42:19 - INFO - Scheduler initialized
+2026-03-09 20:42:19 - INFO - Scheduler started
+2026-03-09 20:50:01 - WARNING - Spraying session for Pesticide has been cancelled. All 3 reschedules have been used. Date: 2026-03-01. ID: SCH_080.
+2026-03-09 20:52:35 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_068.
+2026-03-09 20:52:35 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-02. ID: SCH_069.
+2026-03-09 20:52:35 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-02. ID: SCH_071.
+2026-03-09 20:52:36 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_078.
+2026-03-09 20:52:36 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_079.
+2026-03-09 20:52:37 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_081.
+2026-03-09 20:52:37 - WARNING - Spraying session for Pesticide has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_082.
+2026-03-09 20:52:37 - WARNING - Spraying session for Pesticide has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_083.
+2026-03-09 20:52:37 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_084.
+2026-03-09 20:52:38 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_085.
+2026-03-09 20:52:38 - WARNING - Spraying session for Pesticide has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_086.
+2026-03-09 20:52:38 - WARNING - Spraying session for Pesticide has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_087.
+2026-03-09 20:52:38 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_088.
+2026-03-09 20:52:39 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_089.
+2026-03-09 20:52:39 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_090.
+2026-03-09 20:52:39 - WARNING - Spraying session for Pesticide has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_091.
+2026-03-09 20:52:40 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_092.
+2026-03-09 20:52:40 - WARNING - Spraying session for Pesticide has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_093.
+2026-03-09 20:52:40 - WARNING - Spraying session for Pesticide has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_094.
+2026-03-09 20:52:40 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_095.
+2026-03-09 20:52:41 - WARNING - Spraying session for Pesticide has been cancelled. All 3 reschedules have been used. Date: 2026-03-03. ID: SCH_096.
+2026-03-09 20:52:41 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-02. ID: SCH_097.
+2026-03-09 20:52:41 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-08. ID: SCH_098.
+2026-03-09 20:52:42 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-08. ID: SCH_099.
+2026-03-09 20:52:42 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-10. ID: SCH_100.
+2026-03-09 20:52:43 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-10. ID: SCH_101.
+2026-03-09 20:52:43 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-10. ID: SCH_102.
+2026-03-09 20:52:43 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-03-10. ID: SCH_103.
+2026-03-09 20:52:43 - INFO - Cancelled all 28 active schedules
+2026-03-09 21:04:39 - INFO - SCHEDULE CREATED - Date: 2026-03-09, Time: 21:30, Type: Fertilizer, Container: Container 1
+2026-03-09 21:30:04 - INFO - Checking weather before spray...
+2026-03-09 21:30:04 - WARNING - Weather check failed (rain). Rescheduling spray for schedule SCH_104.
+2026-03-09 21:30:04 - INFO - Weather reschedule attempt #1 for schedule SCH_104
+2026-03-09 21:30:05 - INFO - Spraying session rescheduled: 1/3. Spray type: Fertilizer. Remaining schedule adjusted. Date: 2026-03-10.
+2026-03-10 07:18:00 - INFO - Smart Sprayer Logger initialized
+2026-03-10 07:18:00 - INFO - Scheduler initialized
+2026-03-10 07:18:00 - INFO - Scheduler started
+2026-03-10 07:18:43 - INFO - SCHEDULE CREATED - Date: 2026-03-10, Time: 08:00, Type: Fertilizer, Container: Container 1
+2026-03-10 07:18:57 - INFO - SCHEDULE CREATED - Date: 2026-03-10, Time: 08:30, Type: Pesticide, Container: Container 2
+2026-03-10 07:20:09 - INFO - SCHEDULE CREATED - Date: 2026-03-10, Time: 07:30, Type: Pesticide, Container: Container 2
+2026-03-10 07:21:03 - INFO - SCHEDULE CREATED - Date: 2026-03-10, Time: 07:25, Type: Fertilizer, Container: Container 1
+2026-03-10 07:25:00 - INFO - Checking weather before spray...
+2026-03-10 07:25:01 - WARNING - Weather check failed (rain). Rescheduling spray for schedule SCH_108.
+2026-03-10 07:25:01 - INFO - Weather reschedule attempt #1 for schedule SCH_108
+2026-03-10 07:25:01 - INFO - Spraying session rescheduled: 1/3. Spray type: Fertilizer. Remaining schedule adjusted. Date: 2026-03-11.
+2026-03-10 07:30:03 - INFO - Checking weather before spray...
+2026-03-10 07:30:03 - WARNING - Weather check failed (rain). Rescheduling spray for schedule SCH_107.
+2026-03-10 07:30:03 - INFO - Weather reschedule attempt #1 for schedule SCH_107
+2026-03-10 07:30:04 - INFO - Spraying session rescheduled: 1/3. Spray type: Pesticide. Remaining schedule adjusted. Date: 2026-03-11.
+2026-03-10 08:00:07 - INFO - Checking weather before spray...
+2026-03-10 08:00:07 - WARNING - Weather check failed (rain). Rescheduling spray for schedule SCH_105.
+2026-03-10 08:00:07 - INFO - Weather reschedule attempt #1 for schedule SCH_105
+2026-03-10 08:00:08 - INFO - Spraying session rescheduled: 1/3. Spray type: Fertilizer. Remaining schedule adjusted. Date: 2026-03-11.
+2026-03-10 08:30:10 - INFO - Checking weather before spray...
+2026-03-10 08:30:10 - WARNING - Weather check failed (rain). Rescheduling spray for schedule SCH_106.
+2026-03-10 08:30:10 - INFO - Weather reschedule attempt #1 for schedule SCH_106
+2026-03-10 08:30:11 - INFO - Spraying session rescheduled: 1/3. Spray type: Pesticide. Remaining schedule adjusted. Date: 2026-03-11.
+2026-03-10 16:34:47 - INFO - Smart Sprayer Logger initialized
+2026-03-10 16:34:47 - INFO - Scheduler initialized
+2026-03-10 16:34:47 - INFO - Scheduler started
+2026-03-10 17:39:30 - INFO - Smart Sprayer Logger initialized
+2026-03-10 17:39:30 - INFO - Scheduler initialized
+2026-03-10 17:39:30 - INFO - Scheduler started
