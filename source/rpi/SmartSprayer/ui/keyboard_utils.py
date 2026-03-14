@@ -4,7 +4,7 @@
 # ┌─────────────────────────────────────────────────────────────────────┐
 # │  KeyboardManager  (singleton per root window)                       │
 # │                                                                     │
-# │  Renders a 1024 × 200 px overlay at the bottom of the app window.  │
+# │  Renders a 1024 × 260 px overlay at the bottom of the app window.  │
 # │  Shows automatically when a CTkEntry / CTkTextbox receives focus,   │
 # │  hides when focus leaves all text widgets (with a small delay to    │
 # │  prevent flickering when tabbing between fields).                   │
@@ -80,12 +80,12 @@ _KEY_HOVER   = "#388E3C"
 _KEY_ACTIVE  = "#4CAF50"   # shift-on indicator
 _KEY_TEXT    = "#FFFFFF"
 _SPECIAL_BG  = "#1B5E20"   # backspace / enter background
-_KEY_FONT    = ("Segoe UI", 16, "bold")
+_KEY_FONT    = ("Segoe UI", 34, "bold")   # increased from 26 → 34
 
 
 class KeyboardManager:
     """
-    In-app virtual keyboard overlay (1024 × 200 px at y = 400).
+    In-app virtual keyboard overlay (1024 × 260 px at y = 340).
 
     Instantiate once via attach_floating_icon(root) and then call
     bind_keyboard() or bind_all_entries() on any page you want covered.
@@ -95,8 +95,8 @@ class KeyboardManager:
         bind_all_entries(my_new_frame)
     """
 
-    KB_W = 1024
-    KB_H = 200
+    KB_W = 900
+    KB_H = 480   # increased from 340 → 480
 
     # Small ⌨ icon visible at bottom-right when keyboard is hidden but
     # the user previously focused a text entry.
@@ -150,7 +150,9 @@ class KeyboardManager:
         if self._frame is None:
             return
         # Place at the very bottom of the root window
-        self._frame.place(x=0, y=self._root.winfo_height() - self.KB_H)
+        self._frame.place(x=6.5, y=self._root.winfo_height() - self.KB_H + 110)
+        
+        
         self._frame.lift()
         self._visible = True
         self._hide_toggle_icon()
@@ -183,22 +185,22 @@ class KeyboardManager:
             height=self.KB_H,
         )
         # Header strip: title label + close button
-        header = ctk.CTkFrame(self._frame, fg_color=_KB_BG, height=24, corner_radius=0)
+        header = ctk.CTkFrame(self._frame, fg_color=_KB_BG, height=48, corner_radius=0)
         header.pack(fill="x", side="top")
         header.pack_propagate(False)
         ctk.CTkLabel(
             header, text="⌨  Virtual Keyboard",
-            text_color="#A5D6A7", font=ctk.CTkFont(size=13),
+            text_color="#A5D6A7", font=ctk.CTkFont(size=22),
         ).pack(side="left", padx=8)
         ctk.CTkButton(
             header, text="✕  Close",
-            width=80, height=22,
+            width=120, height=38,
             fg_color="#C62828", hover_color="#B71C1C",
             text_color="#FFFFFF",
-            font=ctk.CTkFont(size=12, weight="bold"),
+            font=ctk.CTkFont(size=18, weight="bold"),
             corner_radius=4,
             command=self.hide,
-        ).pack(side="right", padx=6, pady=1)
+        ).pack(side="right", padx=6, pady=2)
         # Don't place yet — keyboard starts hidden
         self._render_rows(_ROWS_NORMAL)
 
@@ -236,7 +238,7 @@ class KeyboardManager:
 
         for row_spec in rows:
             rf = ctk.CTkFrame(self._frame, fg_color="transparent")
-            rf.pack(fill="x", expand=True, padx=3, pady=1)
+            rf.pack(fill="x", expand=True, padx=5, pady=4)
             row_btns: list = []
 
             for col, (label, value, weight) in enumerate(row_spec):
@@ -248,7 +250,7 @@ class KeyboardManager:
                 btn = ctk.CTkButton(
                     rf,
                     text=label,
-                    font=ctk.CTkFont(family="Segoe UI", size=16, weight="bold"),
+                    font=ctk.CTkFont(family="Segoe UI", size=34, weight="bold"),  # increased from 26 → 34
                     fg_color=bg,
                     hover_color=_KEY_HOVER,
                     text_color=_KEY_TEXT,
@@ -256,7 +258,7 @@ class KeyboardManager:
                     border_width=0,
                     command=lambda v=value: self._on_virtual_key(v),
                 )
-                btn.grid(row=0, column=col, sticky="nsew", padx=2, pady=2)
+                btn.grid(row=0, column=col, sticky="nsew", padx=3, pady=4)
                 row_btns.append(btn)
 
             self._row_frames.append(rf)
@@ -453,6 +455,7 @@ def bind_all_entries(container):
     """
     Walk *container*'s widget tree and bind the keyboard to every
     Entry / CTkEntry / CTkTextbox found.
+    
 
     Call this at the end of any page/panel's __init__ to get full coverage:
         bind_all_entries(self)
@@ -471,4 +474,3 @@ def hide_keyboard():
     """Force-hide the virtual keyboard."""
     if _manager is not None:
         _manager.hide()
-

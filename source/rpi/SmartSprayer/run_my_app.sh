@@ -3,4 +3,4 @@
 sleep 5
 
 # run the Python GUI
-/usr/bin/python3 /home/zairafelideracio/Smart-Sprayer/source/rpi/SmartSprayerV2/run_gui.py
+/usr/bin/python3 /home/zairafelideracio/Smart-Sprayer/source/rpi/SmartSprayer/run_gui.py
