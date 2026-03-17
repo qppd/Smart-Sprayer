@@ -368,6 +368,9 @@ void checkNetwork() {
   }
 }
 
+<<<<<<< HEAD
+#endif
+=======
 void attemptReconnect() {
   if (gsmNetworkState == NETWORK_CONNECTED) return;
   gsmNetworkState = NETWORK_RECONNECTING;
@@ -391,3 +394,4 @@ void attemptReconnect() {
 }
 
 #endif
+>>>>>>> 2ffe66806f28e6ed691fb199fa8962622a1b899d

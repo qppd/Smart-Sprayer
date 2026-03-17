@@ -1,0 +1,5 @@
+{
+  "last_port": "/dev/ttyUSB0",
+  "auto_reconnect": false,
+  "scan_interval": 5.0
+}
