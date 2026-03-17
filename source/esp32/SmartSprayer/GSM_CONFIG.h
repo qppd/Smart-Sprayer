@@ -135,6 +135,12 @@ void initGSM() {
   delay(1000);
   sim.println("AT");
   delay(1000);
+  // Set text mode — must be done before CNMI/CSMP so all URCs arrive as text
+  sim.println("AT+CMGF=1");
+  delay(500);
+  // Route delivery status report URCs directly to the serial port (DS=2)
+  sim.println("AT+CNMI=2,0,0,2,0");
+  delay(500);
   // Enable SMS delivery reports: TP-SRR bit set, relative VP = 167 (~24 h)
   sim.println("AT+CSMP=49,167,0,0");
   delay(500);
@@ -368,9 +374,6 @@ void checkNetwork() {
   }
 }
 
-<<<<<<< HEAD
-#endif
-=======
 void attemptReconnect() {
   if (gsmNetworkState == NETWORK_CONNECTED) return;
   gsmNetworkState = NETWORK_RECONNECTING;
@@ -394,4 +397,3 @@ void attemptReconnect() {
 }
 
 #endif
->>>>>>> 2ffe66806f28e6ed691fb199fa8962622a1b899d
