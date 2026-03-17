@@ -140,15 +140,15 @@ long calculateMovingAverage(int sensorNum) {
 // Sensor: Standard HC-SR04 (non-waterproof), min range ~2 cm
 // Container specs:
 //   Full  (100% / 16 L) : sensor reads ~12–15 cm → nominal CONTAINER_FULL_DISTANCE  = 13 cm
-//   Empty (0%)          : sensor reads ~38 cm    → CONTAINER_EMPTY_DISTANCE = 38 cm
-//   Usable range        : 38 − 13 = 25 cm
+//   Empty (0%)          : sensor reads ~41 cm    → CONTAINER_EMPTY_DISTANCE = 41 cm
+//   Usable range        : 41 − 13 = 28 cm
 // Distance → percentage mapping:
 //   ≤ 13 cm   → 100%   (liquid at or above the full mark)
-//   13–38 cm  → proportional over the 25 cm usable range
-//   ≥ 38 cm   → 0%    (tank empty)
+//   13–41 cm  → proportional over the 28 cm usable range
+//   ≥ 41 cm   → 0%    (tank empty)
 // SMS alert thresholds (fired once per drop; re-armed when level recovers):
 //   Critical : liquid height ≤ 5.0 cm  (= 20% of 25 cm usable range)
-//   Empty    : distance ≥ 38 cm  (liquid height = 0 cm)
+//   Empty    : distance ≥ 41 cm  (liquid height = 0 cm)
 
 // Critical liquid-height threshold in cm (20% × 25 cm usable range = 5.0 cm)
 #define CRITICAL_LIQUID_HEIGHT_CM 5.0f
@@ -170,8 +170,8 @@ float calculateFillPercentage(long distance, int sensorNum = 0) {
     return 100.0f;
   }
 
-  // Usable range = 25 cm  (13 cm full → 38 cm empty)
-  float usableRange  = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE; // 25 cm
+  // Usable range = 28 cm  (13 cm full → 41 cm empty)
+  float usableRange  = CONTAINER_EMPTY_DISTANCE - CONTAINER_FULL_DISTANCE; // 28 cm
   float liquidHeight = CONTAINER_EMPTY_DISTANCE - (float)distance;         // cm from bottom
 
   // At or beyond empty distance → 0%

@@ -90,11 +90,54 @@ void printGSMStatus() {
   Serial.println(gsmNetworkState == NETWORK_RECONNECTING ? "ACTIVE" : "IDLE");
 }
 
+// Parse and print a +CDS delivery status report URC.
+// Format (text mode): +CDS: <fo>,<mr>,[<ra>],[<tora>],<scts>,<dt>,<st>
+// <st> == 0 => delivered; 32-63 => temporary error; 64+ => permanent error.
+void handleDeliveryReport(const String& line) {
+  // Extract message-reference (2nd comma-separated field after the colon)
+  int colonIdx  = line.indexOf(':');
+  int firstComma  = line.indexOf(',', colonIdx + 1);
+  int secondComma = line.indexOf(',', firstComma + 1);
+  String mr = "?";
+  if (firstComma >= 0 && secondComma > firstComma) {
+    mr = line.substring(firstComma + 1, secondComma);
+    mr.trim();
+  }
+
+  // Extract delivery status (last field)
+  int lastComma = line.lastIndexOf(',');
+  String stStr  = (lastComma >= 0) ? line.substring(lastComma + 1) : "";
+  stStr.trim();
+  int st = stStr.toInt();
+
+  Serial.print("[SMS DELIVERY] Msg-Ref=");
+  Serial.print(mr);
+  Serial.print("  Status=");
+  if (st == 0) {
+    Serial.println("DELIVERED");
+  } else if (st >= 32 && st <= 63) {
+    Serial.print("TEMPORARY ERROR (");
+    Serial.print(st);
+    Serial.println(") — SC still retrying");
+  } else if (st >= 64) {
+    Serial.print("PERMANENT FAILURE (");
+    Serial.print(st);
+    Serial.println(") — not delivered");
+  } else {
+    Serial.print("FORWARDED/PENDING (");
+    Serial.print(st);
+    Serial.println(")");
+  }
+}
+
 void initGSM() {
   sim.begin(9600, SERIAL_8N1, GSM_RX_PIN, GSM_TX_PIN);
   delay(1000);
   sim.println("AT");
   delay(1000);
+  // Enable SMS delivery reports: TP-SRR bit set, relative VP = 167 (~24 h)
+  sim.println("AT+CSMP=49,167,0,0");
+  delay(500);
   // Assume OK
 }
 

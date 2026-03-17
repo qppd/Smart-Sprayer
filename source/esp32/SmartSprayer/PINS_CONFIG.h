@@ -30,13 +30,13 @@
 // Sensor: Standard HC-SR04 (non-waterproof), min range ~2 cm
 // Ultrasonic measures downward from sensor to liquid surface.
 // Full tank (16 L) → sensor reads ~12–15 cm; nominal FULL distance = 13 cm
-// Empty tank        → sensor reads ~38 cm
-// Usable range      = 38 - 13 = 25 cm
+// Empty tank        → sensor reads ~41 cm
+// Usable range      = 41 - 13 = 28 cm
 // 13 cm  → 100%  (any reading ≤ 13 cm is clamped to 100%)
-// 38 cm  → 0%
+// 41 cm  → 0%
 // 20% critical threshold:
-//   liquid height = 25 × 0.20 = 5.0 cm → distance = 38 - 5 = 33 cm
-#define CONTAINER_EMPTY_DISTANCE 38.0  // Distance when tank is empty (cm)
+//   liquid height = 28 × 0.20 = 5.6 cm → distance = 41 - 5.6 = 35.4 cm
+#define CONTAINER_EMPTY_DISTANCE 41.0  // Distance when tank is empty (cm)
 #define CONTAINER_FULL_DISTANCE  13.0  // Distance when tank is full / 100% (cm)
 #define CONTAINER_CAPACITY_LITERS 16.0 // Tank capacity in liters
 

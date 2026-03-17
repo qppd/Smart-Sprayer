@@ -192,6 +192,10 @@ void loop() {
     if (simResponse.length() > 0) {
       Serial.print("[SIM800L] ");
       Serial.println(simResponse);
+      // Delivery status report from network
+      if (simResponse.startsWith("+CDS:")) {
+        handleDeliveryReport(simResponse);
+      }
     }
   }
 
