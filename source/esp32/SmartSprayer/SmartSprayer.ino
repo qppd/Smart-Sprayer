@@ -84,10 +84,6 @@ struct SprayState {
 };
 static SprayState spray_state;
 
-// SMS queued after relay OFF so it cannot delay relay timing.
-static bool   spray_sms_pending = false;
-static String spray_sms_msg     = "";
-
 // ============================================
 // FIXED-SIZE SERIAL LINE BUFFER
 // ============================================
@@ -154,21 +150,8 @@ void loop() {
     // Send completion ACK to RPI BEFORE slow SMS so RPI can proceed.
     Serial.println("ACK:SPRAY_DONE");
 
-    // Queue SMS - will be sent on the next loop iteration so this one
-    // returns quickly and the ACK is flushed immediately.
-    spray_sms_msg     = "Spraying completed: " + String(spray_state.volume) +
-                        " mL of " + spray_state.spray_type + " applied.";
-    spray_sms_pending = true;
-
     buzzerBeep(200);
     spray_state.active = false;
-  }
-
-  // ── PENDING SMS ─────────────────────────────────────────────────────────
-  // Relay is already OFF; sending SMS here cannot delay relay timing.
-  if (spray_sms_pending) {
-    spray_sms_pending = false;
-    sendSMSToAll(spray_sms_msg);
   }
 
   // ── GSM NETWORK RECONNECT CHECK ──────────────────────────────────────────
@@ -573,12 +556,8 @@ void loop() {
 
           // Buzzer: short beep is acceptable (relay is already ON).
           buzzerBeep(200);
-
-          // SMS notification that spraying started (relay already ON).
-          String msg = "Spraying started: " + String(volume) +
-                       " mL of " + sprayType +
-                       " for " + String(duration) + " seconds.";
-          sendSMSToAll(msg);
+          // NOTE: Spray-started SMS is now sent from the Raspberry Pi
+          // via Semaphore API (see hardware/esp32_hardware.py :: spray()).
         } else {
           Serial.println("[ERROR] Invalid spray format. Use: spray_RELAY_DURATION_VOLUME");
         }

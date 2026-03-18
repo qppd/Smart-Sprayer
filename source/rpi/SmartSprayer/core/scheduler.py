@@ -274,6 +274,13 @@ class Scheduler:
                         self.logger.log_spray_completed(
                             schedule['id'], spray_duration, spray_type, volume_ml)
                         
+                        # Send spray completion SMS via Semaphore (moved from ESP32 SIM800L)
+                        try:
+                            completion_msg = f"SmartSprayer: {spray_type} spray done. {int(volume_ml)}mL applied."
+                            self.hardware.send_sms_to_all(completion_msg)
+                        except Exception as sms_err:
+                            self.logger.log_error(f"Failed to send spray completion SMS: {sms_err}")
+                        
                         if self.on_schedule_completed_callback:
                             self.on_schedule_completed_callback(schedule)
                     except Exception as e:
@@ -368,13 +375,9 @@ class Scheduler:
                 })
             
             # Send SMS notification about cancellation
-            if self.hardware and self.hardware.connected:
+            if self.hardware:
                 try:
-                    sms_message = (
-                        f"Notice: Spraying schedule for {spray_type} has been cancelled "
-                        f"due to weather conditions. All reschedule attempts have been used. "
-                        f"Please reschedule manually."
-                    )
+                    sms_message = f"SmartSprayer: {spray_type} spray cancelled. Max reschedules (3/3) due to rain. Please reschedule manually."
                     self.hardware.send_sms_to_all(sms_message)
                 except Exception as e:
                     self.logger.log_error(f"Failed to send weather cancellation SMS: {e}")
@@ -428,13 +431,9 @@ class Scheduler:
             })
         
         # Send SMS notification about reschedule
-        if self.hardware and self.hardware.connected:
+        if self.hardware:
             try:
-                sms_message = (
-                    f"Notice: Spraying schedule for {spray_type} has been rescheduled "
-                    f"to {new_date_str} due to weather conditions. "
-                    f"Please check the updated schedule."
-                )
+                sms_message = f"SmartSprayer: {spray_type} spray rescheduled to {new_date_str} (rain). ({new_count}/3)"
                 self.hardware.send_sms_to_all(sms_message)
             except Exception as e:
                 self.logger.log_error(f"Failed to send weather reschedule SMS: {e}")

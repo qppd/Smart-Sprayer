@@ -902,30 +902,16 @@ class DashboardPanel(ctk.CTkFrame):
     def _send_tank_low_sms(self, tank_num, level):
         def _do_send():
             try:
-                from core.data_store import get_recipients
-                recipients = get_recipients()
-                if not recipients:
-                    print(f"[SMS] No recipients configured — skipping tank {tank_num} low alert")
-                    return
                 spray_type = self._get_spray_type_for_tank(tank_num)
                 if level == 0.0:
-                    message = (
-                        f"Alert: Empty {spray_type} container detected. "
-                        f"Refill required before continuing spraying."
-                    )
+                    message = f"SmartSprayer: {spray_type} tank EMPTY. Refill now."
                 else:
-                    message = (
-                        f"Alert: Critical {spray_type} level detected. "
-                        f"Refill required before continuing spraying."
-                    )
-                if self.hardware and self.hardware.connected:
-                    for r in recipients:
-                        phone = r.get('phone', '')
-                        if phone:
-                            self.hardware.send_sms(phone, message)
-                            print(f"[SMS] Tank {tank_num} {spray_type} alert sent to {phone}")
+                    message = f"SmartSprayer: {spray_type} tank CRITICAL (<20%). Refill soon."
+                if self.hardware:
+                    self.hardware.send_sms_to_all(message)
+                    print(f"[SMS] Tank {tank_num} {spray_type} critical alert sent")
                 else:
-                    print(f"[SMS] Hardware not connected — could not send tank {tank_num} low alert")
+                    print(f"[SMS] Hardware not initialized — could not send tank {tank_num} low alert")
             except Exception as e:
                 print(f"[SMS] Error sending tank low alert: {e}")
         threading.Thread(target=_do_send, daemon=True).start()

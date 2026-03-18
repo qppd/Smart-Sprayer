@@ -10,6 +10,7 @@ import time
 import threading
 import sys
 import os
+import requests
 from hardware.hardware_interface import HardwareInterface
 from hardware.esp32_connection import (
     ESP32Connection,
@@ -20,6 +21,55 @@ from hardware.esp32_connection import (
 # Import container configuration
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from PINS_CONFIG import CONTAINER_EMPTY_DISTANCE, CONTAINER_FULL_DISTANCE, CONTAINER_CAPACITY_LITERS
+
+# ============================================
+# SEMAPHORE API – RPI-side SMS (replaces ESP32 SIM800L)
+# ============================================
+
+def _normalize_phone(number: str) -> str:
+    """Convert +63XXXXXXXXX to 09XXXXXXXXX for the Semaphore API."""
+    number = number.strip()
+    if number.startswith('+63'):
+        return '0' + number[3:]
+    if number.startswith('63') and len(number) >= 12:
+        return '0' + number[2:]
+    return number  # Already in local format or unknown — pass through
+
+
+def send_sms_via_semaphore(numbers: list, message: str) -> bool:
+    """Send SMS to a list of phone numbers via Semaphore API (bulk, one request).
+
+    Args:
+        numbers:  List of phone number strings (+63 or 09 format).
+        message:  SMS body text.
+
+    Returns:
+        True on HTTP 2xx response, False otherwise.
+    """
+    from core.app_settings import get_semaphore_api_key
+    api_key = get_semaphore_api_key()
+    if not api_key:
+        print("[SMS] Semaphore API key not configured — SMS not sent.")
+        return False
+
+    normalized = [_normalize_phone(n) for n in numbers if n]
+    if not normalized:
+        print("[SMS] No valid recipients — SMS not sent.")
+        return False
+
+    url = "https://api.semaphore.co/api/v4/messages"
+    payload = {
+        "apikey": api_key,
+        "number": ",".join(normalized),
+        "message": message,
+    }
+    try:
+        response = requests.post(url, data=payload, timeout=15)
+        print(f"[SMS] Semaphore response: {response.status_code}")
+        return response.ok
+    except Exception as e:
+        print(f"[SMS] Semaphore API error: {e}")
+        return False
 
 # ============================================
 # FRAMED PROTOCOL FUNCTIONS
@@ -326,28 +376,18 @@ class ESP32Hardware(HardwareInterface):
         return response
     
     def send_sms(self, number, message):
-        """Send SMS via ESP32 GSM module using send-sms-custom command"""
-        if not self.connected:
-            print("[ESP32] Not connected. Cannot send SMS.")
-            return None
-        # Use the custom SMS command: send-sms-custom_{number}_{message}
-        command = f"send-sms-custom_{number}_{message}"
-        response = self._send_command(command)
-        print(f"[ESP32] SMS sent to {number}")
-        return response
-    
+        """Send SMS to a single number via Semaphore API (RPI-side, no ESP32 needed)."""
+        return send_sms_via_semaphore([number], message)
+
     def send_sms_to_all(self, message):
-        """Send SMS to all recipients via ESP32"""
-        if not self.connected:
-            print("[ESP32] Not connected. Cannot send SMS to all.")
-            return None
-        # Build a custom broadcast: send to each known recipient by syncing
-        # through the send-sms-custom command so the correct message is used.
-        # Fall back to the simple broadcast when no message override is needed.
-        command = f"send-sms-to-all_{message}" if message else "send-sms-to-all"
-        response = self._send_command(command)
-        print(f"[ESP32] SMS broadcast sent")
-        return response
+        """Send SMS to all configured recipients via Semaphore API (bulk, one request)."""
+        from core.data_store import get_recipients
+        recipients = get_recipients()
+        numbers = [r.get('phone', '') for r in recipients if r.get('phone', '')]
+        if not numbers:
+            print("[SMS] No recipients configured — SMS not sent.")
+            return False
+        return send_sms_via_semaphore(numbers, message)
     
     def sync_recipients(self, recipients_list):
         """Sync recipients list to ESP32"""
@@ -524,24 +564,30 @@ class ESP32Hardware(HardwareInterface):
     
     def spray(self, relay_num, duration_seconds, volume_ml, spray_type='Unknown'):
         """Execute spray operation on ESP32
-        
+
         Args:
             relay_num: Which relay to use (1 or 2)
             duration_seconds: How long to spray in seconds
             volume_ml: Volume being sprayed in mL (for logging/SMS)
             spray_type: Type of spray (Pesticide or Fertilizer) for SMS messages
-        
+
         Returns:
             Response from ESP32
         """
         if not self.connected:
             print("[ESP32] Not connected. Cannot execute spray.")
             return None
-        
+
         command = f"spray_{relay_num}_{int(duration_seconds)}_{int(volume_ml)}_{spray_type}"
         response = self._send_command(command)
-        
+
         print(f"[ESP32] Spray executed: Relay {relay_num}, {duration_seconds}s, {volume_ml}mL, Type: {spray_type}")
+
+        # Send spray-started SMS via Semaphore (RPI-side, replaces ESP32 SIM800L).
+        # Fire in a daemon thread so it cannot delay relay timing or the caller.
+        start_msg = f"SmartSprayer: {spray_type} spray started. {int(volume_ml)}mL ({int(duration_seconds)}s)."
+        threading.Thread(target=lambda: self.send_sms_to_all(start_msg), daemon=True).start()
+
         return response
     
     def sync_recipients_bulk(self, phone_numbers):

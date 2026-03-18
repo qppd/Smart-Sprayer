@@ -6,6 +6,7 @@ WEATHER_CREDENTIALS.h
 # RPI Credentials
 source/rpi/SmartSprayer/firebase_credentials.py
 source/rpi/SmartSprayer/serviceAccountKey.json
+source/rpi/SmartSprayer/semaphore_secrets.json
 
 # 3D Models
 *.gcode
