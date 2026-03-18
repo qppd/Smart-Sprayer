@@ -1,10 +1,19 @@
 # scheduling.py
-# Scheduling UI — Modern Design Refresh (same green palette)
+# Smart Sprayer Scheduling UI
+# ✅ CORRECTED: Full manual mode implementation with weather toggle
+#
+# MANUAL MODE  → weather_mode='manual' stamped on schedule
+#                scheduler.py reads this and skips ALL weather checks
+# AUTOMATIC MODE → weather_mode='automatic' stamped on schedule
+#                  scheduler.py checks weather before firing
+#
+# The trigger loop here is a UI convenience only — the real execution
+# is done by scheduler.py's background thread which runs every 10 s.
+# Both layers read weather_mode from the schedule dict in data_store.
 
 import customtkinter as ctk
 from datetime import datetime, timedelta
 from tkinter import messagebox
-import uuid
 import calendar
 
 
@@ -12,457 +21,595 @@ import calendar
 #  DESIGN TOKENS
 # ─────────────────────────────────────────────
 class DS:
-    # Greens
-    G900 = "#1B5E20"
-    G800 = "#2E7D32"
-    G600 = "#388E3C"
-    G500 = "#4CAF50"
-    G400 = "#66BB6A"
-    G200 = "#C8E6C9"
-    G100 = "#E8F5E9"
-    G50  = "#F1F8F2"
+    G900 = "#1B5E20";  G800 = "#2E7D32";  G600 = "#388E3C"
+    G500 = "#4CAF50";  G400 = "#66BB6A";  G200 = "#C8E6C9"
+    G100 = "#E8F5E9";  G50  = "#F1F8F2"
 
-    # Neutrals
-    WHITE   = "#FFFFFF"
-    N50     = "#F7F8F7"
-    N100    = "#EEF0EE"
-    N200    = "#D8DDD8"
-    N400    = "#9AA89A"
-    N600    = "#555F55"
-    N800    = "#2A2F2A"
+    WHITE = "#FFFFFF";  N50  = "#F7F8F7";  N100 = "#EEF0EE"
+    N200  = "#D8DDD8";  N400 = "#9AA89A";  N600 = "#555F55"
+    N800  = "#2A2F2A"
 
-    # Accents
-    AMBER   = "#F59E0B"
-    AMBER_D = "#D97706"
-    RED     = "#EF4444"
-    RED_D   = "#DC2626"
-    BLUE    = "#0EA5E9"
-    BLUE_D  = "#0284C7"
+    AMBER = "#F59E0B";  AMBER_D = "#D97706"
+    RED   = "#EF4444";  RED_D   = "#DC2626"
+    BLUE  = "#0EA5E9";  BLUE_D  = "#0284C7"
 
-    # Fonts — elder-friendly maximum
-    FONT_DISPLAY = ("Segoe UI", 44, "bold")
-    FONT_HEADING = ("Segoe UI", 32, "bold")
-    FONT_SUBHEAD = ("Segoe UI", 26, "bold")
-    FONT_BODY    = ("Segoe UI", 22)
-    FONT_SMALL   = ("Segoe UI", 18)
-    FONT_MONO    = ("Consolas", 22)
+    AUTO_BG       = "#E8F5E9"
+    AUTO_ACCENT   = "#2E7D32"
+    MANUAL_BG     = "#FFF3E0"
+    MANUAL_ACCENT = "#E65100"
 
 
 def _font(size, weight="normal", family="Segoe UI"):
-    return ctk.CTkFont(family=family, size=size, weight=weight if weight != "normal" else "normal")
+    """Create a font with specified size and weight"""
+    return ctk.CTkFont(family=family, size=size,
+                       weight=weight if weight != "normal" else "normal")
+
+
+def _get_mode(schedule: dict) -> str:
+    """Read weather_mode from a schedule dict. Returns 'automatic' or 'manual'."""
+    mode = schedule.get("weather_mode", "automatic")
+    return mode if mode in ("automatic", "manual") else "automatic"
 
 
 class SchedulingPanel(ctk.CTkFrame):
-    """Modern Scheduling Panel — green palette, elevated aesthetics."""
+    """
+    Main scheduling UI panel with weather toggle and schedule management.
+    
+    ✅ Features:
+    - Toggle between AUTOMATIC (weather checked) and MANUAL (weather ignored)
+    - Create single or recurring schedules
+    - Display schedule list with status tracking
+    - Reschedule and cancel operations
+    - Weather mode stamped on every schedule at creation
+    """
 
-    def __init__(self, parent, scheduler, reschedule_mgr, logger, dashboard_callback=None):
+    POLL_INTERVAL_MS = 30_000   # UI refresh rate (scheduler.py fires the actual spray)
+
+    def __init__(self, parent, scheduler, reschedule_mgr, logger,
+                 dashboard_callback=None, weather_service=None):
         super().__init__(parent)
-        self.scheduler       = scheduler
-        self.reschedule_mgr  = reschedule_mgr
-        self.logger          = logger
+
+        self.scheduler          = scheduler
+        self.reschedule_mgr     = reschedule_mgr
+        self.logger             = logger
         self.dashboard_callback = dashboard_callback
+        self.weather_service    = weather_service
 
         self.view_date     = datetime.now()
         self.selected_date = datetime.now()
-        self.day_buttons   = {}
+
+        # UI toggle — True = Automatic (default)
+        # This controls which weather_mode is stamped on new schedules
+        self.weather_auto_mode = True
 
         self.configure(fg_color=DS.G50)
         self._create_widgets()
         self.refresh_schedule_list()
+        self._log("Scheduling panel ready — AUTOMATIC mode default")
+
+    # ── helpers ───────────────────────────────────────────
+    def _log(self, msg, error=False):
+        """Log message to logger and console"""
+        try:
+            if error and hasattr(self.logger, "log_error"):
+                self.logger.log_error(msg)
+            elif hasattr(self.logger, "log_info"):
+                self.logger.log_info(msg)
+        except Exception:
+            pass
+        print(msg)
+
+    def _stamp_mode(self, schedule_id: str, mode: str):
+        """
+        Write weather_mode into the schedule row in data_store.
+        scheduler.py reads this field when deciding whether to check weather.
+        
+        Args:
+            schedule_id: The schedule ID to update
+            mode: 'automatic' or 'manual'
+        """
+        try:
+            self.scheduler.data_store.update_schedule(
+                schedule_id, {"weather_mode": mode})
+            self._log(f"[Mode] {schedule_id} → weather_mode='{mode}'")
+        except Exception as e:
+            self._log(f"[Mode] Failed to stamp mode for {schedule_id}: {e}",
+                      error=True)
+
+    def _check_weather_now(self):
+        """
+        Live weather check used at schedule-CREATION time in Automatic mode.
+        
+        Returns:
+            (allowed: bool, reason: str) - Whether spray is allowed and why
+        """
+        if not self.weather_service:
+            return True, "Weather service not available — allowed"
+        try:
+            w        = self.weather_service.get_current_weather_cached()
+            f        = self.weather_service.get_forecast_data_cached()
+            rain_pct = 0
+            if f:
+                rain_pct = max(
+                    f.get("today",    {}).get("chance", 0),
+                    f.get("tomorrow", {}).get("chance", 0))
+
+            status   = (w.get("condition", "") if w else "").lower()
+            humidity = w.get("humidity", 0) if w else 0
+
+            bad = {"rainy","raining","thunderstorm","storm","heavy rain"}
+            if status in bad:
+                return False, f"Weather blocked: condition is '{status}'"
+            if rain_pct >= 70:
+                return False, f"Weather blocked: {rain_pct:.0f}% rain chance"
+            if humidity >= 90:
+                return False, f"Weather blocked: humidity {humidity:.0f}%"
+
+            return True, f"Weather OK — rain {rain_pct:.0f}%, humidity {humidity:.0f}%"
+        except Exception as e:
+            return True, f"Weather check error ({e}) — allowed"
 
     # ══════════════════════════════════════════════════════
-    #  MOUSE-WHEEL SCROLL (works without touching scrollbar)
+    #  TRIGGER LOOP  (UI refresh only — scheduler.py fires)
     # ══════════════════════════════════════════════════════
+    def start_trigger_loop(self):
+        """Start the UI refresh loop. Call once from main_ui after startup."""
+        self._log("[Trigger] UI refresh loop started")
+        self._poll_ui()
 
-    def _bind_mousewheel(self, scrollable_frame):
-        def _scroll(event):
-            scrollable_frame._parent_canvas.yview_scroll(
-                int(-1 * (event.delta / 120)), "units"
-            )
-        def _scroll_up(event):
-            scrollable_frame._parent_canvas.yview_scroll(-1, "units")
-        def _scroll_down(event):
-            scrollable_frame._parent_canvas.yview_scroll(1, "units")
-
-        def _bind_all(widget):
-            widget.bind("<MouseWheel>", _scroll,      add="+")
-            widget.bind("<Button-4>",   _scroll_up,   add="+")
-            widget.bind("<Button-5>",   _scroll_down, add="+")
-            for child in widget.winfo_children():
-                _bind_all(child)
-
-        _bind_all(scrollable_frame)
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: _bind_all(scrollable_frame),
-            add="+"
-        )
+    def _poll_ui(self):
+        """Refresh the schedule list so completed/rescheduled rows update in UI."""
+        try:
+            self.refresh_schedule_list()
+        except Exception as e:
+            self._log(f"[Trigger] UI refresh error: {e}", error=True)
+        self.after(self.POLL_INTERVAL_MS, self._poll_ui)
 
     # ══════════════════════════════════════════════════════
-    #  MAIN LAYOUT
+    #  MOUSEWHEEL
+    # ══════════════════════════════════════════════════════
+    def _bind_mousewheel(self, sf):
+        """Bind mousewheel scrolling to scrollable frame"""
+        def _scroll(e):
+            sf._parent_canvas.yview_scroll(int(-1*(e.delta/120)), "units")
+        def _up(e):   sf._parent_canvas.yview_scroll(-1, "units")
+        def _down(e): sf._parent_canvas.yview_scroll( 1, "units")
+        def _bind_all(w):
+            w.bind("<MouseWheel>", _scroll, add="+")
+            w.bind("<Button-4>",   _up,     add="+")
+            w.bind("<Button-5>",   _down,   add="+")
+            for c in w.winfo_children():
+                _bind_all(c)
+        _bind_all(sf)
+        sf.bind("<Configure>", lambda e: _bind_all(sf), add="+")
+
+    # ══════════════════════════════════════════════════════
+    #  LAYOUT
     # ══════════════════════════════════════════════════════
     def _create_widgets(self):
+        """Create main widget layout"""
         self.grid_columnconfigure(0, weight=5)
         self.grid_columnconfigure(1, weight=4)
-        self.grid_rowconfigure(0, weight=1)
-
+        self.grid_rowconfigure(0, weight=0)
+        self.grid_rowconfigure(1, weight=1)
+        self._build_weather_banner()
         self._build_left_column()
         self._build_right_column()
 
-    # ── LEFT COLUMN ───────────────────────────────────────
+    # ══════════════════════════════════════════════════════
+    #  WEATHER BANNER
+    # ══════════════════════════════════════════════════════
+    def _build_weather_banner(self):
+        """Build the weather control banner with mode toggle"""
+        self.weather_banner = ctk.CTkFrame(
+            self, fg_color=DS.AUTO_BG, corner_radius=14,
+            border_width=2, border_color=DS.G200)
+        self.weather_banner.grid(row=0, column=0, columnspan=2,
+                                 sticky="ew", padx=24, pady=(20, 8))
+        self.weather_banner.grid_columnconfigure(1, weight=1)
+
+        # Weather icon background
+        self.weather_icon_bg = ctk.CTkFrame(
+            self.weather_banner, fg_color=DS.G500,
+            width=72, height=72, corner_radius=36)
+        self.weather_icon_bg.grid(row=0, column=0, padx=(18, 14), pady=14)
+        self.weather_icon_bg.pack_propagate(False)
+        self.weather_icon_lbl = ctk.CTkLabel(
+            self.weather_icon_bg, text="🌤", font=_font(30))
+        self.weather_icon_lbl.place(relx=0.5, rely=0.5, anchor="center")
+
+        # Text column
+        text_col = ctk.CTkFrame(self.weather_banner, fg_color="transparent")
+        text_col.grid(row=0, column=1, sticky="w", pady=14)
+        ctk.CTkLabel(text_col, text="Weather Control",
+                     font=_font(26, "bold"), text_color=DS.G800,
+                     anchor="w").pack(anchor="w")
+        self.weather_mode_label = ctk.CTkLabel(
+            text_col, text=self._mode_label_text(),
+            font=_font(20), text_color=DS.AUTO_ACCENT, anchor="w")
+        self.weather_mode_label.pack(anchor="w", pady=(2, 0))
+        self.weather_desc_label = ctk.CTkLabel(
+            text_col, text=self._mode_desc_text(),
+            font=_font(17), text_color=DS.N600, anchor="w")
+        self.weather_desc_label.pack(anchor="w", pady=(1, 0))
+
+        # Toggle button
+        self.weather_toggle_btn = ctk.CTkButton(
+            self.weather_banner, text=self._toggle_btn_text(),
+            command=self._toggle_weather_mode,
+            width=290, height=62, corner_radius=12,
+            fg_color=self._toggle_btn_color(),
+            hover_color=self._toggle_btn_hover(),
+            font=_font(22, "bold"), text_color=DS.WHITE)
+        self.weather_toggle_btn.grid(row=0, column=2, padx=(10, 20), pady=14)
+
+    def _mode_label_text(self):
+        """Get mode label text based on current mode"""
+        return ("🌍  AUTOMATIC MODE — Weather Enabled"
+                if self.weather_auto_mode
+                else "🚫  MANUAL MODE — Weather Disabled")
+
+    def _mode_desc_text(self):
+        """Get mode description text"""
+        return ("Rain detected? Spray is blocked and rescheduled automatically."
+                if self.weather_auto_mode
+                else "Spray runs on schedule — rain forecasts are completely ignored.")
+
+    def _toggle_btn_text(self):
+        """Get toggle button text"""
+        return "⛅  Switch to MANUAL" if self.weather_auto_mode \
+               else "🌤  Switch to AUTOMATIC"
+
+    def _toggle_btn_color(self):
+        """Get toggle button color"""
+        return DS.G500 if self.weather_auto_mode else DS.MANUAL_ACCENT
+
+    def _toggle_btn_hover(self):
+        """Get toggle button hover color"""
+        return DS.G600 if self.weather_auto_mode else "#BF360C"
+
+    def _toggle_weather_mode(self):
+        """Toggle between AUTOMATIC and MANUAL mode"""
+        self.weather_auto_mode = not self.weather_auto_mode
+        self._refresh_weather_banner()
+        msg = ("🌍 AUTOMATIC MODE — Weather checked before every spray."
+               if self.weather_auto_mode
+               else "🚫 MANUAL MODE — Spray runs on schedule, weather ignored.")
+        self._show_success_toast(msg, duration=4500)
+        self._log(f"UI mode → {'AUTOMATIC' if self.weather_auto_mode else 'MANUAL'}")
+
+    def _refresh_weather_banner(self):
+        """Refresh banner visuals based on current mode"""
+        a = self.weather_auto_mode
+        self.weather_banner.configure(
+            fg_color=DS.AUTO_BG if a else DS.MANUAL_BG,
+            border_color=DS.G200 if a else "#FFB74D")
+        self.weather_icon_bg.configure(
+            fg_color=DS.G500 if a else DS.MANUAL_ACCENT)
+        self.weather_icon_lbl.configure(text="🌤" if a else "🚫")
+        self.weather_mode_label.configure(
+            text=self._mode_label_text(),
+            text_color=DS.AUTO_ACCENT if a else DS.MANUAL_ACCENT)
+        self.weather_desc_label.configure(text=self._mode_desc_text())
+        self.weather_toggle_btn.configure(
+            text=self._toggle_btn_text(),
+            fg_color=self._toggle_btn_color(),
+            hover_color=self._toggle_btn_hover())
+
+    # ══════════════════════════════════════════════════════
+    #  LEFT COLUMN
+    # ══════════════════════════════════════════════════════
     def _build_left_column(self):
+        """Build left column with schedule creation form"""
         left = ctk.CTkFrame(self, fg_color="transparent")
-        left.grid(row=0, column=0, sticky="nsew", padx=(24, 12), pady=24)
+        left.grid(row=1, column=0, sticky="nsew", padx=(24, 12), pady=(8, 24))
         left.grid_rowconfigure(1, weight=1)
         left.grid_columnconfigure(0, weight=1)
-
-        hdr = ctk.CTkFrame(left, fg_color="transparent")
-        hdr.grid(row=0, column=0, sticky="ew", pady=(0, 14))
-
-        ctk.CTkLabel(
-            hdr, text="Create Schedule",
-            font=_font(38, "bold"), text_color=DS.G800
-        ).pack(side="left")
-
+        ctk.CTkLabel(left, text="Create Schedule",
+                     font=_font(38, "bold"),
+                     text_color=DS.G800).grid(row=0, column=0, sticky="w",
+                                              pady=(0, 14))
         card = ctk.CTkFrame(left, fg_color=DS.WHITE, corner_radius=16,
-                             border_width=1, border_color=DS.N200)
+                            border_width=1, border_color=DS.N200)
         card.grid(row=1, column=0, sticky="nsew")
         card.grid_rowconfigure(0, weight=1)
         card.grid_columnconfigure(0, weight=1)
-
-        scroll = ctk.CTkScrollableFrame(
-            card, fg_color="transparent",
-            scrollbar_button_color=DS.G200,
-            scrollbar_button_hover_color=DS.G400,
-        )
+        scroll = ctk.CTkScrollableFrame(card, fg_color="transparent",
+                                        scrollbar_button_color=DS.G200,
+                                        scrollbar_button_hover_color=DS.G400)
         scroll.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
-
         self._build_form(scroll)
         self._bind_mousewheel(scroll)
 
     def _build_form(self, parent):
+        """Build the schedule creation form"""
         pad = {"padx": 24}
 
-        # ── DATE ──────────────────────────────
-        self._section_label(parent, "Select Date").pack(anchor="w", pady=(24, 10), **pad)
-
+        # Date section
+        self._section_label(parent, "Select Date").pack(
+            anchor="w", pady=(24, 10), **pad)
         cal_card = ctk.CTkFrame(parent, fg_color=DS.G100, corner_radius=12,
-                                 border_width=1, border_color=DS.G200)
+                                border_width=1, border_color=DS.G200)
         cal_card.pack(fill="x", **pad)
-
-        # Month nav
         nav = ctk.CTkFrame(cal_card, fg_color="transparent")
         nav.pack(fill="x", padx=14, pady=(14, 6))
         nav.grid_columnconfigure(1, weight=1)
-
-        ctk.CTkButton(
-            nav, text="‹", width=60, height=60, corner_radius=30,
-            fg_color=DS.G500, hover_color=DS.G600,
-            font=_font(32, "bold"), command=self._prev_month
-        ).grid(row=0, column=0, padx=(0, 8))
-
-        self.cal_month_label = ctk.CTkLabel(
-            nav, text="", font=_font(26, "bold"), text_color=DS.G800
-        )
+        ctk.CTkButton(nav, text="‹", width=60, height=60, corner_radius=30,
+                      fg_color=DS.G500, hover_color=DS.G600,
+                      font=_font(32, "bold"),
+                      command=self._prev_month).grid(row=0, column=0, padx=(0,8))
+        self.cal_month_label = ctk.CTkLabel(nav, text="",
+                                            font=_font(26, "bold"),
+                                            text_color=DS.G800)
         self.cal_month_label.grid(row=0, column=1)
-
-        ctk.CTkButton(
-            nav, text="›", width=60, height=60, corner_radius=30,
-            fg_color=DS.G500, hover_color=DS.G600,
-            font=_font(32, "bold"), command=self._next_month
-        ).grid(row=0, column=2, padx=(8, 0))
-
-        # Days
+        ctk.CTkButton(nav, text="›", width=60, height=60, corner_radius=30,
+                      fg_color=DS.G500, hover_color=DS.G600,
+                      font=_font(32, "bold"),
+                      command=self._next_month).grid(row=0, column=2, padx=(8,0))
         self.days_grid_frame = ctk.CTkFrame(cal_card, fg_color="transparent")
-        self.days_grid_frame.pack(fill="both", expand=True, padx=12, pady=(0, 14))
+        self.days_grid_frame.pack(fill="both", expand=True,
+                                  padx=12, pady=(0, 14))
         self._build_calendar_grid()
 
-        # ── TIME ──────────────────────────────
-        self._section_label(parent, "Select Time").pack(anchor="w", pady=(24, 10), **pad)
-
+        # Time section
+        self._section_label(parent, "Select Time").pack(
+            anchor="w", pady=(24, 10), **pad)
         time_row = ctk.CTkFrame(parent, fg_color="transparent")
         time_row.pack(anchor="w", **pad)
-
-        self.hour_cb = self._dropdown(time_row, [f"{i:02d}" for i in range(1, 13)], "08", 140)
+        self.hour_cb = self._dropdown(
+            time_row, [f"{i:02d}" for i in range(1, 13)], "08", 140)
         self.hour_cb.pack(side="left")
-
         ctk.CTkLabel(time_row, text=":", font=_font(36, "bold"),
                      text_color=DS.N800).pack(side="left", padx=6)
-
-        self.min_cb = self._dropdown(time_row, [f"{i:02d}" for i in range(0, 60, 5)], "00", 140)
+        self.min_cb = self._dropdown(
+            time_row, [f"{i:02d}" for i in range(0, 60, 5)], "00", 140)
         self.min_cb.pack(side="left")
-
         self.ampm_cb = self._dropdown(time_row, ["AM", "PM"], "AM", 120)
         self.ampm_cb.pack(side="left", padx=(14, 0))
 
-        # ── SPRAY TYPE ────────────────────────
-        self._section_label(parent, "Spray Type").pack(anchor="w", pady=(24, 10), **pad)
-
+        # Spray type section
+        self._section_label(parent, "Spray Type").pack(
+            anchor="w", pady=(24, 10), **pad)
         self.spray_var = ctk.StringVar(value="Fertilizer")
         spray_row = ctk.CTkFrame(parent, fg_color="transparent")
         spray_row.pack(anchor="w", **pad)
-
         for val in ["Fertilizer", "Pesticide"]:
             self._radio_pill(spray_row, val, self.spray_var, val,
-                             cmd=self._on_spray_type_change).pack(side="left", padx=(0, 16))
+                             cmd=self._on_spray_type_change).pack(
+                side="left", padx=(0, 16))
 
-        # ── CONTAINER ─────────────────────────
-        self._section_label(parent, "Container").pack(anchor="w", pady=(24, 10), **pad)
-
+        # Container section
+        self._section_label(parent, "Container").pack(
+            anchor="w", pady=(24, 10), **pad)
         self.cont_var = ctk.StringVar(value="Container 1")
         cont_row = ctk.CTkFrame(parent, fg_color="transparent")
         cont_row.pack(anchor="w", **pad)
-
         for val in ["Container 1", "Container 2"]:
-            self._radio_pill(cont_row, val, self.cont_var, val).pack(side="left", padx=(0, 16))
+            self._radio_pill(cont_row, val, self.cont_var, val).pack(
+                side="left", padx=(0, 16))
 
-        # ── VOLUME ────────────────────────────
-        self._section_label(parent, "Spray Volume (mL)").pack(anchor="w", pady=(24, 10), **pad)
-
+        # Volume section
+        self._section_label(parent, "Spray Volume (mL)").pack(
+            anchor="w", pady=(24, 10), **pad)
         vol_row = ctk.CTkFrame(parent, fg_color="transparent")
         vol_row.pack(anchor="w", **pad)
-
         self.vol_entry = ctk.CTkEntry(
             vol_row, width=180, height=64,
             fg_color=DS.WHITE, border_color=DS.G400, border_width=2,
-            font=_font(26), text_color=DS.N800,
-            placeholder_text="1000"
-        )
+            font=_font(26), text_color=DS.N800, placeholder_text="1000")
         self.vol_entry.insert(0, "1000")
         self.vol_entry.pack(side="left")
-
         ctk.CTkLabel(vol_row, text="mL", font=_font(24, "bold"),
                      text_color=DS.N600).pack(side="left", padx=(10, 0))
+        ctk.CTkLabel(parent,
+                     text="Pump rate: 5 L/min  ·  Duration auto-calculated",
+                     font=_font(18), text_color=DS.N400).pack(
+            anchor="w", padx=24, pady=(4, 0))
 
-        ctk.CTkLabel(
-            parent, text="Pump rate: 5 L/min  ·  Duration auto-calculated",
-            font=_font(18), text_color=DS.N400
-        ).pack(anchor="w", padx=24, pady=(4, 0))
-
-        # ── RECURRING ────────────────────────
-        self._section_label(parent, "Recurring (Optional)").pack(anchor="w", pady=(24, 10), **pad)
-
+        # Recurring section
+        self._section_label(parent, "Recurring (Optional)").pack(
+            anchor="w", pady=(24, 10), **pad)
         self.recurring_var = ctk.BooleanVar(value=False)
-        ctk.CTkCheckBox(
-            parent, text="Enable recurring schedule",
-            variable=self.recurring_var, command=self._toggle_recurring,
-            font=_font(22), text_color=DS.N800,
-            checkbox_width=36, checkbox_height=36,
-            fg_color=DS.G500, hover_color=DS.G400,
-            checkmark_color=DS.WHITE
-        ).pack(anchor="w", **pad)
-
+        ctk.CTkCheckBox(parent, text="Enable recurring schedule",
+                        variable=self.recurring_var,
+                        command=self._toggle_recurring,
+                        font=_font(22), text_color=DS.N800,
+                        checkbox_width=36, checkbox_height=36,
+                        fg_color=DS.G500, hover_color=DS.G400,
+                        checkmark_color=DS.WHITE).pack(anchor="w", **pad)
         self.recurring_frame = ctk.CTkFrame(
             parent, fg_color=DS.G100, corner_radius=10,
-            border_width=1, border_color=DS.G200
-        )
-
+            border_width=1, border_color=DS.G200)
         ctk.CTkLabel(self.recurring_frame, text="Interval (days):",
-                     font=_font(20), text_color=DS.N600
-                     ).pack(anchor="w", padx=16, pady=(14, 4))
+                     font=_font(20), text_color=DS.N600).pack(
+            anchor="w", padx=16, pady=(14, 4))
         self.interval_entry = ctk.CTkEntry(
             self.recurring_frame, height=60, fg_color=DS.WHITE,
             border_color=DS.G400, border_width=2, font=_font(22),
-            placeholder_text="e.g., 7"
-        )
+            placeholder_text="e.g., 7")
         self.interval_entry.pack(fill="x", padx=16, pady=(0, 10))
-
         ctk.CTkLabel(self.recurring_frame, text="Number of occurrences:",
-                     font=_font(20), text_color=DS.N600
-                     ).pack(anchor="w", padx=16, pady=(6, 4))
+                     font=_font(20), text_color=DS.N600).pack(
+            anchor="w", padx=16, pady=(6, 4))
         self.count_entry = ctk.CTkEntry(
             self.recurring_frame, height=60, fg_color=DS.WHITE,
             border_color=DS.G400, border_width=2, font=_font(22),
-            placeholder_text="e.g., 4"
-        )
+            placeholder_text="e.g., 4")
         self.count_entry.pack(fill="x", padx=16, pady=(0, 16))
 
-        # ── CREATE BUTTON ─────────────────────
-        ctk.CTkButton(
-            parent,
-            text="Create Schedule",
-            command=self._handle_create,
-            fg_color=DS.G500, hover_color=DS.G600,
-            height=80, corner_radius=14,
-            font=_font(28, "bold"), text_color=DS.WHITE
-        ).pack(fill="x", padx=24, pady=(28, 22))
+        # Create button
+        ctk.CTkButton(parent, text="Create Schedule",
+                      command=self._handle_create,
+                      fg_color=DS.G500, hover_color=DS.G600,
+                      height=80, corner_radius=14,
+                      font=_font(28, "bold"),
+                      text_color=DS.WHITE).pack(
+            fill="x", padx=24, pady=(28, 22))
 
-    # ── RIGHT COLUMN ──────────────────────────────────────
+    # ══════════════════════════════════════════════════════
+    #  RIGHT COLUMN
+    # ══════════════════════════════════════════════════════
     def _build_right_column(self):
+        """Build right column with active schedules list"""
         right = ctk.CTkFrame(self, fg_color="transparent")
-        right.grid(row=0, column=1, sticky="nsew", padx=(12, 24), pady=24)
+        right.grid(row=1, column=1, sticky="nsew",
+                   padx=(12, 24), pady=(8, 24))
         right.grid_rowconfigure(1, weight=1)
         right.grid_columnconfigure(0, weight=1)
-
         hdr = ctk.CTkFrame(right, fg_color="transparent")
         hdr.grid(row=0, column=0, sticky="ew", pady=(0, 14))
         hdr.grid_columnconfigure(0, weight=1)
-
-        ctk.CTkLabel(
-            hdr, text="Active Schedules",
-            font=_font(38, "bold"), text_color=DS.G800
-        ).grid(row=0, column=0, sticky="w")
-
+        ctk.CTkLabel(hdr, text="Active Schedules",
+                     font=_font(38, "bold"),
+                     text_color=DS.G800).grid(row=0, column=0, sticky="w")
         btn_row = ctk.CTkFrame(hdr, fg_color="transparent")
         btn_row.grid(row=0, column=1, sticky="e")
-
-        ctk.CTkButton(
-            btn_row, text="Refresh",
-            command=self.refresh_schedule_list,
-            fg_color=DS.BLUE, hover_color=DS.BLUE_D,
-            height=56, corner_radius=10,
-            font=_font(20, "bold"), width=160
-        ).pack(side="left", padx=(0, 10))
-
-        ctk.CTkButton(
-            btn_row, text="Cancel All",
-            command=self._cancel_all,
-            fg_color=DS.RED, hover_color=DS.RED_D,
-            height=56, corner_radius=10,
-            font=_font(20, "bold"), width=180
-        ).pack(side="left")
-
+        ctk.CTkButton(btn_row, text="Refresh",
+                      command=self.refresh_schedule_list,
+                      fg_color=DS.BLUE, hover_color=DS.BLUE_D,
+                      height=56, corner_radius=10,
+                      font=_font(20, "bold"), width=160).pack(
+            side="left", padx=(0, 10))
+        ctk.CTkButton(btn_row, text="Cancel All",
+                      command=self._cancel_all,
+                      fg_color=DS.RED, hover_color=DS.RED_D,
+                      height=56, corner_radius=10,
+                      font=_font(20, "bold"), width=180).pack(side="left")
         card = ctk.CTkFrame(right, fg_color=DS.WHITE, corner_radius=16,
-                             border_width=1, border_color=DS.N200)
+                            border_width=1, border_color=DS.N200)
         card.grid(row=1, column=0, sticky="nsew")
         card.grid_rowconfigure(0, weight=1)
         card.grid_columnconfigure(0, weight=1)
-
         self.schedule_list = ctk.CTkScrollableFrame(
             card, fg_color="transparent",
             scrollbar_button_color=DS.G200,
-            scrollbar_button_hover_color=DS.G400,
-        )
+            scrollbar_button_hover_color=DS.G400)
         self.schedule_list.grid(row=0, column=0, sticky="nsew", padx=2, pady=2)
         self._bind_mousewheel(self.schedule_list)
 
     # ══════════════════════════════════════════════════════
-    #  HELPER WIDGETS
+    #  WIDGETS
     # ══════════════════════════════════════════════════════
     def _section_label(self, parent, text):
-        return ctk.CTkLabel(parent, text=text, font=_font(28, "bold"), text_color=DS.G800)
+        """Create section label"""
+        return ctk.CTkLabel(parent, text=text, font=_font(28, "bold"),
+                            text_color=DS.G800)
 
     def _dropdown(self, parent, values, default, width):
+        """Create dropdown/combobox"""
         cb = ctk.CTkComboBox(
             parent, values=values, width=width, height=64,
             fg_color=DS.WHITE, button_color=DS.G500,
             border_color=DS.G400, border_width=3,
-            dropdown_fg_color=DS.WHITE,
-            dropdown_hover_color=DS.G100,
-            font=_font(26), text_color=DS.N800,
-            dropdown_font=_font(24),
-            button_hover_color=DS.G600,
-        )
+            dropdown_fg_color=DS.WHITE, dropdown_hover_color=DS.G100,
+            font=_font(26), text_color=DS.N800, dropdown_font=_font(24),
+            button_hover_color=DS.G600)
         cb.set(default)
         return cb
 
     def _radio_pill(self, parent, text, variable, value, cmd=None):
+        """Create radio button pill"""
         return ctk.CTkRadioButton(
             parent, text=text, variable=variable, value=value,
-            text_color=DS.N800, fg_color=DS.G500,
-            hover_color=DS.G400,
-            font=_font(24),
-            radiobutton_width=30, radiobutton_height=30,
-            command=cmd
-        )
+            text_color=DS.N800, fg_color=DS.G500, hover_color=DS.G400,
+            font=_font(24), radiobutton_width=30, radiobutton_height=30,
+            command=cmd)
 
     # ══════════════════════════════════════════════════════
     #  CALENDAR
     # ══════════════════════════════════════════════════════
     def _build_calendar_grid(self):
+        """Build calendar month grid"""
         for w in self.days_grid_frame.winfo_children():
             w.destroy()
-
         self.cal_month_label.configure(
-            text=f"{self.view_date.strftime('%B')} {self.view_date.year}"
-        )
-
-        for i, day_name in enumerate(["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]):
-            ctk.CTkLabel(
-                self.days_grid_frame, text=day_name,
-                width=56, font=_font(18, "bold"), text_color=DS.G600
-            ).grid(row=0, column=i, padx=2, pady=(4, 6))
-
+            text=f"{self.view_date.strftime('%B')} {self.view_date.year}")
+        for i, d in enumerate(["Su","Mo","Tu","We","Th","Fr","Sa"]):
+            ctk.CTkLabel(self.days_grid_frame, text=d, width=56,
+                         font=_font(18, "bold"),
+                         text_color=DS.G600).grid(
+                row=0, column=i, padx=2, pady=(4, 6))
         cal   = calendar.monthcalendar(self.view_date.year, self.view_date.month)
         today = datetime.now().date()
-
         for r, week in enumerate(cal):
             for c, day in enumerate(week):
-                if day == 0:
-                    continue
-                cur  = datetime(self.view_date.year, self.view_date.month, day).date()
+                if day == 0: continue
+                cur  = datetime(self.view_date.year,
+                                self.view_date.month, day).date()
                 past = cur < today
-                sel  = (
-                    day == self.selected_date.day
-                    and self.view_date.month == self.selected_date.month
-                    and self.view_date.year  == self.selected_date.year
-                )
-                is_today = cur == today
-
-                fg = DS.G500 if sel else DS.N100 if past else (DS.G100 if is_today else "transparent")
-                tc = DS.WHITE if sel else DS.N400 if past else (DS.G600 if is_today else DS.N800)
+                sel  = (day == self.selected_date.day
+                        and self.view_date.month == self.selected_date.month
+                        and self.view_date.year  == self.selected_date.year)
+                itd  = cur == today
+                fg = (DS.G500 if sel else DS.N100 if past
+                      else (DS.G100 if itd else "transparent"))
+                tc = (DS.WHITE if sel else DS.N400 if past
+                      else (DS.G600 if itd else DS.N800))
                 hv = DS.G400 if sel else DS.N100 if past else DS.G200
-
                 btn = ctk.CTkButton(
-                    self.days_grid_frame,
-                    text=str(day), width=56, height=54,
-                    corner_radius=10, anchor="center",
+                    self.days_grid_frame, text=str(day),
+                    width=56, height=54, corner_radius=10, anchor="center",
                     fg_color=fg, text_color=tc, hover_color=hv,
-                    font=_font(20, "bold" if sel or is_today else "normal"),
-                    border_width=2 if is_today and not sel else 0,
+                    font=_font(20, "bold" if (sel or itd) else "normal"),
+                    border_width=2 if itd and not sel else 0,
                     border_color=DS.G400,
                     state="disabled" if past else "normal",
-                    command=(lambda d=day: self._select_day(d)) if not past else lambda: None
-                )
+                    command=(lambda d=day: self._select_day(d))
+                    if not past else lambda: None)
                 btn.grid(row=r+1, column=c, padx=2, pady=2, sticky="nsew")
                 self.days_grid_frame.grid_rowconfigure(r+1, weight=1)
                 self.days_grid_frame.grid_columnconfigure(c, weight=1)
 
     def _select_day(self, day):
+        """Select a day in the calendar"""
         self.selected_date = self.view_date.replace(day=day)
         self._build_calendar_grid()
 
     def _prev_month(self):
+        """Navigate to previous month"""
         m, y = self.view_date.month - 1, self.view_date.year
-        if m == 0:
-            m, y = 12, y - 1
+        if m == 0: m, y = 12, y - 1
         self.view_date = self.view_date.replace(year=y, month=m, day=1)
         self._build_calendar_grid()
 
     def _next_month(self):
+        """Navigate to next month"""
         m, y = self.view_date.month + 1, self.view_date.year
-        if m == 13:
-            m, y = 1, y + 1
+        if m == 13: m, y = 1, y + 1
         self.view_date = self.view_date.replace(year=y, month=m, day=1)
         self._build_calendar_grid()
 
     def _toggle_recurring(self):
+        """Toggle recurring schedule options"""
         if self.recurring_var.get():
             self.recurring_frame.pack(fill="x", padx=24, pady=(8, 0))
         else:
             self.recurring_frame.pack_forget()
 
     def _on_spray_type_change(self):
+        """Handle spray type change - auto-select container"""
         mapping = {"Fertilizer": "Container 1", "Pesticide": "Container 2"}
         self.cont_var.set(mapping.get(self.spray_var.get(), "Container 1"))
 
     # ══════════════════════════════════════════════════════
-    #  TIME CONVERSION
+    #  TIME HELPERS
     # ══════════════════════════════════════════════════════
     def _convert_to_24h(self, h12, ampm):
+        """Convert 12-hour to 24-hour format"""
         h = int(h12)
-        if ampm == "AM":
-            return 0 if h == 12 else h
-        return 12 if h == 12 else h + 12
+        return (0 if h == 12 else h) if ampm == "AM" \
+               else (12 if h == 12 else h + 12)
 
     def _convert_to_12h(self, h24):
+        """Convert 24-hour to 12-hour format"""
         h = int(h24)
-        if h == 0:   return 12, "AM"
-        if h < 12:   return h,  "AM"
-        if h == 12:  return 12, "PM"
+        if h == 0:  return 12, "AM"
+        if h < 12:  return h,  "AM"
+        if h == 12: return 12, "PM"
         return h - 12, "PM"
 
     def _is_datetime_in_past(self, date_str, time_str):
+        """Check if datetime is in the past"""
         try:
             y, mo, d = map(int, date_str.split('-'))
             h, mi    = map(int, time_str.split(':'))
@@ -474,6 +621,16 @@ class SchedulingPanel(ctk.CTkFrame):
     #  SCHEDULE CREATION
     # ══════════════════════════════════════════════════════
     def _handle_create(self):
+        """
+        Handle schedule creation.
+        
+        MANUAL MODE  → stamp weather_mode='manual', no weather check, create immediately
+        AUTOMATIC MODE → check live weather first; block if rain detected
+        
+        scheduler.py reads weather_mode from data_store when the schedule fires.
+        
+        ✅ VERIFIED: weather_mode properly stamped and used
+        """
         date_str = self.selected_date.strftime("%Y-%m-%d")
         h24      = self._convert_to_24h(self.hour_cb.get(), self.ampm_cb.get())
         time_str = f"{h24:02d}:{self.min_cb.get()}"
@@ -482,42 +639,72 @@ class SchedulingPanel(ctk.CTkFrame):
             self._show_invalid_time_dialog()
             return
 
+        # ── weather gate at creation (AUTOMATIC only) ─────────────────
+        if self.weather_auto_mode:
+            allowed, reason = self._check_weather_now()
+            if not allowed:
+                self._show_weather_blocked_dialog(reason)
+                return
+        # MANUAL: fall straight through — no weather interaction at all
+
         try:
             vol = float(self.vol_entry.get())
             if vol <= 0:
-                messagebox.showerror("Error", "Volume must be greater than 0 mL")
+                messagebox.showerror("Error", "Volume must be > 0 mL")
                 return
+
+            weather_mode = "automatic" if self.weather_auto_mode else "manual"
+            mode_tag     = "🌍 AUTO" if self.weather_auto_mode else "🚫 MANUAL"
 
             if self.recurring_var.get():
                 if not self.interval_entry.get() or not self.count_entry.get():
-                    messagebox.showerror("Error", "Fill in interval and count for recurring schedule")
+                    messagebox.showerror("Error",
+                        "Fill in interval and count for recurring schedule")
                     return
-
                 interval = int(self.interval_entry.get())
                 count    = int(self.count_entry.get())
-
                 if interval < 1:
-                    messagebox.showerror("Error", "Interval must be at least 1 day")
+                    messagebox.showerror("Error", "Interval must be ≥ 1 day")
                     return
                 if count < 2:
-                    messagebox.showerror("Error", "Count must be at least 2 for recurring schedules")
+                    messagebox.showerror("Error",
+                        "Count must be ≥ 2 for recurring schedule")
                     return
 
+                # Create recurring schedules
                 schedules = self.scheduler.create_recurring_schedules(
                     date_str, interval, count, time_str,
-                    self.spray_var.get(), self.cont_var.get(), vol
-                )
-                self._show_success_toast(f"Created {len(schedules)} recurring schedules")
+                    self.spray_var.get(), self.cont_var.get(), vol)
+
+                # Stamp mode on each schedule
+                for s in schedules:
+                    self._stamp_mode(s["id"], weather_mode)
+
+                self._show_success_toast(
+                    f"✅ {len(schedules)} schedules created [{mode_tag}]")
+                self._log(f"Created {len(schedules)} recurring schedules "
+                          f"mode={weather_mode}")
                 if self.dashboard_callback:
                     for s in schedules:
                         self.dashboard_callback(s)
+
             else:
+                # Create single schedule
                 new_task = self.scheduler.create_schedule(
-                    date_str, time_str, self.spray_var.get(), self.cont_var.get(), vol
-                )
+                    date_str, time_str,
+                    self.spray_var.get(), self.cont_var.get(), vol)
+
+                # Stamp mode IMMEDIATELY after creation
+                self._stamp_mode(new_task["id"], weather_mode)
+
                 h12, ap = self._convert_to_12h(h24)
-                disp = f"{h12:02d}:{self.min_cb.get()} {ap}"
-                self._show_success_toast(f"Schedule created for {date_str} at {disp}")
+                disp    = f"{h12:02d}:{self.min_cb.get()} {ap}"
+                self._show_success_toast(
+                    f"✅ Schedule created: {date_str} at {disp} [{mode_tag}]")
+                self._log(
+                    f"Created {new_task['id']} "
+                    f"mode={weather_mode} "
+                    f"vol={vol} mL container={self.cont_var.get()}")
                 if self.dashboard_callback:
                     self.dashboard_callback(new_task)
 
@@ -527,531 +714,585 @@ class SchedulingPanel(ctk.CTkFrame):
             messagebox.showerror("Error", f"Invalid input: {e}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to create schedule: {e}")
-            self.logger.log_error(f"Schedule creation error: {e}")
+            self._log(f"Schedule creation error: {e}", error=True)
 
     # ══════════════════════════════════════════════════════
     #  SCHEDULE LIST
     # ══════════════════════════════════════════════════════
     def refresh_schedule_list(self):
+        """Refresh the schedule list display"""
         for w in self.schedule_list.winfo_children():
             w.destroy()
-
         schedules = self.scheduler.data_store.get_active_schedules()
-
         if not schedules:
             empty = ctk.CTkFrame(self.schedule_list, fg_color="transparent")
             empty.pack(expand=True, pady=60)
-            ctk.CTkLabel(
-                empty, text="No active schedules",
-                font=_font(28, "bold"), text_color=DS.N400
-            ).pack(pady=(8, 4))
-            ctk.CTkLabel(
-                empty, text="Create one using the form on the left",
-                font=_font(22), text_color=DS.N400
-            ).pack()
+            ctk.CTkLabel(empty, text="No active schedules",
+                         font=_font(28, "bold"),
+                         text_color=DS.N400).pack(pady=(8, 4))
+            ctk.CTkLabel(empty,
+                         text="Create one using the form on the left",
+                         font=_font(22), text_color=DS.N400).pack()
             return
-
-        for sc in sorted(schedules, key=lambda x: f"{x['date']} {x['time']}"):
+        for sc in sorted(schedules,
+                         key=lambda x: f"{x['date']} {x['time']}"):
             self._create_card(sc)
 
     def _create_card(self, sc):
+        """Create a schedule card display"""
+        mode      = _get_mode(sc)
+        is_manual = (mode == "manual")
+
         card = ctk.CTkFrame(
-            self.schedule_list,
-            fg_color=DS.WHITE, corner_radius=14,
-            border_width=1, border_color=DS.N200
-        )
+            self.schedule_list, fg_color=DS.WHITE, corner_radius=14,
+            border_width=2 if is_manual else 1,
+            border_color="#FFB74D" if is_manual else DS.N200)
         card.pack(fill="x", padx=12, pady=8)
 
-        strip = ctk.CTkFrame(card, fg_color=DS.G500, corner_radius=10, height=6)
-        strip.pack(fill="x", padx=3, pady=(3, 0))
+        # Top accent bar
+        ctk.CTkFrame(card,
+                     fg_color=DS.MANUAL_ACCENT if is_manual else DS.G500,
+                     corner_radius=10, height=6).pack(
+            fill="x", padx=3, pady=(3, 0))
 
         body = ctk.CTkFrame(card, fg_color="transparent")
         body.pack(fill="x", padx=16, pady=14)
         body.grid_columnconfigure(0, weight=1)
 
-        tp    = sc['time'].split(':')
+        # Convert time to 12-hour format
+        tp      = sc["time"].split(":")
         h12, ap = self._convert_to_12h(int(tp[0]))
         disp_t  = f"{h12:02d}:{tp[1]} {ap}"
 
+        # Top row: date/time and badges
         top_row = ctk.CTkFrame(body, fg_color="transparent")
         top_row.grid(row=0, column=0, sticky="ew")
         top_row.grid_columnconfigure(0, weight=1)
 
-        ctk.CTkLabel(
-            top_row,
-            text=f"{sc['date']}  -  {disp_t}",
-            font=_font(26, "bold"), text_color=DS.G800, anchor="w"
-        ).grid(row=0, column=0, sticky="w")
+        ctk.CTkLabel(top_row,
+                     text=f"{sc['date']}  —  {disp_t}",
+                     font=_font(26, "bold"),
+                     text_color="#BF360C" if is_manual else DS.G800,
+                     anchor="w").grid(row=0, column=0, sticky="w")
 
+        # Mode badge
+        mb = ctk.CTkFrame(top_row,
+                          fg_color=DS.MANUAL_BG if is_manual else DS.AUTO_BG,
+                          corner_radius=10)
+        mb.grid(row=0, column=1, sticky="e", padx=(8, 0))
+        ctk.CTkLabel(mb,
+                     text="🚫 MANUAL" if is_manual else "🌍 AUTO",
+                     font=_font(18, "bold"),
+                     text_color=DS.MANUAL_ACCENT if is_manual
+                     else DS.AUTO_ACCENT).pack(padx=10, pady=5)
+
+        # Status badge
         status_colors = {
-            "pending":   (DS.AMBER,  "#FFF8E1"),
-            "completed": (DS.G500,   DS.G100),
-            "cancelled": (DS.RED,    "#FFF0F0"),
+            "scheduled":   (DS.AMBER, "#FFF8E1"),
+            "rescheduled": (DS.BLUE,  "#E3F2FD"),
+            "executing":   (DS.G500,  DS.G100),
+            "completed":   (DS.G500,  DS.G100),
+            "cancelled":   (DS.RED,   "#FFF0F0"),
         }
-        st = sc.get('status', 'pending').lower()
+        st       = sc.get("status", "scheduled").lower()
         sc_color, sc_bg = status_colors.get(st, (DS.N600, DS.N100))
-        badge = ctk.CTkFrame(top_row, fg_color=sc_bg, corner_radius=12)
-        badge.grid(row=0, column=1, sticky="e")
-        ctk.CTkLabel(
-            badge, text=st.capitalize(),
-            font=_font(20, "bold"), text_color=sc_color
-        ).pack(padx=14, pady=6)
+        sb = ctk.CTkFrame(top_row, fg_color=sc_bg, corner_radius=12)
+        sb.grid(row=0, column=2, sticky="e", padx=(8, 0))
+        ctk.CTkLabel(sb, text=st.capitalize(),
+                     font=_font(20, "bold"),
+                     text_color=sc_color).pack(padx=14, pady=6)
 
+        # Divider
         ctk.CTkFrame(body, fg_color=DS.N200, height=1).grid(
             row=1, column=0, sticky="ew", pady=10)
 
-        info_frame = ctk.CTkFrame(body, fg_color="transparent")
-        info_frame.grid(row=2, column=0, sticky="ew")
-        info_frame.grid_columnconfigure((0,1), weight=1)
+        # Info grid
+        info = ctk.CTkFrame(body, fg_color="transparent")
+        info.grid(row=2, column=0, sticky="ew")
+        info.grid_columnconfigure((0, 1), weight=1)
 
-        vol  = sc.get('volume_ml', 1000)
+        vol  = sc.get("volume_ml", 1000)
         dur  = self.scheduler.calculate_spray_duration(vol)
-        resc = sc.get('reschedule_count', 0)
+        resc = sc.get("reschedule_count", 0)
 
+        # Weather info
+        weather_text = ("🚫 MANUAL — No weather check"
+                        if is_manual else "🌍 AUTO — Weather checked")
+        weather_tc   = DS.MANUAL_ACCENT if is_manual else DS.AUTO_ACCENT
+        weather_bg   = DS.MANUAL_BG     if is_manual else DS.AUTO_BG
+
+        # Info pairs
         pairs = [
-            ("Type",       sc['spray_type']),
-            ("Container",  sc['container']),
-            ("Volume",     f"{vol} mL"),
-            ("Duration",   f"{dur:.1f}s"),
-            ("Reschedules",f"{resc}/3"),
+            ("Type",        sc.get("spray_type", "?")),
+            ("Container",   sc.get("container",  "?")),
+            ("Volume",      f"{vol} mL"),
+            ("Duration",    f"{dur:.1f} s"),
+            ("Weather",     weather_text),
+            ("Reschedules", f"{resc}/3"),
         ]
 
         for idx, (label, val) in enumerate(pairs):
-            col = idx % 2
-            row = idx // 2 + 3
-            cell = ctk.CTkFrame(info_frame, fg_color=DS.G50, corner_radius=8)
-            cell.grid(row=row, column=col, sticky="ew", padx=(0 if col==0 else 6, 0), pady=3)
-            info_frame.grid_rowconfigure(row, weight=0)
+            col  = idx % 2
+            row  = idx // 2 + 3
+            bg   = weather_bg if label == "Weather" else DS.G50
+            tc   = weather_tc if label == "Weather" else DS.N800
+            cell = ctk.CTkFrame(info, fg_color=bg, corner_radius=8)
+            cell.grid(row=row, column=col, sticky="ew",
+                      padx=(0 if col == 0 else 6, 0), pady=3)
+            info.grid_rowconfigure(row, weight=0)
             ctk.CTkLabel(cell, text=label, font=_font(18, "bold"),
-                         text_color=DS.N400).pack(anchor="w", padx=10, pady=(6, 0))
-            ctk.CTkLabel(cell, text=val, font=_font(24, "bold"),
-                         text_color=DS.N800).pack(anchor="w", padx=10, pady=(0, 6))
+                         text_color=DS.N400).pack(anchor="w",
+                                                   padx=10, pady=(6, 0))
+            ctk.CTkLabel(cell, text=val, font=_font(22, "bold"),
+                         text_color=tc).pack(anchor="w", padx=10, pady=(0, 6))
 
+        # Buttons
         btn_row = ctk.CTkFrame(body, fg_color="transparent")
         btn_row.grid(row=10, column=0, sticky="ew", pady=(14, 0))
 
-        ctk.CTkButton(
-            btn_row, text="Reschedule",
-            fg_color=DS.AMBER, hover_color=DS.AMBER_D,
-            width=200, height=60, corner_radius=10,
-            font=_font(22, "bold"), text_color=DS.WHITE,
-            command=lambda s=sc: self._open_reschedule_dialog(s)
-        ).pack(side="left", padx=(0, 10))
-
-        ctk.CTkButton(
-            btn_row, text="Cancel",
-            fg_color=DS.RED, hover_color=DS.RED_D,
-            width=170, height=60, corner_radius=10,
-            font=_font(22, "bold"), text_color=DS.WHITE,
-            command=lambda s=sc: self._cancel_one(s['id'])
-        ).pack(side="left")
+        ctk.CTkButton(btn_row, text="Reschedule",
+                      fg_color=DS.AMBER, hover_color=DS.AMBER_D,
+                      width=200, height=60, corner_radius=10,
+                      font=_font(22, "bold"), text_color=DS.WHITE,
+                      command=lambda s=sc: self._open_reschedule_dialog(s)
+                      ).pack(side="left", padx=(0, 10))
+        ctk.CTkButton(btn_row, text="Cancel",
+                      fg_color=DS.RED, hover_color=DS.RED_D,
+                      width=170, height=60, corner_radius=10,
+                      font=_font(22, "bold"), text_color=DS.WHITE,
+                      command=lambda s=sc: self._cancel_one(s["id"])
+                      ).pack(side="left")
 
     # ══════════════════════════════════════════════════════
     #  DIALOGS
     # ══════════════════════════════════════════════════════
     def _center_dialog(self, dlg, w, h):
+        """Center dialog on screen"""
         dlg.update_idletasks()
         x = (dlg.winfo_screenwidth()  // 2) - (w // 2)
         y = (dlg.winfo_screenheight() // 2) - (h // 2)
         dlg.geometry(f"{w}x{h}+{x}+{y}")
 
     def _show_invalid_time_dialog(self):
+        """Show dialog for invalid time selection"""
         dlg = ctk.CTkToplevel(self)
-        dlg.title("")
-        dlg.overrideredirect(True)
-        dlg.transient(self)
-        dlg.grab_set()
-        dlg.resizable(False, False)
+        dlg.title(""); dlg.overrideredirect(True)
+        dlg.transient(self); dlg.grab_set(); dlg.resizable(False, False)
         self._center_dialog(dlg, 540, 310)
-
         outer = ctk.CTkFrame(dlg, fg_color=DS.WHITE, corner_radius=16,
-                              border_width=1, border_color=DS.N200)
+                             border_width=1, border_color=DS.N200)
         outer.pack(fill="both", expand=True, padx=2, pady=2)
-
-        ctk.CTkFrame(outer, fg_color=DS.AMBER, height=5, corner_radius=0).pack(fill="x")
-
+        ctk.CTkFrame(outer, fg_color=DS.AMBER, height=5,
+                     corner_radius=0).pack(fill="x")
         inner = ctk.CTkFrame(outer, fg_color="transparent")
         inner.pack(fill="both", expand=True, padx=30, pady=26)
-
         hdr = ctk.CTkFrame(inner, fg_color="transparent")
         hdr.pack(fill="x", pady=(0, 14))
-
-        icon_bg = ctk.CTkFrame(hdr, fg_color=DS.AMBER, width=66, height=66, corner_radius=33)
-        icon_bg.pack(side="left", padx=(0, 16))
-        icon_bg.pack_propagate(False)
-        ctk.CTkLabel(icon_bg, text="!", font=_font(36, "bold"),
-                     text_color=DS.WHITE).place(relx=.5, rely=.5, anchor="center")
-
-        ctk.CTkLabel(hdr, text="Invalid Time",
-                     font=_font(28, "bold"), text_color=DS.N800).pack(side="left")
-
+        ib = ctk.CTkFrame(hdr, fg_color=DS.AMBER,
+                          width=66, height=66, corner_radius=33)
+        ib.pack(side="left", padx=(0, 16)); ib.pack_propagate(False)
+        ctk.CTkLabel(ib, text="!", font=_font(36, "bold"),
+                     text_color=DS.WHITE).place(relx=.5, rely=.5,
+                                                anchor="center")
+        ctk.CTkLabel(hdr, text="Invalid Time", font=_font(28, "bold"),
+                     text_color=DS.N800).pack(side="left")
         ctk.CTkLabel(inner, text="You can't schedule sprays in the past.",
-                     font=_font(22), text_color=DS.N600, anchor="w").pack(anchor="w")
+                     font=_font(22), text_color=DS.N600,
+                     anchor="w").pack(anchor="w")
         ctk.CTkLabel(inner, text="Please select a future date and time.",
-                     font=_font(22), text_color=DS.N600, anchor="w").pack(anchor="w", pady=(4, 22))
+                     font=_font(22), text_color=DS.N600,
+                     anchor="w").pack(anchor="w", pady=(4, 22))
+        ctk.CTkButton(inner, text="Got it", command=dlg.destroy,
+                      fg_color=DS.AMBER, hover_color=DS.AMBER_D,
+                      height=62, width=200, corner_radius=10,
+                      font=_font(24, "bold"),
+                      text_color=DS.WHITE).pack(anchor="center")
 
-        ctk.CTkButton(
-            inner, text="Got it", command=dlg.destroy,
-            fg_color=DS.AMBER, hover_color=DS.AMBER_D,
-            height=62, width=200, corner_radius=10,
-            font=_font(24, "bold"), text_color=DS.WHITE
-        ).pack(anchor="center")
-
-    def _show_success_toast(self, message, duration=3000):
-        toast = ctk.CTkToplevel(self)
-        toast.withdraw()
-        toast.overrideredirect(True)
-
-        frame = ctk.CTkFrame(toast, fg_color=DS.G800, corner_radius=12)
-        frame.pack(fill="both", expand=True, padx=2, pady=2)
-
-        inner = ctk.CTkFrame(frame, fg_color="transparent")
-        inner.pack(fill="both", expand=True, padx=18, pady=14)
-
-        ctk.CTkLabel(inner, text="✓", font=_font(26, "bold"),
-                     text_color=DS.G200, width=30).pack(side="left", padx=(0, 10))
-        ctk.CTkLabel(inner, text=message, font=_font(20, "bold"),
-                     text_color=DS.WHITE, anchor="w").pack(side="left", fill="x", expand=True)
-
-        toast.update_idletasks()
-        sw, sh = toast.winfo_screenwidth(), toast.winfo_screenheight()
-        tw, th = 500, 68
-        toast.geometry(f"{tw}x{th}+{sw - tw - 20}+20")
-        toast.deiconify()
-        toast.lift()
-        toast.attributes('-topmost', True)
-        toast.after(duration, toast.destroy)
-
-    def _show_cancel_confirmation(self, callback):
+    def _show_weather_blocked_dialog(self, reason):
+        """Show dialog when weather blocks spray in AUTOMATIC mode"""
         dlg = ctk.CTkToplevel(self)
-        dlg.title("")
-        dlg.overrideredirect(True)
-        dlg.transient(self)
-        dlg.grab_set()
-        dlg.resizable(False, False)
-        self._center_dialog(dlg, 540, 320)
-
+        dlg.title(""); dlg.overrideredirect(True)
+        dlg.transient(self); dlg.grab_set(); dlg.resizable(False, False)
+        self._center_dialog(dlg, 660, 460)
         outer = ctk.CTkFrame(dlg, fg_color=DS.WHITE, corner_radius=16,
-                              border_width=1, border_color=DS.N200)
+                             border_width=1, border_color=DS.N200)
         outer.pack(fill="both", expand=True, padx=2, pady=2)
-        ctk.CTkFrame(outer, fg_color=DS.RED, height=5, corner_radius=0).pack(fill="x")
-
+        ctk.CTkFrame(outer, fg_color=DS.BLUE, height=6,
+                     corner_radius=0).pack(fill="x")
         inner = ctk.CTkFrame(outer, fg_color="transparent")
         inner.pack(fill="both", expand=True, padx=30, pady=26)
-
         hdr = ctk.CTkFrame(inner, fg_color="transparent")
-        hdr.pack(fill="x", pady=(0, 12))
-
-        icon_bg = ctk.CTkFrame(hdr, fg_color="#FEE2E2", width=66, height=66, corner_radius=33)
-        icon_bg.pack(side="left", padx=(0, 16))
-        icon_bg.pack_propagate(False)
-        ctk.CTkLabel(icon_bg, text="?",
-                     font=_font(34, "bold"),
-                     text_color=DS.RED).place(relx=.5, rely=.5, anchor="center")
-
-        ctk.CTkLabel(hdr, text="Cancel Schedule",
-                     font=_font(28, "bold"), text_color=DS.N800).pack(side="left")
-
-        ctk.CTkLabel(inner, text="This will cancel this active spray schedule.",
-                     font=_font(22), text_color=DS.N600).pack(anchor="w")
-        ctk.CTkLabel(inner, text="This action cannot be undone.",
-                     font=_font(20), text_color=DS.RED).pack(anchor="w", pady=(4, 22))
-
+        hdr.pack(fill="x", pady=(0, 18))
+        ib = ctk.CTkFrame(hdr, fg_color="#E3F2FD",
+                          width=80, height=80, corner_radius=40)
+        ib.pack(side="left", padx=(0, 18)); ib.pack_propagate(False)
+        ctk.CTkLabel(ib, text="🌧️", font=_font(40)).place(
+            relx=.5, rely=.5, anchor="center")
+        tc2 = ctk.CTkFrame(hdr, fg_color="transparent")
+        tc2.pack(side="left", fill="x", expand=True)
+        ctk.CTkLabel(tc2, text="⚠️  Weather Blocked Spray",
+                     font=_font(26, "bold"), text_color=DS.N800).pack(anchor="w")
+        ctk.CTkLabel(tc2, text="AUTOMATIC MODE is active",
+                     font=_font(20), text_color=DS.BLUE).pack(
+            anchor="w", pady=(4, 0))
+        rb = ctk.CTkFrame(inner, fg_color="#FFF3E0", corner_radius=10,
+                          border_width=1, border_color="#FFB74D")
+        rb.pack(fill="x", pady=(0, 14))
+        ctk.CTkLabel(rb, text=reason, font=_font(22, "bold"),
+                     text_color="#BF360C", anchor="w",
+                     wraplength=560).pack(anchor="w", padx=16, pady=12)
+        ctk.CTkLabel(inner,
+                     text="Switch to MANUAL MODE to spray regardless of weather.",
+                     font=_font(20), text_color=DS.N600, anchor="w",
+                     wraplength=580).pack(anchor="w", pady=(0, 24))
         bf = ctk.CTkFrame(inner, fg_color="transparent")
         bf.pack(fill="x")
         bf.grid_columnconfigure((0, 1), weight=1)
-
-        ctk.CTkButton(bf, text="Keep", command=dlg.destroy,
-                      fg_color=DS.N100, text_color=DS.N800, hover_color=DS.N200,
-                      height=64, corner_radius=10, font=_font(22)
-                      ).grid(row=0, column=0, sticky="ew", padx=(0, 6))
-
-        def _do():
+        ctk.CTkButton(bf, text="Keep AUTOMATIC", command=dlg.destroy,
+                      fg_color=DS.N100, text_color=DS.N800,
+                      hover_color=DS.N200, height=68, corner_radius=10,
+                      font=_font(22)).grid(
+            row=0, column=0, sticky="ew", padx=(0, 8))
+        def _switch():
+            self.weather_auto_mode = False
+            self._refresh_weather_banner()
             dlg.destroy()
-            callback()
+            self._show_success_toast(
+                "🚫 MANUAL MODE — weather ignored, spray runs on schedule",
+                duration=5000)
+        ctk.CTkButton(bf, text="Switch to MANUAL MODE", command=_switch,
+                      fg_color=DS.MANUAL_ACCENT, hover_color="#BF360C",
+                      text_color=DS.WHITE, height=68, corner_radius=10,
+                      font=_font(22, "bold")).grid(
+            row=0, column=1, sticky="ew", padx=(8, 0))
 
-        ctk.CTkButton(bf, text="Cancel Schedule", command=_do,
-                      fg_color=DS.RED, hover_color=DS.RED_D, text_color=DS.WHITE,
-                      height=64, corner_radius=10, font=_font(22, "bold")
-                      ).grid(row=0, column=1, sticky="ew", padx=(6, 0))
+    def _show_success_toast(self, message, duration=3000):
+        """Show success toast notification"""
+        toast = ctk.CTkToplevel(self)
+        toast.withdraw(); toast.overrideredirect(True)
+        frame = ctk.CTkFrame(toast, fg_color=DS.G800, corner_radius=12)
+        frame.pack(fill="both", expand=True, padx=2, pady=2)
+        inner = ctk.CTkFrame(frame, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=20, pady=16)
+        ctk.CTkLabel(inner, text="✓", font=_font(28, "bold"),
+                     text_color=DS.G200, width=30).pack(
+            side="left", padx=(0, 12))
+        ctk.CTkLabel(inner, text=message, font=_font(20, "bold"),
+                     text_color=DS.WHITE, anchor="w").pack(
+            side="left", fill="x", expand=True)
+        toast.update_idletasks()
+        sw = toast.winfo_screenwidth()
+        tw, th = 640, 80
+        toast.geometry(f"{tw}x{th}+{sw - tw - 20}+20")
+        toast.deiconify(); toast.lift()
+        toast.attributes("-topmost", True)
+        toast.after(duration, toast.destroy)
 
-    # ── RESCHEDULE DIALOG ─────────────────────────────────
-    def _open_reschedule_dialog(self, schedule):
+    def _show_cancel_confirmation(self, callback):
+        """Show cancel confirmation dialog"""
         dlg = ctk.CTkToplevel(self)
-        dlg.title("")
-        dlg.overrideredirect(True)
-        dlg.transient(self)
-        dlg.grab_set()
-        dlg.resizable(False, False)
-        self._center_dialog(dlg, 660, 860)
-
+        dlg.title(""); dlg.overrideredirect(True)
+        dlg.transient(self); dlg.grab_set(); dlg.resizable(False, False)
+        self._center_dialog(dlg, 540, 320)
         outer = ctk.CTkFrame(dlg, fg_color=DS.WHITE, corner_radius=16,
-                              border_width=1, border_color=DS.N200)
+                             border_width=1, border_color=DS.N200)
         outer.pack(fill="both", expand=True, padx=2, pady=2)
-        ctk.CTkFrame(outer, fg_color=DS.G500, height=5, corner_radius=0).pack(fill="x")
+        ctk.CTkFrame(outer, fg_color=DS.RED, height=5,
+                     corner_radius=0).pack(fill="x")
+        inner = ctk.CTkFrame(outer, fg_color="transparent")
+        inner.pack(fill="both", expand=True, padx=30, pady=26)
+        hdr = ctk.CTkFrame(inner, fg_color="transparent")
+        hdr.pack(fill="x", pady=(0, 12))
+        ib = ctk.CTkFrame(hdr, fg_color="#FEE2E2",
+                          width=66, height=66, corner_radius=33)
+        ib.pack(side="left", padx=(0, 16)); ib.pack_propagate(False)
+        ctk.CTkLabel(ib, text="?", font=_font(34, "bold"),
+                     text_color=DS.RED).place(relx=.5, rely=.5, anchor="center")
+        ctk.CTkLabel(hdr, text="Cancel Schedule", font=_font(28, "bold"),
+                     text_color=DS.N800).pack(side="left")
+        ctk.CTkLabel(inner, text="This will cancel this active spray schedule.",
+                     font=_font(22), text_color=DS.N600).pack(anchor="w")
+        ctk.CTkLabel(inner, text="This action cannot be undone.",
+                     font=_font(20), text_color=DS.RED).pack(
+            anchor="w", pady=(4, 22))
+        bf = ctk.CTkFrame(inner, fg_color="transparent")
+        bf.pack(fill="x")
+        bf.grid_columnconfigure((0, 1), weight=1)
+        ctk.CTkButton(bf, text="Keep", command=dlg.destroy,
+                      fg_color=DS.N100, text_color=DS.N800,
+                      hover_color=DS.N200, height=64, corner_radius=10,
+                      font=_font(22)).grid(
+            row=0, column=0, sticky="ew", padx=(0, 6))
+        def _do():
+            dlg.destroy(); callback()
+        ctk.CTkButton(bf, text="Cancel Schedule", command=_do,
+                      fg_color=DS.RED, hover_color=DS.RED_D,
+                      text_color=DS.WHITE, height=64, corner_radius=10,
+                      font=_font(22, "bold")).grid(
+            row=0, column=1, sticky="ew", padx=(6, 0))
 
+    def _open_reschedule_dialog(self, schedule):
+        """Open reschedule dialog"""
+        dlg = ctk.CTkToplevel(self)
+        dlg.title(""); dlg.overrideredirect(True)
+        dlg.transient(self); dlg.grab_set(); dlg.resizable(False, False)
+        self._center_dialog(dlg, 660, 860)
+        outer = ctk.CTkFrame(dlg, fg_color=DS.WHITE, corner_radius=16,
+                             border_width=1, border_color=DS.N200)
+        outer.pack(fill="both", expand=True, padx=2, pady=2)
+        ctk.CTkFrame(outer, fg_color=DS.G500, height=5,
+                     corner_radius=0).pack(fill="x")
+        mode    = _get_mode(schedule)
+        md_disp = "🌍 AUTOMATIC" if mode == "automatic" else "🚫 MANUAL"
         title_bar = ctk.CTkFrame(outer, fg_color="transparent")
         title_bar.pack(fill="x", padx=22, pady=(16, 10))
-        ctk.CTkLabel(title_bar, text="Reschedule",
-                     font=_font(30, "bold"), text_color=DS.G800).pack(side="left")
-
-        scroll = ctk.CTkScrollableFrame(
-            outer, fg_color="transparent",
-            scrollbar_button_color=DS.G200,
-            scrollbar_button_hover_color=DS.G400,
-        )
+        ctk.CTkLabel(title_bar, text=f"Reschedule  [{md_disp}]",
+                     font=_font(30, "bold"),
+                     text_color=DS.G800).pack(side="left")
+        scroll = ctk.CTkScrollableFrame(outer, fg_color="transparent",
+                                        scrollbar_button_color=DS.G200,
+                                        scrollbar_button_hover_color=DS.G400)
         scroll.pack(fill="both", expand=True, padx=4, pady=(0, 4))
         self._bind_mousewheel(scroll)
 
-        # ── DATE ──
+        # Date selection
         ctk.CTkLabel(scroll, text="Select New Date",
-                     font=_font(24, "bold"), text_color=DS.G800).pack(anchor="w", padx=16, pady=(10, 8))
-
-        y_, mo_, d_ = map(int, schedule['date'].split('-'))
+                     font=_font(24, "bold"), text_color=DS.G800).pack(
+            anchor="w", padx=16, pady=(10, 8))
+        y_, mo_, d_ = map(int, schedule["date"].split("-"))
         sel_date = {"date": datetime(y_, mo_, d_)}
-
         cal_card = ctk.CTkFrame(scroll, fg_color=DS.G100, corner_radius=12,
-                                 border_width=1, border_color=DS.G200)
+                                border_width=1, border_color=DS.G200)
         cal_card.pack(fill="x", padx=16)
-
         nav = ctk.CTkFrame(cal_card, fg_color="transparent")
         nav.pack(fill="x", padx=14, pady=(12, 6))
         nav.grid_columnconfigure(1, weight=1)
-
-        mo_lbl = ctk.CTkLabel(nav, text="", font=_font(22, "bold"), text_color=DS.G800)
+        mo_lbl = ctk.CTkLabel(nav, text="", font=_font(22, "bold"),
+                              text_color=DS.G800)
         mo_lbl.grid(row=0, column=1)
-
         days_grid = ctk.CTkFrame(cal_card, fg_color="transparent")
         days_grid.pack(fill="both", expand=True, padx=12, pady=(0, 12))
 
         def build_cal():
-            for w in days_grid.winfo_children():
-                w.destroy()
-            mo_lbl.configure(text=f"{sel_date['date'].strftime('%B')} {sel_date['date'].year}")
+            for w in days_grid.winfo_children(): w.destroy()
+            mo_lbl.configure(
+                text=f"{sel_date['date'].strftime('%B')} "
+                     f"{sel_date['date'].year}")
             for i, dn in enumerate(["Su","Mo","Tu","We","Th","Fr","Sa"]):
                 ctk.CTkLabel(days_grid, text=dn, width=52,
-                             font=_font(17, "bold"), text_color=DS.G600).grid(
+                             font=_font(17, "bold"),
+                             text_color=DS.G600).grid(
                     row=0, column=i, padx=2, pady=(4, 6))
-
-            cal_m = calendar.monthcalendar(sel_date['date'].year, sel_date['date'].month)
+            cal_m = calendar.monthcalendar(
+                sel_date["date"].year, sel_date["date"].month)
             today = datetime.now().date()
-
             for r, week in enumerate(cal_m):
                 for c, dn in enumerate(week):
-                    if dn == 0:
-                        continue
-                    cur  = datetime(sel_date['date'].year, sel_date['date'].month, dn).date()
+                    if dn == 0: continue
+                    cur  = datetime(sel_date["date"].year,
+                                    sel_date["date"].month, dn).date()
                     past = cur < today
-                    seld = (dn == sel_date['date'].day)
+                    seld = (dn == sel_date["date"].day)
                     itd  = cur == today
-
-                    fg = DS.G500 if seld else DS.N100 if past else (DS.G100 if itd else "transparent")
-                    tc = DS.WHITE if seld else DS.N400 if past else (DS.G600 if itd else DS.N800)
+                    fg = (DS.G500 if seld else DS.N100 if past
+                          else (DS.G100 if itd else "transparent"))
+                    tc = (DS.WHITE if seld else DS.N400 if past
+                          else (DS.G600 if itd else DS.N800))
                     hv = DS.G400 if seld else DS.N100 if past else DS.G200
-
                     b = ctk.CTkButton(
                         days_grid, text=str(dn), width=52, height=50,
                         corner_radius=10, anchor="center",
                         fg_color=fg, text_color=tc, hover_color=hv,
                         font=_font(18, "bold" if seld else "normal"),
                         state="disabled" if past else "normal",
-                        command=(lambda d=dn: (sel_date.__setitem__('date', sel_date['date'].replace(day=d)), build_cal())) if not past else lambda: None
-                    )
+                        command=(lambda d=dn: (
+                            sel_date.__setitem__(
+                                "date", sel_date["date"].replace(day=d)),
+                            build_cal()))
+                        if not past else lambda: None)
                     b.grid(row=r+1, column=c, padx=2, pady=2, sticky="nsew")
                     days_grid.grid_rowconfigure(r+1, weight=1)
                 for col in range(7):
                     days_grid.grid_columnconfigure(col, weight=1)
 
         def prev_mo():
-            m, y = sel_date['date'].month-1, sel_date['date'].year
+            m, y = sel_date["date"].month-1, sel_date["date"].year
             if m == 0: m, y = 12, y-1
-            sel_date['date'] = sel_date['date'].replace(year=y, month=m, day=1)
+            sel_date["date"] = sel_date["date"].replace(year=y, month=m, day=1)
             build_cal()
-
         def next_mo():
-            m, y = sel_date['date'].month+1, sel_date['date'].year
+            m, y = sel_date["date"].month+1, sel_date["date"].year
             if m == 13: m, y = 1, y+1
-            sel_date['date'] = sel_date['date'].replace(year=y, month=m, day=1)
+            sel_date["date"] = sel_date["date"].replace(year=y, month=m, day=1)
             build_cal()
 
         ctk.CTkButton(nav, text="‹", width=54, height=54, corner_radius=27,
                       fg_color=DS.G500, hover_color=DS.G600,
-                      font=_font(28, "bold"), command=prev_mo
-                      ).grid(row=0, column=0, padx=(0, 8))
+                      font=_font(28, "bold"), command=prev_mo).grid(
+            row=0, column=0, padx=(0, 8))
         ctk.CTkButton(nav, text="›", width=54, height=54, corner_radius=27,
                       fg_color=DS.G500, hover_color=DS.G600,
-                      font=_font(28, "bold"), command=next_mo
-                      ).grid(row=0, column=2, padx=(8, 0))
+                      font=_font(28, "bold"), command=next_mo).grid(
+            row=0, column=2, padx=(8, 0))
         build_cal()
 
-        # ── CONTAINER ──
-        ctk.CTkLabel(scroll, text="Container",
-                     font=_font(24, "bold"), text_color=DS.G800).pack(anchor="w", padx=16, pady=(20, 8))
-
-        new_cont_var = ctk.StringVar(value=schedule.get('container', 'Container 1'))
+        # Container selection
+        ctk.CTkLabel(scroll, text="Container", font=_font(24, "bold"),
+                     text_color=DS.G800).pack(anchor="w", padx=16, pady=(20, 8))
+        new_cont_var = ctk.StringVar(
+            value=schedule.get("container", "Container 1"))
         cont_row = ctk.CTkFrame(scroll, fg_color="transparent")
         cont_row.pack(anchor="w", padx=16)
         for val in ["Container 1", "Container 2"]:
-            ctk.CTkRadioButton(
-                cont_row, text=val, variable=new_cont_var, value=val,
-                text_color=DS.N800, fg_color=DS.G500, hover_color=DS.G400,
-                font=_font(22),
-                radiobutton_width=28, radiobutton_height=28
-            ).pack(side="left", padx=(0, 20))
+            ctk.CTkRadioButton(cont_row, text=val,
+                               variable=new_cont_var, value=val,
+                               text_color=DS.N800, fg_color=DS.G500,
+                               hover_color=DS.G400, font=_font(22),
+                               radiobutton_width=28,
+                               radiobutton_height=28).pack(
+                side="left", padx=(0, 20))
 
-        # ── VOLUME ──
+        # Volume selection
         ctk.CTkLabel(scroll, text="Spray Volume (mL)",
-                     font=_font(24, "bold"), text_color=DS.G800).pack(anchor="w", padx=16, pady=(20, 8))
-
+                     font=_font(24, "bold"), text_color=DS.G800).pack(
+            anchor="w", padx=16, pady=(20, 8))
         vol_row = ctk.CTkFrame(scroll, fg_color="transparent")
         vol_row.pack(anchor="w", padx=16)
-
-        new_vol_entry = ctk.CTkEntry(
-            vol_row, width=170, height=60,
-            fg_color=DS.WHITE, border_color=DS.G400, border_width=2,
-            font=_font(24), text_color=DS.N800
-        )
-        new_vol_entry.insert(0, str(schedule.get('volume_ml', 1000)))
+        new_vol_entry = ctk.CTkEntry(vol_row, width=170, height=60,
+                                     fg_color=DS.WHITE,
+                                     border_color=DS.G400, border_width=2,
+                                     font=_font(24), text_color=DS.N800)
+        new_vol_entry.insert(0, str(schedule.get("volume_ml", 1000)))
         new_vol_entry.pack(side="left")
         ctk.CTkLabel(vol_row, text="mL", font=_font(22, "bold"),
                      text_color=DS.N600).pack(side="left", padx=(10, 0))
 
-        # ── TIME ──
+        # Time selection
         ctk.CTkLabel(scroll, text="Select New Time",
-                     font=_font(24, "bold"), text_color=DS.G800).pack(anchor="w", padx=16, pady=(20, 8))
-
-        tp   = schedule['time'].split(':')
+                     font=_font(24, "bold"), text_color=DS.G800).pack(
+            anchor="w", padx=16, pady=(20, 8))
+        tp      = schedule["time"].split(":")
         h12, ap = self._convert_to_12h(int(tp[0]))
         tf = ctk.CTkFrame(scroll, fg_color="transparent")
         tf.pack(anchor="w", padx=16)
-
-        new_hr  = self._dropdown(tf, [f"{i:02d}" for i in range(1,13)], f"{h12:02d}", 130)
+        new_hr = self._dropdown(tf, [f"{i:02d}" for i in range(1, 13)],
+                                f"{h12:02d}", 130)
         new_hr.pack(side="left")
-        ctk.CTkLabel(tf, text=":", font=_font(32, "bold"), text_color=DS.N800).pack(side="left", padx=6)
-        new_mn  = self._dropdown(tf, [f"{i:02d}" for i in range(0,60,5)], tp[1], 130)
+        ctk.CTkLabel(tf, text=":", font=_font(32, "bold"),
+                     text_color=DS.N800).pack(side="left", padx=6)
+        new_mn = self._dropdown(tf, [f"{i:02d}" for i in range(0, 60, 5)],
+                                tp[1], 130)
         new_mn.pack(side="left")
-        new_ap  = self._dropdown(tf, ["AM","PM"], ap, 110)
+        new_ap = self._dropdown(tf, ["AM", "PM"], ap, 110)
         new_ap.pack(side="left", padx=(14, 0))
 
-        # ── ACTION BUTTONS ──
+        # Buttons
         bf = ctk.CTkFrame(scroll, fg_color="transparent")
         bf.pack(fill="x", padx=16, pady=(24, 12))
 
         def confirm():
-            nd  = sel_date['date'].strftime("%Y-%m-%d")
+            nd  = sel_date["date"].strftime("%Y-%m-%d")
             h24 = self._convert_to_24h(new_hr.get(), new_ap.get())
             nt  = f"{h24:02d}:{new_mn.get()}"
             if self._is_datetime_in_past(nd, nt):
-                self._show_invalid_time_dialog()
-                return
-
+                self._show_invalid_time_dialog(); return
             try:
                 new_vol = float(new_vol_entry.get())
                 if new_vol <= 0:
-                    messagebox.showerror("Error", "Volume must be greater than 0 mL")
+                    messagebox.showerror("Error", "Volume must be > 0 mL")
                     return
             except ValueError:
-                messagebox.showerror("Error", "Invalid volume value")
-                return
+                messagebox.showerror("Error", "Invalid volume"); return
 
             ok, msg, affected = self.reschedule_mgr.reschedule(
-                schedule['id'], nd, nt,
-                container=new_cont_var.get(),
-                volume_ml=new_vol
-            )
+                schedule["id"], nd, nt,
+                container=new_cont_var.get(), volume_ml=new_vol)
             if ok:
+                # Preserve mode after manual reschedule
+                self._stamp_mode(schedule["id"], _get_mode(schedule))
                 h12d, apd = self._convert_to_12h(h24)
-                disp = f"{h12d:02d}:{new_mn.get()} {apd}"
-                m = f"Rescheduled to {nd} at {disp}"
+                m = (f"Rescheduled → {nd} at "
+                     f"{h12d:02d}:{new_mn.get()} {apd}")
                 if affected:
-                    m += f" ({len(affected)} schedule(s) adjusted)"
+                    m += f" ({len(affected)} adjusted)"
                 self._show_success_toast(m)
                 dlg.destroy()
                 self.refresh_schedule_list()
             else:
                 messagebox.showerror("Error", msg)
-                dlg.destroy()
-                self.refresh_schedule_list()
 
         ctk.CTkButton(bf, text="Cancel", command=dlg.destroy,
-                      fg_color=DS.N100, text_color=DS.N800, hover_color=DS.N200,
-                      height=64, corner_radius=10, font=_font(22), width=170
-                      ).pack(side="left", padx=(0, 12))
-
+                      fg_color=DS.N100, text_color=DS.N800,
+                      hover_color=DS.N200, height=64, corner_radius=10,
+                      font=_font(22), width=170).pack(
+            side="left", padx=(0, 12))
         ctk.CTkButton(bf, text="Confirm Reschedule", command=confirm,
-                      fg_color=DS.G500, hover_color=DS.G600, text_color=DS.WHITE,
-                      height=64, corner_radius=10, font=_font(22, "bold"), width=280
-                      ).pack(side="right")
+                      fg_color=DS.G500, hover_color=DS.G600,
+                      text_color=DS.WHITE, height=64, corner_radius=10,
+                      font=_font(22, "bold"), width=280).pack(side="right")
 
-    # ── CANCEL ONE ────────────────────────────────────────
     def _cancel_one(self, sid):
+        """Cancel a single schedule"""
         def do():
             self.reschedule_mgr.cancel_schedule(sid)
             self._show_success_toast("Schedule cancelled")
             self.refresh_schedule_list()
         self._show_cancel_confirmation(do)
 
-    # ── CANCEL ALL ────────────────────────────────────────
     def _cancel_all(self):
+        """Cancel all active schedules"""
         schedules = self.scheduler.data_store.get_active_schedules()
         if not schedules:
             messagebox.showinfo("Info", "No active schedules to cancel")
             return
-
         dlg = ctk.CTkToplevel(self)
-        dlg.title("")
-        dlg.overrideredirect(True)
-        dlg.transient(self)
-        dlg.grab_set()
-        dlg.resizable(False, False)
+        dlg.title(""); dlg.overrideredirect(True)
+        dlg.transient(self); dlg.grab_set(); dlg.resizable(False, False)
         self._center_dialog(dlg, 560, 380)
-
         outer = ctk.CTkFrame(dlg, fg_color=DS.WHITE, corner_radius=16,
-                              border_width=1, border_color=DS.N200)
+                             border_width=1, border_color=DS.N200)
         outer.pack(fill="both", expand=True, padx=2, pady=2)
-        ctk.CTkFrame(outer, fg_color=DS.RED, height=5, corner_radius=0).pack(fill="x")
-
+        ctk.CTkFrame(outer, fg_color=DS.RED, height=5,
+                     corner_radius=0).pack(fill="x")
         inner = ctk.CTkFrame(outer, fg_color="transparent")
         inner.pack(fill="both", expand=True, padx=30, pady=28)
-
         hdr = ctk.CTkFrame(inner, fg_color="transparent")
         hdr.pack(fill="x", pady=(0, 14))
-
-        icon_bg = ctk.CTkFrame(hdr, fg_color="#FEE2E2", width=70, height=70, corner_radius=35)
-        icon_bg.pack(side="left", padx=(0, 18))
-        icon_bg.pack_propagate(False)
-        ctk.CTkLabel(icon_bg, text="?",
-                     font=_font(38, "bold"),
+        ib = ctk.CTkFrame(hdr, fg_color="#FEE2E2",
+                          width=70, height=70, corner_radius=35)
+        ib.pack(side="left", padx=(0, 18)); ib.pack_propagate(False)
+        ctk.CTkLabel(ib, text="?", font=_font(38, "bold"),
                      text_color=DS.RED).place(relx=.5, rely=.5, anchor="center")
-
-        title_col = ctk.CTkFrame(hdr, fg_color="transparent")
-        title_col.pack(side="left")
-        ctk.CTkLabel(title_col, text="Cancel All Schedules",
+        tc2 = ctk.CTkFrame(hdr, fg_color="transparent")
+        tc2.pack(side="left")
+        ctk.CTkLabel(tc2, text="Cancel All Schedules",
                      font=_font(28, "bold"), text_color=DS.N800).pack(anchor="w")
-        ctk.CTkLabel(title_col, text=f"{len(schedules)} schedule(s) will be removed",
+        ctk.CTkLabel(tc2,
+                     text=f"{len(schedules)} schedule(s) will be removed",
                      font=_font(20), text_color=DS.N400).pack(anchor="w")
-
-        ctk.CTkLabel(inner, text="This will permanently cancel ALL active spray schedules.",
+        ctk.CTkLabel(inner,
+                     text="This will permanently cancel ALL active schedules.",
                      font=_font(22), text_color=DS.N600).pack(anchor="w")
         ctk.CTkLabel(inner, text="This action cannot be undone.",
-                     font=_font(20), text_color=DS.RED).pack(anchor="w", pady=(4, 24))
-
+                     font=_font(20), text_color=DS.RED).pack(
+            anchor="w", pady=(4, 24))
         bf = ctk.CTkFrame(inner, fg_color="transparent")
         bf.pack(fill="x")
         bf.grid_columnconfigure((0, 1), weight=1)
-
         ctk.CTkButton(bf, text="Keep All", command=dlg.destroy,
-                      fg_color=DS.N100, text_color=DS.N800, hover_color=DS.N200,
-                      height=66, corner_radius=10, font=_font(22)
-                      ).grid(row=0, column=0, sticky="ew", padx=(0, 6))
-
+                      fg_color=DS.N100, text_color=DS.N800,
+                      hover_color=DS.N200, height=66, corner_radius=10,
+                      font=_font(22)).grid(
+            row=0, column=0, sticky="ew", padx=(0, 6))
         def do_all():
             self.reschedule_mgr.cancel_all_schedules()
             dlg.destroy()
             self._show_success_toast("All schedules cancelled")
             self.refresh_schedule_list()
-
         ctk.CTkButton(bf, text="Cancel All", command=do_all,
-                      fg_color=DS.RED, hover_color=DS.RED_D, text_color=DS.WHITE,
-                      height=66, corner_radius=10, font=_font(22, "bold")
-                      ).grid(row=0, column=1, sticky="ew", padx=(6, 0))
+                      fg_color=DS.RED, hover_color=DS.RED_D,
+                      text_color=DS.WHITE, height=66, corner_radius=10,
+                      font=_font(22, "bold")).grid(
+            row=0, column=1, sticky="ew", padx=(6, 0))
+
+

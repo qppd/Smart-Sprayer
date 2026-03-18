@@ -1,0 +1,8 @@
+{
+  "capacity_ml": 20000,
+  "current_level_ml": 20000,
+  "threshold_low_percent": 25,
+  "threshold_critical_percent": 10,
+  "last_refill": "2026-03-16T16:30:52.983054",
+  "last_update": "2026-03-16T16:30:52.983119"
+}

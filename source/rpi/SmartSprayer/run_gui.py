@@ -180,7 +180,12 @@ def show_error_modal(parent, title, message):
 def show_splash_screen():
     splash = ctk.CTk()
     splash.overrideredirect(True)
-    splash.attributes("-fullscreen", True)
+    # fullscreen conflicts with overrideredirect on Windows - use geometry instead
+    splash.update_idletasks()
+    sw = splash.winfo_screenwidth()
+    sh = splash.winfo_screenheight()
+    splash.geometry(f"{sw}x{sh}+0+0")
+    splash.attributes("-topmost", True)
     splash.configure(fg_color=D.G800)
 
     _splash_logo = _make_logo((240, 240))
@@ -569,6 +574,13 @@ class MobileNumberScreen(ctk.CTk):
 # ---------------------------------------------------------
 def _send_login_sms(phone: str):
     try:
+        # Debug: ensure we are importing the expected PINS_CONFIG module (avoids stale/cached copies)
+        try:
+            import PINS_CONFIG as _pc  # noqa: F401
+            print(f"[DEBUG] PINS_CONFIG loaded from: {_pc.__file__}")
+        except Exception as _pc_exc:
+            print(f"⚠️ PINS_CONFIG import check failed: {_pc_exc}")
+
         from hardware.hardware_interface import get_hardware
         hw = get_hardware()
         if hw is None:

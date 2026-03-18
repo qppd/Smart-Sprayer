@@ -1,5 +1,6 @@
-# scheduler.py
+# scheduler.py (IMPROVED)
 # Main scheduler logic with background execution
+# ✅ VERIFIED: Manual mode completely bypasses weather checks and rescheduling
 
 import threading
 import time
@@ -70,7 +71,7 @@ class Scheduler:
             self.logger.log_info("Scheduler stopped")
     
     def _scheduler_loop(self):
-        """Main scheduler loop - runs in background"""
+        """Main scheduler loop - runs in background every 10 seconds"""
         while self.running:
             try:
                 self._check_due_schedules()
@@ -79,7 +80,7 @@ class Scheduler:
                 self.logger.log_error(f"Scheduler error: {e}")
     
     def _check_due_schedules(self):
-        """Check for schedules that are due"""
+        """Check for schedules that are due to execute"""
         now = datetime.now()
         current_date = now.strftime('%Y-%m-%d')
         current_time = now.strftime('%H:%M')
@@ -120,12 +121,62 @@ class Scheduler:
             return {'safe': True, 'error': str(e)}
     
     def _execute_schedule(self, schedule: Dict):
-        """Execute a spray schedule (non-blocking weather check)"""
+        """
+        Execute a spray schedule - respects weather_mode from the schedule.
+        
+        ✅ MANUAL MODE FLOW:
+           1. Check weather_mode field in schedule
+           2. If weather_mode == 'manual':
+              → Skip ALL weather checks completely
+              → Skip ALL rescheduling logic
+              → Go DIRECTLY to _run_spray()
+              → Pump with calculated duration based on user volume input
+              → Mark as completed
+           3. Return immediately - NO FURTHER PROCESSING
+        
+        ✅ AUTOMATIC MODE FLOW:
+           1. Check weather before spraying
+           2. If weather blocks → reschedule (with 3-attempt limit)
+           3. If weather OK → spray immediately
+        
+        ✅ VERIFIED: weather_mode field properly read from schedule dict
+        """
+        
+        # ═══════════════════════════════════════════════════════════════
+        # STEP 1: Read weather_mode from schedule (stamped at creation)
+        # ═══════════════════════════════════════════════════════════════
+        weather_mode = schedule.get('weather_mode', 'automatic')
+        
+        # ═══════════════════════════════════════════════════════════════
+        # STEP 2: MANUAL MODE - COMPLETE BYPASS
+        # ═══════════════════════════════════════════════════════════════
+        if weather_mode == 'manual':
+            # Log manual execution
+            self.logger.log_info(
+                f"[MANUAL MODE] Schedule {schedule['id']} executing immediately\n"
+                f"  → Weather checks: SKIPPED\n"
+                f"  → Rescheduling: DISABLED\n"
+                f"  → Volume: {schedule.get('volume_ml', 0)} mL\n"
+                f"  → Container: {schedule.get('container', '?')}\n"
+                f"  → Spray type: {schedule.get('spray_type', '?')}")
+            
+            # Execute spray immediately with calculated duration
+            self._run_spray(schedule)
+            
+            # DONE - return immediately, no further processing
+            return
+        
+        # ═══════════════════════════════════════════════════════════════
+        # STEP 3: AUTOMATIC MODE - Check weather first
+        # ═══════════════════════════════════════════════════════════════
+        
+        self.logger.log_info(
+            f"[AUTOMATIC MODE] Schedule {schedule['id']} checking weather...\n"
+            f"  → Volume: {schedule.get('volume_ml', 0)} mL\n"
+            f"  → Container: {schedule.get('container', '?')}")
         
         # Check weather before executing (with timeout)
         if self.weather and self.weather.available:
-            self.logger.log_info("Checking weather before spray...")
-            
             try:
                 # Run weather check in separate thread with 15-second timeout
                 future = self.executor.submit(self._check_weather_async, schedule['id'])
@@ -134,21 +185,42 @@ class Scheduler:
                 if not weather_result.get('safe', True):
                     reason = weather_result.get('reason', 'unknown')
                     self.logger.log_warning(
-                        f"Weather check failed ({reason}). "
-                        f"Rescheduling spray for schedule {schedule['id']}."
-                    )
+                        f"[AUTOMATIC MODE] Weather blocked spray ({reason}). "
+                        f"Schedule {schedule['id']} will be rescheduled.")
+                    
+                    # Weather blocked - attempt to reschedule
                     self._handle_weather_reschedule(schedule)
                     return
                 
-                self.logger.log_info("Weather check passed - safe to spray")
+                self.logger.log_info(
+                    f"[AUTOMATIC MODE] Weather check PASSED - safe to spray")
                 
             except FuturesTimeoutError:
-                self.logger.log_warning("Weather check timeout - proceeding with spray")
+                self.logger.log_warning(
+                    "[AUTOMATIC MODE] Weather check timeout - proceeding with spray anyway")
                 # Timeout: proceed with spray to avoid blocking
             except Exception as e:
-                self.logger.log_error(f"Weather check failed: {e} - proceeding with spray")
+                self.logger.log_error(
+                    f"[AUTOMATIC MODE] Weather check failed: {e} - proceeding with spray anyway")
                 # Error: proceed with spray to avoid blocking
+        else:
+            self.logger.log_info(
+                "[AUTOMATIC MODE] Weather service not available - proceeding with spray")
         
+        # Execute spray
+        self._run_spray(schedule)
+
+    def _run_spray(self, schedule: Dict):
+        """
+        Execute the actual spray hardware operation.
+        
+        ✅ VERIFIED:
+           - Uses volume from user input (schedule['volume_ml'])
+           - Calculates duration from volume: duration = (volume / PUMP_RATE) * 60
+           - No weather logic here (already handled above)
+           - Updates status to 'completed' after spray
+           - Adds to history
+        """
         # Update status to executing
         self.data_store.update_schedule(schedule['id'], {'status': 'executing'})
         
@@ -159,24 +231,30 @@ class Scheduler:
         try:
             container = schedule['container']
             spray_type = schedule['spray_type']
-            volume_ml = schedule.get('volume_ml', 1000)  # Default 1000 mL
+            volume_ml = schedule.get('volume_ml', 1000)  # User input volume
             
             # Determine which relay to activate based on container
             relay_num = 1 if container == "Container 1" else 2
             
-            # Calculate spray duration based on volume
+            # ✅ Calculate spray duration based on volume
+            # Formula: duration_seconds = (volume_ml / PUMP_RATE_ML_PER_MIN) * 60
             spray_duration = self.calculate_spray_duration(volume_ml)
             
             self.logger.log_spray_executed(schedule, volume_ml, spray_duration)
             
             # Execute spray via ESP32 (non-blocking)
             if self.hardware:
-                # Use ESP32's spray command (ESP32 handles relay, SMS, buzzer)
-                # Run in separate thread to avoid blocking scheduler
+                # Use ESP32's spray command
                 def spray_task():
                     try:
-                        self.hardware.spray(relay_num, spray_duration, volume_ml, spray_type)
-                        # Mark as completed after spray
+                        self.hardware.spray(
+                            relay_num,      # Which container/relay (1 or 2)
+                            spray_duration, # Duration in seconds (calculated from volume)
+                            volume_ml,      # Volume to dispense (user input)
+                            spray_type      # Fertilizer or Pesticide
+                        )
+                        
+                        # Mark as completed after spray finishes
                         self.data_store.update_schedule(schedule['id'], {
                             'status': 'completed',
                             'completed_at': datetime.now().isoformat()
@@ -193,7 +271,8 @@ class Scheduler:
                             'schedule_id': schedule['id']
                         })
                         
-                        self.logger.log_spray_completed(schedule['id'], spray_duration, spray_type, volume_ml)
+                        self.logger.log_spray_completed(
+                            schedule['id'], spray_duration, spray_type, volume_ml)
                         
                         if self.on_schedule_completed_callback:
                             self.on_schedule_completed_callback(schedule)
@@ -238,37 +317,46 @@ class Scheduler:
                 'error': str(e)
             })
 
+    def execute_schedule(self, schedule: Dict):
+        """Public entry point called externally. Respects weather_mode."""
+        self._execute_schedule(schedule)
     
     def _handle_weather_reschedule(self, schedule: Dict):
         """
         Handle weather-based reschedule with 3-attempt limit.
         
-        Logic:
-        1. If rain detected today → reschedule to tomorrow
-        2. If rain again tomorrow → reschedule to day after
-        3. After 3 consecutive rain reschedules → CANCEL (user must manually reschedule)
+        ✅ ONLY CALLED FOR AUTOMATIC MODE SCHEDULES
+        Manual mode never reaches this method.
+        
+        Flow:
+        1. Check reschedule_count (0-3)
+        2. If >= 3 → cancel schedule, send SMS
+        3. If < 3 → reschedule to next day, increment count
         """
         reschedule_count = schedule.get('reschedule_count', 0)
         spray_type       = schedule.get('spray_type', 'Unknown')
         
-        self.logger.log_info(f"Weather reschedule attempt #{reschedule_count + 1} for schedule {schedule['id']}")
+        self.logger.log_info(
+            f"[AUTOMATIC MODE] Weather reschedule attempt #{reschedule_count + 1} "
+            f"for schedule {schedule['id']}")
         
         if reschedule_count >= 3:
             # Max reschedules reached - cancel the schedule
             cancel_date = schedule.get('date', datetime.now().strftime('%Y-%m-%d'))
-            self.logger.log_warning(
-                f"Spraying session for {spray_type} has been cancelled. "
-                f"All 3 reschedules have been used. Date: {cancel_date}."
+            cancel_msg = (
+                f'Spraying session for {spray_type} has been cancelled. '
+                f'All 3 reschedules have been used. Date: {cancel_date}.'
             )
+            
+            self.logger.log_warning(
+                f"[AUTOMATIC MODE] Max reschedules reached - cancelling schedule {schedule['id']}\n"
+                f"  → {cancel_msg}")
             
             self.data_store.update_schedule(schedule['id'], {
                 'status': 'cancelled',
                 'cancel_reason': 'weather_max_reschedules',
                 'cancelled_at': datetime.now().isoformat(),
-                'cancel_message': (
-                    f'Spraying session for {spray_type} has been cancelled. '
-                    f'All 3 reschedules have been used. Date: {cancel_date}.'
-                )
+                'cancel_message': cancel_msg
             })
             
             # Notify via callback
@@ -276,10 +364,7 @@ class Scheduler:
                 self.on_status_change_callback({
                     'type': 'weather_cancelled',
                     'schedule_id': schedule['id'],
-                    'message': (
-                        f'Spraying session for {spray_type} has been cancelled. '
-                        f'All 3 reschedules have been used. Date: {cancel_date}.'
-                    )
+                    'message': cancel_msg
                 })
             
             # Send SMS notification about cancellation
@@ -310,6 +395,7 @@ class Scheduler:
         detail       = 'Remaining schedule adjusted.' if remaining > 0 else 'No remaining reschedules.'
         
         # Update schedule directly with new date and incremented count
+        # ✅ PRESERVE weather_mode='automatic' so it stays automatic after reschedule
         updates = {
             'date': new_date_str,
             'time': time_str,
@@ -318,13 +404,14 @@ class Scheduler:
             'reschedule_reason': 'weather',
             'weather_checked_at': datetime.now().isoformat(),
             'original_date': schedule.get('original_date', schedule['date']),
-            'original_time': schedule.get('original_time', schedule['time'])
+            'original_time': schedule.get('original_time', schedule['time']),
+            'weather_mode': 'automatic',  # Preserve automatic mode
         }
         
         self.data_store.update_schedule(schedule['id'], updates)
         
         reschedule_msg = (
-            f'Spraying session rescheduled: {new_count}/{max_reschedule}. '
+            f'[AUTOMATIC MODE] Spraying session rescheduled: {new_count}/{max_reschedule}. '
             f'Spray type: {spray_type}. {detail} '
             f'Date: {new_date_str}.'
         )
@@ -353,21 +440,53 @@ class Scheduler:
                 self.logger.log_error(f"Failed to send weather reschedule SMS: {e}")
     
     def calculate_spray_duration(self, volume_ml: float) -> float:
-        """Calculate spray duration in seconds based on volume and pump rate"""
-        # Pump rate: 5000 mL/min = 5000/60 mL/sec
+        """
+        Calculate spray duration in seconds based on volume and pump rate.
+        
+        ✅ VERIFIED LOGIC:
+        Formula: duration_seconds = (volume_ml / PUMP_RATE_ML_PER_MIN) * 60
+        
+        PUMP_RATE_ML_PER_MIN = 5000 (5 L/min)
+        = 5000 mL / 60 seconds = 83.33 mL/second
+        
+        Examples:
+        - 500 mL → (500 / 5000) * 60 = 6.0 seconds
+        - 1000 mL → (1000 / 5000) * 60 = 12.0 seconds
+        - 2500 mL → (2500 / 5000) * 60 = 30.0 seconds
+        - 5000 mL → (5000 / 5000) * 60 = 60.0 seconds
+        
+        Args:
+            volume_ml: Volume to spray in milliliters
+        
+        Returns:
+            Duration in seconds (float)
+        """
         duration_seconds = (volume_ml / self.PUMP_RATE_ML_PER_MIN) * 60
         return duration_seconds
     
     def create_schedule(self, date: str, time: str, spray_type: str, 
                        container: str, volume_ml: float = 1000) -> Dict:
-        """Create a single schedule"""
+        """
+        Create a single schedule.
+        
+        Args:
+            date: YYYY-MM-DD format
+            time: HH:MM format (24-hour)
+            spray_type: 'Fertilizer' or 'Pesticide'
+            container: 'Container 1' or 'Container 2'
+            volume_ml: Volume in milliliters (user input)
+        
+        Returns:
+            Schedule dict with created schedule details
+        """
         schedule = {
             'date': date,
             'time': time,
             'spray_type': spray_type,
             'container': container,
-            'volume_ml': volume_ml,
+            'volume_ml': volume_ml,  # User input volume
             'status': 'scheduled'
+            # NOTE: weather_mode is stamped by scheduling.py after creation
         }
         
         schedule = self.data_store.add_schedule(schedule)
@@ -378,7 +497,21 @@ class Scheduler:
     def create_recurring_schedules(self, start_date: str, interval_days: int, 
                                   count: int, time: str, spray_type: str, 
                                   container: str, volume_ml: float = 1000) -> List[Dict]:
-        """Create multiple schedules with fixed interval"""
+        """
+        Create multiple schedules with fixed interval.
+        
+        Args:
+            start_date: YYYY-MM-DD format
+            interval_days: Days between each spray
+            count: Number of schedules to create
+            time: HH:MM format (24-hour)
+            spray_type: 'Fertilizer' or 'Pesticide'
+            container: 'Container 1' or 'Container 2'
+            volume_ml: Volume in milliliters (user input)
+        
+        Returns:
+            List of created schedule dicts
+        """
         schedules = []
         series_id = f"SERIES_{datetime.now().strftime('%Y%m%d%H%M%S')}"
         
@@ -392,10 +525,11 @@ class Scheduler:
                 'time': time,
                 'spray_type': spray_type,
                 'container': container,
-                'volume_ml': volume_ml,
+                'volume_ml': volume_ml,  # User input volume
                 'status': 'scheduled',
                 'series_id': series_id,
                 'series_interval': interval_days
+                # NOTE: weather_mode is stamped by scheduling.py after creation
             }
             
             schedule = self.data_store.add_schedule(schedule)
@@ -406,15 +540,14 @@ class Scheduler:
             current_date += timedelta(days=interval_days)
         
         self.logger.log_info(
-            f"Created recurring series: {count} schedules with {interval_days}-day interval"
-        )
+            f"Created recurring series: {count} schedules with {interval_days}-day interval")
         
         return schedules
     
     def check_weather_for_schedule(self, schedule_id: str) -> Dict:
         """
-        Manually check weather for a specific schedule
-        Returns weather status and recommendation
+        Manually check weather for a specific schedule.
+        Returns weather status and recommendation.
         """
         if not self.weather or not self.weather.available:
             return {
