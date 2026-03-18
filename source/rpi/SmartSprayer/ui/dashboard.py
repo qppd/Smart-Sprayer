@@ -8,6 +8,7 @@ import time
 from PIL import Image
 import os
 from core.weather_service import get_weather_service
+from core import tank_alert_state
 
 BG    = "#EAF4EF"
 CARD  = "#F2F8F5"
@@ -129,9 +130,7 @@ class DashboardPanel(ctk.CTkFrame):
         self._raw_weather:  dict  | None = None
         self._raw_forecast: dict  | None = None
 
-        self._tank1_low_alert_sent = False
-        self._tank2_low_alert_sent = False
-        self._TANK_LOW_THRESHOLD = 20.0  # Fixed: was 10.0 — must match the 20% critical threshold
+        self._TANK_LOW_THRESHOLD = 20.0  # must match the 20% critical threshold
 
         self.configure(fg_color=BG)
 
@@ -889,15 +888,11 @@ class DashboardPanel(ctk.CTkFrame):
     def _check_tank_low_level_sms(self, tank_num, level):
         if level is None:
             return
-        alert_sent = self._tank1_low_alert_sent if tank_num == 1 else self._tank2_low_alert_sent
-
-        if level <= self._TANK_LOW_THRESHOLD and not alert_sent:
+        # Alert fires once when level drops to/below threshold.
+        # Re-arming is MANUAL — done via the Settings page button.
+        if level <= self._TANK_LOW_THRESHOLD and not tank_alert_state.is_sent(tank_num):
             self._send_tank_low_sms(tank_num, level)
-            if tank_num == 1: self._tank1_low_alert_sent = True
-            else:             self._tank2_low_alert_sent = True
-        elif level > self._TANK_LOW_THRESHOLD and alert_sent:
-            if tank_num == 1: self._tank1_low_alert_sent = False
-            else:             self._tank2_low_alert_sent = False
+            tank_alert_state.set_sent(tank_num, True)
 
     def _send_tank_low_sms(self, tank_num, level):
         def _do_send():

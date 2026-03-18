@@ -10,6 +10,7 @@ import shutil
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.data_store import get_recipients, add_recipient, delete_recipient, save_location, get_location
+from core import tank_alert_state
 from hardware.hardware_interface import get_hardware
 from hardware.esp32_connection import (
     ESP32Connection,
@@ -97,6 +98,7 @@ class SettingsFrame(ctk.CTkScrollableFrame):
 
         self.create_weather_card()
         self.create_sms_card()
+        self.create_tank_rearm_card()
         self.create_wifi_card()
         self.create_esp32_card()
         # Enable mouse-wheel scrolling anywhere in the panel
@@ -622,6 +624,92 @@ class SettingsFrame(ctk.CTkScrollableFrame):
                 command=lambda rec=r: self.confirm_delete_recipient(rec)
             ).pack(side="right")
 
+
+    # ══════════════════════════════════════════════════════
+    # TANK CRITICAL SMS RE-ARM CARD
+    # ══════════════════════════════════════════════════════
+
+    def create_tank_rearm_card(self):
+        """Card with manual buttons to re-arm tank critical-level SMS alerts."""
+        card = ctk.CTkFrame(self, fg_color=WHITE, corner_radius=16,
+                             border_width=1, border_color=DS.N200)
+        card.pack(fill="x", padx=30, pady=(0, 16))
+
+        self._card_title(card, "Tank Critical SMS Re-arm")
+
+        ctk.CTkLabel(
+            card,
+            text="Once a critical tank alert SMS is sent, it will NOT be sent again automatically.\n"
+                 "Use the buttons below to re-arm each tank so the next critical event triggers a new SMS.",
+            font=_font(24),
+            text_color=GRAY,
+            justify="left"
+        ).pack(anchor="w", padx=22, pady=(0, 10))
+
+        self._divider(card)
+
+        btn_row = ctk.CTkFrame(card, fg_color="transparent")
+        btn_row.pack(anchor="w", padx=22, pady=(0, 22))
+
+        # Tank 1 re-arm
+        t1_frame = ctk.CTkFrame(btn_row, fg_color=DS.G100, corner_radius=12,
+                                 border_width=1, border_color=DS.G200)
+        t1_frame.pack(side="left", padx=(0, 20))
+
+        ctk.CTkLabel(
+            t1_frame, text="Tank 1",
+            font=_font(26, "bold"), text_color=DS.G800
+        ).pack(anchor="w", padx=18, pady=(14, 4))
+
+        ctk.CTkLabel(
+            t1_frame,
+            text="Re-enables the critical SMS\nfor Container 1.",
+            font=_font(22), text_color=DS.N600
+        ).pack(anchor="w", padx=18, pady=(0, 12))
+
+        ctk.CTkButton(
+            t1_frame, text="Re-arm Tank 1 Alert",
+            fg_color=DS.G500, hover_color=DS.G600,
+            text_color=DS.WHITE,
+            height=58, width=280, corner_radius=10,
+            font=_font(24, "bold"),
+            command=self._rearm_tank1
+        ).pack(padx=18, pady=(0, 18))
+
+        # Tank 2 re-arm
+        t2_frame = ctk.CTkFrame(btn_row, fg_color=DS.G100, corner_radius=12,
+                                 border_width=1, border_color=DS.G200)
+        t2_frame.pack(side="left")
+
+        ctk.CTkLabel(
+            t2_frame, text="Tank 2",
+            font=_font(26, "bold"), text_color=DS.G800
+        ).pack(anchor="w", padx=18, pady=(14, 4))
+
+        ctk.CTkLabel(
+            t2_frame,
+            text="Re-enables the critical SMS\nfor Container 2.",
+            font=_font(22), text_color=DS.N600
+        ).pack(anchor="w", padx=18, pady=(0, 12))
+
+        ctk.CTkButton(
+            t2_frame, text="Re-arm Tank 2 Alert",
+            fg_color=DS.G500, hover_color=DS.G600,
+            text_color=DS.WHITE,
+            height=58, width=280, corner_radius=10,
+            font=_font(24, "bold"),
+            command=self._rearm_tank2
+        ).pack(padx=18, pady=(0, 18))
+
+    def _rearm_tank1(self):
+        tank_alert_state.reset(1)
+        self.show_toast("Tank 1 critical SMS alert re-armed")
+        print("[SMS] Tank 1 critical alert re-armed manually via Settings")
+
+    def _rearm_tank2(self):
+        tank_alert_state.reset(2)
+        self.show_toast("Tank 2 critical SMS alert re-armed")
+        print("[SMS] Tank 2 critical alert re-armed manually via Settings")
 
     # ══════════════════════════════════════════════════════
     # WIFI CONFIGURATION CARD

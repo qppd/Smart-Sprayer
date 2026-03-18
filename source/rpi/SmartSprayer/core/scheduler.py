@@ -246,6 +246,7 @@ class Scheduler:
             if self.hardware:
                 # Use ESP32's spray command
                 def spray_task():
+                    # 1. Send spray command to ESP32
                     try:
                         self.hardware.spray(
                             relay_num,      # Which container/relay (1 or 2)
@@ -253,14 +254,31 @@ class Scheduler:
                             volume_ml,      # Volume to dispense (user input)
                             spray_type      # Fertilizer or Pesticide
                         )
-                        
-                        # Mark as completed after spray finishes
+                    except Exception as e:
+                        self.logger.log_error(f"Spray command error: {e}")
+                        self.data_store.update_schedule(schedule['id'], {
+                            'status': 'failed',
+                            'error': str(e)
+                        })
+                        return
+
+                    # 2. Wait for the ESP32 relay to physically finish spraying
+                    time.sleep(spray_duration)
+
+                    # 3. Send completion SMS — runs even if data_store updates fail
+                    try:
+                        completion_msg = f"SmartSprayer: {spray_type} spray done. {int(volume_ml)}mL applied."
+                        self.hardware.send_sms_to_all(completion_msg)
+                    except Exception as sms_err:
+                        self.logger.log_error(f"Failed to send spray completion SMS: {sms_err}")
+
+                    # 4. Update records
+                    try:
                         self.data_store.update_schedule(schedule['id'], {
                             'status': 'completed',
                             'completed_at': datetime.now().isoformat()
                         })
-                        
-                        # Add to history
+
                         self.data_store.add_to_history({
                             'date': schedule['date'],
                             'time': schedule['time'],
@@ -270,25 +288,14 @@ class Scheduler:
                             'duration': spray_duration,
                             'schedule_id': schedule['id']
                         })
-                        
+
                         self.logger.log_spray_completed(
                             schedule['id'], spray_duration, spray_type, volume_ml)
-                        
-                        # Send spray completion SMS via Semaphore (moved from ESP32 SIM800L)
-                        try:
-                            completion_msg = f"SmartSprayer: {spray_type} spray done. {int(volume_ml)}mL applied."
-                            self.hardware.send_sms_to_all(completion_msg)
-                        except Exception as sms_err:
-                            self.logger.log_error(f"Failed to send spray completion SMS: {sms_err}")
-                        
-                        if self.on_schedule_completed_callback:
-                            self.on_schedule_completed_callback(schedule)
                     except Exception as e:
-                        self.logger.log_error(f"Spray execution error: {e}")
-                        self.data_store.update_schedule(schedule['id'], {
-                            'status': 'failed',
-                            'error': str(e)
-                        })
+                        self.logger.log_error(f"Spray record update error: {e}")
+
+                    if self.on_schedule_completed_callback:
+                        self.on_schedule_completed_callback(schedule)
                 
                 # Execute spray in background thread
                 self.executor.submit(spray_task)
@@ -376,11 +383,13 @@ class Scheduler:
             
             # Send SMS notification about cancellation
             if self.hardware:
-                try:
-                    sms_message = f"SmartSprayer: {spray_type} spray cancelled. Max reschedules (3/3) due to rain. Please reschedule manually."
-                    self.hardware.send_sms_to_all(sms_message)
-                except Exception as e:
-                    self.logger.log_error(f"Failed to send weather cancellation SMS: {e}")
+                def _send_cancel_sms():
+                    try:
+                        sms_message = f"SmartSprayer: {spray_type} spray cancelled. Max reschedules (3/3) due to rain. Please reschedule manually."
+                        self.hardware.send_sms_to_all(sms_message)
+                    except Exception as e:
+                        self.logger.log_error(f"Failed to send weather cancellation SMS: {e}")
+                threading.Thread(target=_send_cancel_sms, daemon=True).start()
             
             return
         
@@ -432,11 +441,13 @@ class Scheduler:
         
         # Send SMS notification about reschedule
         if self.hardware:
-            try:
-                sms_message = f"SmartSprayer: {spray_type} spray rescheduled to {new_date_str} (rain). ({new_count}/3)"
-                self.hardware.send_sms_to_all(sms_message)
-            except Exception as e:
-                self.logger.log_error(f"Failed to send weather reschedule SMS: {e}")
+            def _send_reschedule_sms():
+                try:
+                    sms_message = f"SmartSprayer: {spray_type} spray rescheduled to {new_date_str} (rain). ({new_count}/3)"
+                    self.hardware.send_sms_to_all(sms_message)
+                except Exception as e:
+                    self.logger.log_error(f"Failed to send weather reschedule SMS: {e}")
+            threading.Thread(target=_send_reschedule_sms, daemon=True).start()
     
     def calculate_spray_duration(self, volume_ml: float) -> float:
         """
