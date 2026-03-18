@@ -1,7 +1,7 @@
 #ifndef RELAY_CONFIG_H
 #define RELAY_CONFIG_H
 
-#include "PINS_CONFIG.h"
+// PINS_CONFIG.h is included first in SmartSprayer.ino
 
 uint16_t RELAY_1 = RELAY_1_PIN;
 uint16_t RELAY_2 = RELAY_2_PIN;

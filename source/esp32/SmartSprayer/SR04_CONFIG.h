@@ -1,8 +1,7 @@
 #ifndef SR04_CONFIG_H
 #define SR04_CONFIG_H
 
-#include <Arduino.h>
-#include "PINS_CONFIG.h"
+// Arduino.h and PINS_CONFIG.h are included first in SmartSprayer.ino
 
 const int trigPin = TRIG_PIN;
 const int echoPin = ECHO_PIN;

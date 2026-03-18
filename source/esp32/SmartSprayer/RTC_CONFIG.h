@@ -1,7 +1,7 @@
 #ifndef RTC_CONFIG_H
 #define RTC_CONFIG_H
 
-#include "PINS_CONFIG.h"
+// PINS_CONFIG.h is included first in SmartSprayer.ino
 #include <TimeLib.h>
 #include <TimeAlarms.h>
 #include <virtuabotixRTC.h>

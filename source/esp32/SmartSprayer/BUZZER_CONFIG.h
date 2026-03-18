@@ -1,7 +1,7 @@
 #ifndef BUZZER_CONFIG_H
 #define BUZZER_CONFIG_H
 
-#include "PINS_CONFIG.h"
+// PINS_CONFIG.h is included first in SmartSprayer.ino
 
 void initBuzzer() {
   pinMode(BUZZER_PIN, OUTPUT);

@@ -1,6 +1,6 @@
+#include "PINS_CONFIG.h"
 #include "GSM_CONFIG.h"
 #include "RELAY_CONFIG.h"
-#include "PINS_CONFIG.h"
 #include "BUZZER_CONFIG.h"
 #include "RTC_CONFIG.h"
 #include "SR04_CONFIG.h"

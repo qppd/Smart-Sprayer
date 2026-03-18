@@ -2,7 +2,7 @@
 #define GSM_CONFIG_H
 
 // #include <SoftwareSerial.h>  // Commented out for HardwareSerial
-#include "PINS_CONFIG.h"
+// PINS_CONFIG.h is included first in SmartSprayer.ino
 
 #define MAX_RECIPIENTS 10
 
@@ -138,11 +138,12 @@ void initGSM() {
   // Set text mode — must be done before CNMI/CSMP so all URCs arrive as text
   sim.println("AT+CMGF=1");
   delay(500);
-  // Route delivery status report URCs directly to the serial port (DS=2)
-  sim.println("AT+CNMI=2,0,0,2,0");
+  // Route new-message-indication URCs directly to serial port (no delivery reports)
+  sim.println("AT+CNMI=2,0,0,0,0");
   delay(500);
-  // Enable SMS delivery reports: TP-SRR bit set, relative VP = 167 (~24 h)
-  sim.println("AT+CSMP=49,167,0,0");
+  // Standard SMS-SUBMIT: relative VP, no delivery-report-request (FO=17 = 0x11)
+  // FO=49 (0x31) had TP-SRR=1 which most PH carriers reject → ERROR on +CMGS
+  sim.println("AT+CSMP=17,167,0,0");
   delay(500);
   // Assume OK
 }
@@ -206,14 +207,26 @@ void listRecipients() {
 
 void sendSMS(String number, String message) {
   smsInProgress = true;
+  while (sim.available()) sim.read(); // flush stale bytes
   sim.println("AT+CMGF=1");
-  delay(100);
+  delay(1000); // wait for OK
+
+  while (sim.available()) sim.read(); // flush
   sim.println("AT+CMGS=\"" + number + "\"");
-  delay(100);
-  sim.println(message);
-  delay(100);
+
+  // Wait up to 5 s for the '>' prompt
+  unsigned long t = millis();
+  String resp = "";
+  while (millis() - t < 5000) {
+    while (sim.available()) resp += (char)sim.read();
+    if (resp.indexOf('>') >= 0) break;
+    delay(10);
+  }
+
+  // Send body then Ctrl+Z with NO extra newline between them
+  sim.print(message);
   sim.write(26); // Ctrl+Z
-  delay(3000); // Wait for response
+  delay(5000);  // Wait for +CMGS / ERROR response
   smsInProgress = false;
 }
 
