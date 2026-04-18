@@ -867,5 +867,93 @@
     "schedule_id": "SCH_20260318010633317",
     "completed_at": "2026-03-18T15:35:11.084896",
     "id": "HIST_20260318153511084982"
+  },
+  {
+    "date": "2026-04-19",
+    "time": "04:00",
+    "spray_type": "Fertilizer",
+    "container": "Container 1",
+    "volume_ml": 1000.0,
+    "duration": 12.0,
+    "schedule_id": "SCH_20260318010633318",
+    "completed_at": "2026-04-19T04:00:23.728421",
+    "id": "HIST_20260419040023728463"
+  },
+  {
+    "date": "2026-04-19",
+    "time": "04:13",
+    "spray_type": "Fertilizer",
+    "container": "Container 1",
+    "volume_ml": 1000.0,
+    "duration": 12.0,
+    "schedule_id": "SCH_20260318010633319",
+    "completed_at": "2026-04-19T04:13:54.494612",
+    "id": "HIST_20260419041354494654"
+  },
+  {
+    "date": "2026-04-19",
+    "time": "04:47",
+    "spray_type": "Fertilizer",
+    "container": "Container 1",
+    "volume_ml": 1000.0,
+    "duration": 12.0,
+    "schedule_id": "SCH_20260318010633320",
+    "completed_at": "2026-04-19T04:47:19.931515",
+    "id": "HIST_20260419044719931579"
+  },
+  {
+    "date": "2026-04-19",
+    "time": "04:55",
+    "spray_type": "Fertilizer",
+    "container": "Container 1",
+    "volume_ml": 1000.0,
+    "duration": 12.0,
+    "schedule_id": "SCH_20260318010633321",
+    "completed_at": "2026-04-19T04:55:19.350861",
+    "id": "HIST_20260419045519350903"
+  },
+  {
+    "date": "2026-04-19",
+    "time": "05:00",
+    "spray_type": "Fertilizer",
+    "container": "Container 1",
+    "volume_ml": 1000.0,
+    "duration": 12.0,
+    "schedule_id": "SCH_20260318010633322",
+    "completed_at": "2026-04-19T05:00:19.742461",
+    "id": "HIST_20260419050019742502"
+  },
+  {
+    "date": "2026-04-19",
+    "time": "05:06",
+    "spray_type": "Fertilizer",
+    "container": "Container 1",
+    "volume_ml": 4000.0,
+    "duration": 48.0,
+    "schedule_id": "SCH_20260318010633324",
+    "completed_at": "2026-04-19T05:06:52.553540",
+    "id": "HIST_20260419050652553583"
+  },
+  {
+    "date": "2026-04-19",
+    "time": "05:47",
+    "spray_type": "Fertilizer",
+    "container": "Container 1",
+    "volume_ml": 2000.0,
+    "duration": 24.0,
+    "schedule_id": "SCH_20260318010633325",
+    "completed_at": "2026-04-19T05:47:28.704719",
+    "id": "HIST_20260419054728704792"
+  },
+  {
+    "date": "2026-04-19",
+    "time": "06:00",
+    "spray_type": "Fertilizer",
+    "container": "Container 1",
+    "volume_ml": 2000.0,
+    "duration": 24.0,
+    "schedule_id": "SCH_20260318010633326",
+    "completed_at": "2026-04-19T06:00:31.178300",
+    "id": "HIST_20260419060031178446"
   }
 ]

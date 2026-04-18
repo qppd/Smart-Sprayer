@@ -10,7 +10,6 @@ import shutil
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.data_store import get_recipients, add_recipient, delete_recipient, save_location, get_location
-from core import tank_alert_state
 from hardware.hardware_interface import get_hardware
 from hardware.esp32_connection import (
     ESP32Connection,
@@ -98,9 +97,9 @@ class SettingsFrame(ctk.CTkScrollableFrame):
 
         self.create_weather_card()
         self.create_sms_card()
-        self.create_tank_rearm_card()
         self.create_wifi_card()
         self.create_esp32_card()
+
         # Enable mouse-wheel scrolling anywhere in the panel
         self._bind_mousewheel(self)
 
@@ -109,35 +108,62 @@ class SettingsFrame(ctk.CTkScrollableFrame):
     # ══════════════════════════════════════════════════════
 
     def _bind_mousewheel(self, scrollable_frame):
+        """Bind scroll events recursively on every widget and re-bind on layout changes."""
+
         def _scroll(event):
-            scrollable_frame._parent_canvas.yview_scroll(
-                int(-1 * (event.delta / 120)), "units"
-            )
+            try:
+                scrollable_frame._parent_canvas.yview_scroll(
+                    int(-1 * (event.delta / 120)), "units"
+                )
+            except Exception:
+                pass
+
         def _scroll_up(event):
-            scrollable_frame._parent_canvas.yview_scroll(-1, "units")
+            try:
+                scrollable_frame._parent_canvas.yview_scroll(-1, "units")
+            except Exception:
+                pass
+
         def _scroll_down(event):
-            scrollable_frame._parent_canvas.yview_scroll(1, "units")
+            try:
+                scrollable_frame._parent_canvas.yview_scroll(1, "units")
+            except Exception:
+                pass
 
-        def _bind_all(widget):
-            widget.bind("<MouseWheel>", _scroll,      add="+")
-            widget.bind("<Button-4>",   _scroll_up,   add="+")
-            widget.bind("<Button-5>",   _scroll_down, add="+")
+        def _bind_widget(widget):
+            try:
+                widget.bind("<MouseWheel>", _scroll,      add="+")
+                widget.bind("<Button-4>",   _scroll_up,   add="+")
+                widget.bind("<Button-5>",   _scroll_down, add="+")
+                widget.bind(
+                    "<Configure>",
+                    lambda e: _rebind_children(widget),
+                    add="+"
+                )
+            except Exception:
+                pass
             for child in widget.winfo_children():
-                _bind_all(child)
+                _bind_widget(child)
 
-        _bind_all(scrollable_frame)
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: _bind_all(scrollable_frame),
-            add="+"
-        )
+        def _rebind_children(widget):
+            for child in widget.winfo_children():
+                _bind_widget(child)
+
+        _bind_widget(scrollable_frame)
+
+        # Also bind the underlying canvas directly
+        try:
+            scrollable_frame._parent_canvas.bind("<MouseWheel>", _scroll,    add="+")
+            scrollable_frame._parent_canvas.bind("<Button-4>",   _scroll_up, add="+")
+            scrollable_frame._parent_canvas.bind("<Button-5>",   _scroll_down, add="+")
+        except Exception:
+            pass
 
     # ══════════════════════════════════════════════════════
     # HELPERS
     # ══════════════════════════════════════════════════════
 
     def _card_title(self, parent, text):
-        # Accent strip + title — same pattern as scheduling card strip
         strip = ctk.CTkFrame(parent, fg_color=DS.G500, height=5, corner_radius=0)
         strip.pack(fill="x")
         ctk.CTkLabel(
@@ -163,15 +189,18 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         return new_value == "" or (new_value.isdigit() and len(new_value) <= 10)
 
     # ══════════════════════════════════════════════════════
-    # TOAST  — matches _show_success_toast in scheduling.py
+    # TOAST  — always anchored to root window, fully thread-safe
     # ══════════════════════════════════════════════════════
 
-    def show_toast(self, message, mode="success", duration=3000):
-        """Slim bottom-of-screen toast identical in style to scheduling.py."""
+    def _do_show_toast(self, message, mode="success", duration=3000):
+        """Internal — must only be called on the main Tkinter thread."""
         icon  = "✓" if mode == "success" else "✕"
         color = DS.G800 if mode == "success" else DS.RED_D
 
-        toast = ctk.CTkToplevel(self)
+        # Anchor to the actual root Tk window so the toast is never buried
+        root = self.winfo_toplevel()
+
+        toast = ctk.CTkToplevel(root)
         toast.withdraw()
         toast.overrideredirect(True)
 
@@ -203,20 +232,27 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         toast.attributes("-topmost", True)
         toast.after(duration, toast.destroy)
 
+    def show_toast(self, message, mode="success", duration=3000):
+        """Thread-safe — safe to call from background threads."""
+        try:
+            self.after(0, lambda: self._do_show_toast(message, mode, duration))
+        except Exception:
+            pass
+
     # ══════════════════════════════════════════════════════
-    # DELETE CONFIRM MODAL — matches _show_cancel_confirmation
+    # DELETE CONFIRM MODAL
     # ══════════════════════════════════════════════════════
 
     def confirm_delete_recipient(self, recipient):
-        dlg = ctk.CTkToplevel(self)
+        root = self.winfo_toplevel()
+        dlg = ctk.CTkToplevel(root)
         dlg.title("")
         dlg.overrideredirect(True)
-        dlg.transient(self)
+        dlg.transient(root)
         dlg.grab_set()
         dlg.resizable(False, False)
         self._center_dialog(dlg, 560, 400)
 
-        # White card with red accent strip — same as scheduling cancel dialog
         outer = ctk.CTkFrame(dlg, fg_color=DS.WHITE, corner_radius=16,
                               border_width=1, border_color=DS.N200)
         outer.pack(fill="both", expand=True, padx=2, pady=2)
@@ -225,7 +261,6 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         inner = ctk.CTkFrame(outer, fg_color="transparent")
         inner.pack(fill="both", expand=True, padx=30, pady=28)
 
-        # Header row: icon + title
         hdr = ctk.CTkFrame(inner, fg_color="transparent")
         hdr.pack(fill="x", pady=(0, 14))
 
@@ -248,7 +283,6 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             font=_font(20), text_color=DS.N400
         ).pack(anchor="w")
 
-        # Recipient preview card
         preview = ctk.CTkFrame(inner, fg_color=DS.G100, corner_radius=10,
                                 border_width=1, border_color=DS.G200)
         preview.pack(fill="x", pady=(0, 16))
@@ -263,13 +297,11 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             font=_font(24), text_color=DS.N600
         ).pack(anchor="w", padx=18, pady=(0, 14))
 
-        # Body warning
         ctk.CTkLabel(
             inner, text="Are you sure you want to delete this recipient?",
             font=_font(22), text_color=DS.N600
         ).pack(anchor="w", pady=(0, 20))
 
-        # Buttons — same grid layout as scheduling
         bf = ctk.CTkFrame(inner, fg_color="transparent")
         bf.pack(fill="x")
         bf.grid_columnconfigure((0, 1), weight=1)
@@ -287,6 +319,10 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             fg_color=DS.RED, hover_color=DS.RED_D, text_color=DS.WHITE,
             height=64, corner_radius=10, font=_font(22, "bold")
         ).grid(row=0, column=1, sticky="ew", padx=(6, 0))
+
+        dlg.lift()
+        dlg.attributes("-topmost", True)
+        dlg.focus_force()
 
     def delete_and_close(self, phone, modal):
         delete_recipient(phone)
@@ -366,7 +402,6 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             command=self.save_location
         ).grid(row=0, column=4)
 
-        # Location status badge
         self.location_frame = ctk.CTkFrame(card, fg_color=DS.G100, corner_radius=10,
                                             border_width=1, border_color=DS.G200)
         self.location_frame.pack(anchor="w", padx=22, pady=(6, 22))
@@ -380,11 +415,9 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         )
         self.location_label.pack()
 
-        # Pre-populate from saved location
         self._load_saved_location_into_ui()
 
     def _load_saved_location_into_ui(self):
-        """Read location.json and set the comboboxes + badge to the saved values."""
         try:
             loc = get_location()
             muni = loc.get("municipality", "")
@@ -417,7 +450,6 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         self.location_label.configure(
             text=f"Location Set: {self.brgy.get()}, {self.muni.get()}"
         )
-        # Reload weather service so all API calls immediately use the new location
         try:
             from core.weather_service import get_weather_service
             get_weather_service().reload_location()
@@ -460,7 +492,6 @@ class SettingsFrame(ctk.CTkScrollableFrame):
 
         self._divider(card)
 
-        # ── Add recipient section ─────────────────────────
         add_frame = ctk.CTkFrame(card, fg_color=DS.G50, corner_radius=12,
                                   border_width=1, border_color=DS.N200)
         add_frame.pack(fill="x", padx=22, pady=(0, 16))
@@ -469,7 +500,6 @@ class SettingsFrame(ctk.CTkScrollableFrame):
                      font=_font(30, "bold"), text_color=DS.G800
                      ).pack(anchor="w", padx=18, pady=(16, 12))
 
-        # Phone row
         phone_row = ctk.CTkFrame(add_frame, fg_color="transparent")
         phone_row.pack(anchor="w", padx=18, pady=(0, 10))
 
@@ -498,7 +528,6 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         )
         self.phone_entry.grid(row=0, column=2, padx=(8, 0))
 
-        # Name row
         name_row = ctk.CTkFrame(add_frame, fg_color="transparent")
         name_row.pack(anchor="w", padx=18, pady=(0, 18))
 
@@ -524,7 +553,6 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             command=self.add_recipient
         ).grid(row=0, column=2, padx=(14, 0))
 
-        # ── Recipients list ───────────────────────────────
         ctk.CTkLabel(card, text="Recipients",
                      font=_font(30, "bold"), text_color=DS.G800
                      ).pack(anchor="w", padx=22, pady=(0, 8))
@@ -580,7 +608,6 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             return
 
         for r in recipients:
-            # Row card — same white card + green strip style as schedule cards
             row_card = ctk.CTkFrame(
                 self.recipients_container,
                 fg_color=DS.WHITE, corner_radius=14,
@@ -594,15 +621,12 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             body = ctk.CTkFrame(row_card, fg_color="transparent")
             body.pack(fill="x", padx=16, pady=12)
 
-            # Avatar circle
             avatar = ctk.CTkFrame(body, fg_color=DS.G100,
                                    corner_radius=999, width=58, height=58)
             avatar.pack_propagate(False)
             avatar.pack(side="left", padx=(0, 14))
-            ctk.CTkLabel(avatar, text=" ",
-                         font=_font(28)).pack(expand=True)
+            ctk.CTkLabel(avatar, text=" ", font=_font(28)).pack(expand=True)
 
-            # Info — anchor="nw" keeps name/phone top-left aligned
             info = ctk.CTkFrame(body, fg_color="transparent")
             info.pack(side="left", expand=True, anchor="nw")
 
@@ -613,7 +637,6 @@ class SettingsFrame(ctk.CTkScrollableFrame):
                          font=_font(24), text_color=DS.N600,
                          anchor="w").pack(anchor="w")
 
-            # Delete button — same style as Cancel button in scheduling
             ctk.CTkButton(
                 body, text="Delete",
                 fg_color=DS.RED, hover_color=DS.RED_D,
@@ -624,107 +647,15 @@ class SettingsFrame(ctk.CTkScrollableFrame):
                 command=lambda rec=r: self.confirm_delete_recipient(rec)
             ).pack(side="right")
 
-
-    # ══════════════════════════════════════════════════════
-    # TANK CRITICAL SMS RE-ARM CARD
-    # ══════════════════════════════════════════════════════
-
-    def create_tank_rearm_card(self):
-        """Card with manual buttons to re-arm tank critical-level SMS alerts."""
-        card = ctk.CTkFrame(self, fg_color=WHITE, corner_radius=16,
-                             border_width=1, border_color=DS.N200)
-        card.pack(fill="x", padx=30, pady=(0, 16))
-
-        self._card_title(card, "Tank Critical SMS Re-arm")
-
-        ctk.CTkLabel(
-            card,
-            text="Once a critical tank alert SMS is sent, it will NOT be sent again automatically.\n"
-                 "Use the buttons below to re-arm each tank so the next critical event triggers a new SMS.",
-            font=_font(24),
-            text_color=GRAY,
-            justify="left"
-        ).pack(anchor="w", padx=22, pady=(0, 10))
-
-        self._divider(card)
-
-        btn_row = ctk.CTkFrame(card, fg_color="transparent")
-        btn_row.pack(anchor="w", padx=22, pady=(0, 22))
-
-        # Tank 1 re-arm
-        t1_frame = ctk.CTkFrame(btn_row, fg_color=DS.G100, corner_radius=12,
-                                 border_width=1, border_color=DS.G200)
-        t1_frame.pack(side="left", padx=(0, 20))
-
-        ctk.CTkLabel(
-            t1_frame, text="Tank 1",
-            font=_font(26, "bold"), text_color=DS.G800
-        ).pack(anchor="w", padx=18, pady=(14, 4))
-
-        ctk.CTkLabel(
-            t1_frame,
-            text="Re-enables the critical SMS\nfor Container 1.",
-            font=_font(22), text_color=DS.N600
-        ).pack(anchor="w", padx=18, pady=(0, 12))
-
-        ctk.CTkButton(
-            t1_frame, text="Re-arm Tank 1 Alert",
-            fg_color=DS.G500, hover_color=DS.G600,
-            text_color=DS.WHITE,
-            height=58, width=280, corner_radius=10,
-            font=_font(24, "bold"),
-            command=self._rearm_tank1
-        ).pack(padx=18, pady=(0, 18))
-
-        # Tank 2 re-arm
-        t2_frame = ctk.CTkFrame(btn_row, fg_color=DS.G100, corner_radius=12,
-                                 border_width=1, border_color=DS.G200)
-        t2_frame.pack(side="left")
-
-        ctk.CTkLabel(
-            t2_frame, text="Tank 2",
-            font=_font(26, "bold"), text_color=DS.G800
-        ).pack(anchor="w", padx=18, pady=(14, 4))
-
-        ctk.CTkLabel(
-            t2_frame,
-            text="Re-enables the critical SMS\nfor Container 2.",
-            font=_font(22), text_color=DS.N600
-        ).pack(anchor="w", padx=18, pady=(0, 12))
-
-        ctk.CTkButton(
-            t2_frame, text="Re-arm Tank 2 Alert",
-            fg_color=DS.G500, hover_color=DS.G600,
-            text_color=DS.WHITE,
-            height=58, width=280, corner_radius=10,
-            font=_font(24, "bold"),
-            command=self._rearm_tank2
-        ).pack(padx=18, pady=(0, 18))
-
-    def _rearm_tank1(self):
-        tank_alert_state.reset(1)
-        self.show_toast("Tank 1 critical SMS alert re-armed")
-        print("[SMS] Tank 1 critical alert re-armed manually via Settings")
-
-    def _rearm_tank2(self):
-        tank_alert_state.reset(2)
-        self.show_toast("Tank 2 critical SMS alert re-armed")
-        print("[SMS] Tank 2 critical alert re-armed manually via Settings")
-
     # ══════════════════════════════════════════════════════
     # WIFI CONFIGURATION CARD
     # ══════════════════════════════════════════════════════
 
     def _wifi_nmcli_available(self):
-        """Return True if nmcli is present on this machine."""
         return shutil.which("nmcli") is not None
 
     def _wifi_scan(self):
-        """
-        Scan for available SSIDs using nmcli.
-        Returns a list of unique, non-empty SSID strings sorted by signal strength.
-        Safe to call from a background thread.
-        """
+        """Scan for SSIDs via nmcli — safe to call from background thread."""
         try:
             result = subprocess.run(
                 ["nmcli", "--terse", "--fields", "SSID,SIGNAL",
@@ -742,20 +673,12 @@ class SettingsFrame(ctk.CTkScrollableFrame):
                         signal = 0
                     if ssid and ssid not in seen:
                         seen[ssid] = signal
-            # Sort by signal strength descending
             return [s for s, _ in sorted(seen.items(), key=lambda x: x[1], reverse=True)]
-        except FileNotFoundError:
-            return []
-        except subprocess.TimeoutExpired:
-            return []
         except Exception:
             return []
 
     def _wifi_current_ssid(self):
-        """
-        Return (ssid, signal_str) of the currently connected WiFi network,
-        or (None, None) if not connected.
-        """
+        """Return (ssid, signal_str) of active WiFi, or (None, None)."""
         try:
             result = subprocess.run(
                 ["nmcli", "--terse", "--fields",
@@ -769,7 +692,6 @@ class SettingsFrame(ctk.CTkScrollableFrame):
                     device = parts[2].strip()
                     state  = parts[3].strip()
                     if state.lower() == "activated" and name:
-                        # Try to get signal strength
                         try:
                             sig_result = subprocess.run(
                                 ["nmcli", "--terse", "--fields",
@@ -797,7 +719,7 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         if not ssid:
             return False, "No SSID selected."
         try:
-            # First try to activate an existing saved connection
+            # First try activating an existing saved profile (no password needed)
             activate = subprocess.run(
                 ["nmcli", "connection", "up", ssid],
                 capture_output=True, text=True, timeout=30
@@ -805,7 +727,7 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             if activate.returncode == 0:
                 return True, f"Connected to {ssid}."
 
-            # Otherwise create a new connection
+            # Build connect command with password
             args = ["nmcli", "device", "wifi", "connect", ssid]
             if password:
                 args += ["password", password]
@@ -817,20 +739,23 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             if result.returncode == 0:
                 return True, f"Connected to {ssid}."
 
-            # Parse nmcli error for user-friendly message
-            stderr = result.stderr.lower()
-            stdout = result.stdout.lower()
+            stderr   = result.stderr.lower()
+            stdout   = result.stdout.lower()
             combined = stderr + stdout
-            if "secrets were required" in combined or "no secrets" in combined \
-                    or "wrong password" in combined or "802-11" in combined:
+
+            if any(k in combined for k in (
+                "secrets were required", "no secrets",
+                "wrong password", "802-11-wireless-security"
+            )):
                 return False, "Incorrect password."
-            elif "network not found" in combined or "no network" in combined:
+            elif any(k in combined for k in ("network not found", "no network")):
                 return False, "Network not found."
-            elif "no wifi" in combined or "no suitable" in combined:
+            elif any(k in combined for k in ("no wifi", "no suitable")):
                 return False, "No WiFi adapter detected."
             else:
-                # Return stderr without exposing password
-                safe_msg = result.stderr.strip().replace(password, "****") if password else result.stderr.strip()
+                safe_msg = result.stderr.strip()
+                if password:
+                    safe_msg = safe_msg.replace(password, "****")
                 return False, f"Connection failed: {safe_msg[:120]}"
 
         except subprocess.TimeoutExpired:
@@ -843,11 +768,9 @@ class SettingsFrame(ctk.CTkScrollableFrame):
     def create_wifi_card(self):
         """Build the WiFi Configuration settings card."""
 
-        # ── State
-        self._wifi_scanning    = False
-        self._wifi_connecting  = False
+        self._wifi_scanning   = False
+        self._wifi_connecting = False
 
-        # ── Outer card
         card = ctk.CTkFrame(
             self, fg_color=WHITE, corner_radius=16,
             border_width=1, border_color=DS.N200
@@ -867,7 +790,7 @@ class SettingsFrame(ctk.CTkScrollableFrame):
 
         self._divider(card)
 
-        # ── Current connection status badge
+        # ── Current connection status
         status_row = ctk.CTkFrame(card, fg_color="transparent")
         status_row.pack(fill="x", padx=22, pady=(0, 14))
 
@@ -877,20 +800,15 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         ).pack(side="left")
 
         self._wifi_current_label = ctk.CTkLabel(
-            status_row,
-            text="Checking…",
-            font=_font(26),
-            text_color=DS.N400
+            status_row, text="Checking…",
+            font=_font(26), text_color=DS.N400
         )
         self._wifi_current_label.pack(side="left", padx=(12, 0))
 
         self._wifi_signal_badge = ctk.CTkLabel(
-            status_row,
-            text="",
-            fg_color=DS.G100,
-            corner_radius=8,
-            text_color=DS.G800,
-            font=_font(22, "bold"),
+            status_row, text="",
+            fg_color=DS.G100, corner_radius=8,
+            text_color=DS.G800, font=_font(22, "bold"),
             padx=12, pady=4
         )
         self._wifi_signal_badge.pack(side="left", padx=(10, 0))
@@ -906,30 +824,24 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             font=_font(28), text_color=GRAY
         ).pack(side="left")
 
-        self._wifi_ssid_var = ctk.StringVar(value="")
+        self._wifi_ssid_var  = ctk.StringVar(value="")
         self._wifi_ssid_menu = ctk.CTkComboBox(
             ssid_row,
             variable=self._wifi_ssid_var,
             values=["Click \"Scan\" to load networks"],
             width=400, height=58,
-            font=_font(26),
-            dropdown_font=_font(24),
-            fg_color=FIELD_BG,
-            button_color=DS.G500,
-            border_color=DS.G400,
-            border_width=2,
-            corner_radius=10,
-            state="readonly"
+            font=_font(26), dropdown_font=_font(24),
+            fg_color=FIELD_BG, button_color=DS.G500,
+            border_color=DS.G400, border_width=2,
+            corner_radius=10, state="readonly"
         )
         self._wifi_ssid_menu.pack(side="left", padx=(14, 14))
 
         self._wifi_scan_btn = ctk.CTkButton(
-            ssid_row,
-            text="⟳  Scan",
+            ssid_row, text="⟳  Scan",
             fg_color=DS.N100, hover_color=DS.N200,
             text_color=DS.N800,
-            width=160, height=58,
-            corner_radius=10,
+            width=160, height=58, corner_radius=10,
             font=_font(26, "bold"),
             command=self._on_wifi_scan
         )
@@ -948,49 +860,40 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             pw_row,
             width=400, height=58,
             corner_radius=10,
-            border_color=DS.G400,
-            border_width=2,
-            font=_font(26),
-            show="●",
+            border_color=DS.G400, border_width=2,
+            font=_font(26), show="●",
             placeholder_text="Enter WiFi password"
         )
         self._wifi_pw_entry.pack(side="left", padx=(14, 14))
 
-        # Show/hide password toggle
         self._wifi_pw_visible = False
-        self._wifi_pw_toggle = ctk.CTkButton(
-            pw_row,
-            text="Show",
+        self._wifi_pw_toggle  = ctk.CTkButton(
+            pw_row, text="Show",
             fg_color=DS.N100, hover_color=DS.N200,
             text_color=DS.N800,
-            width=120, height=58,
-            corner_radius=10,
+            width=120, height=58, corner_radius=10,
             font=_font(24),
             command=self._toggle_wifi_pw_visibility
         )
         self._wifi_pw_toggle.pack(side="left")
 
-        # ── Connect button + operation status
+        # ── Connect button + status
         action_row = ctk.CTkFrame(card, fg_color="transparent")
         action_row.pack(fill="x", padx=22, pady=(0, 18))
 
         self._wifi_connect_btn = ctk.CTkButton(
-            action_row,
-            text="Connect",
+            action_row, text="Connect",
             fg_color=DS.G500, hover_color=DS.G600,
             text_color=DS.WHITE,
-            width=220, height=62,
-            corner_radius=10,
+            width=220, height=62, corner_radius=10,
             font=_font(28, "bold"),
             command=self._on_wifi_connect
         )
         self._wifi_connect_btn.pack(side="left")
 
         self._wifi_op_label = ctk.CTkLabel(
-            action_row,
-            text="",
-            font=_font(24),
-            text_color=DS.N400
+            action_row, text="",
+            font=_font(24), text_color=DS.N400
         )
         self._wifi_op_label.pack(side="left", padx=(18, 0))
 
@@ -1005,48 +908,36 @@ class SettingsFrame(ctk.CTkScrollableFrame):
                 notice,
                 text="⚠  nmcli (NetworkManager) not detected. "
                      "WiFi management may not be available on this system.",
-                font=_font(22),
-                text_color="#795548"
+                font=_font(22), text_color="#795548"
             ).pack(anchor="w", padx=16, pady=10)
 
-        # Kick off an initial silent status refresh
-        threading.Thread(
-            target=self._wifi_refresh_current_status,
-            daemon=True
-        ).start()
+        # Kick off silent initial status refresh
+        threading.Thread(target=self._wifi_refresh_current_status, daemon=True).start()
 
     # ── WiFi helpers ──────────────────────────────────────
 
     def _toggle_wifi_pw_visibility(self):
         self._wifi_pw_visible = not self._wifi_pw_visible
-        self._wifi_pw_entry.configure(
-            show="" if self._wifi_pw_visible else "●"
-        )
-        self._wifi_pw_toggle.configure(
-            text="Hide" if self._wifi_pw_visible else "Show"
-        )
+        self._wifi_pw_entry.configure(show="" if self._wifi_pw_visible else "●")
+        self._wifi_pw_toggle.configure(text="Hide" if self._wifi_pw_visible else "Show")
 
     def _wifi_refresh_current_status(self):
-        """Background thread: fetch current SSID and update label."""
+        """Background thread: fetch current SSID and update labels via after()."""
         ssid, signal = self._wifi_current_ssid()
         try:
             if ssid:
-                self._wifi_current_label.configure(
-                    text=ssid, text_color=DS.G800
-                )
-                self._wifi_signal_badge.configure(
-                    text=f"📶 {signal}" if signal else "📶 Connected"
-                )
+                badge = f"📶 {signal}" if signal else "📶 Connected"
+                self.after(0, lambda: self._wifi_current_label.configure(
+                    text=ssid, text_color=DS.G800))
+                self.after(0, lambda: self._wifi_signal_badge.configure(text=badge))
             else:
-                self._wifi_current_label.configure(
-                    text="Not connected", text_color=DS.N400
-                )
-                self._wifi_signal_badge.configure(text="")
+                self.after(0, lambda: self._wifi_current_label.configure(
+                    text="Not connected", text_color=DS.N400))
+                self.after(0, lambda: self._wifi_signal_badge.configure(text=""))
         except Exception:
             pass
 
     def _on_wifi_scan(self):
-        """Triggered by Scan button — runs scan in background thread."""
         if self._wifi_scanning:
             return
         self._wifi_scanning = True
@@ -1055,62 +946,54 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         threading.Thread(target=self._wifi_scan_bg, daemon=True).start()
 
     def _wifi_scan_bg(self):
-        """Background: scan then update the SSID combobox."""
         try:
             ssids = self._wifi_scan()
         finally:
             self._wifi_scanning = False
         try:
             if ssids:
-                self._wifi_ssid_menu.configure(values=ssids)
-                self._wifi_ssid_menu.set(ssids[0])
-                self._wifi_op_label.configure(
-                    text=f"{len(ssids)} network(s) found.",
-                    text_color=DS.G800
-                )
+                self.after(0, lambda: self._wifi_ssid_menu.configure(values=ssids))
+                self.after(0, lambda: self._wifi_ssid_menu.set(ssids[0]))
+                msg = f"{len(ssids)} network(s) found."
+                self.after(0, lambda: self._wifi_op_label.configure(
+                    text=msg, text_color=DS.G800))
             else:
-                self._wifi_ssid_menu.configure(
-                    values=["No networks found — try again"]
-                )
-                self._wifi_ssid_menu.set("No networks found — try again")
-                self._wifi_op_label.configure(
-                    text="No networks found.",
-                    text_color=DS.AMBER
-                )
-            self._wifi_scan_btn.configure(state="normal", text="⟳  Scan")
+                self.after(0, lambda: self._wifi_ssid_menu.configure(
+                    values=["No networks found — try again"]))
+                self.after(0, lambda: self._wifi_ssid_menu.set(
+                    "No networks found — try again"))
+                self.after(0, lambda: self._wifi_op_label.configure(
+                    text="No networks found.", text_color=DS.AMBER))
+            self.after(0, lambda: self._wifi_scan_btn.configure(
+                state="normal", text="⟳  Scan"))
         except Exception:
             pass
 
     def _on_wifi_connect(self):
-        """Triggered by Connect button — validates input, runs connection in background."""
         if self._wifi_connecting:
             return
 
-        ssid     = self._wifi_ssid_var.get().strip()
-        password = self._wifi_pw_entry.get()   # do NOT strip — spaces may be intentional
-
+        ssid = self._wifi_ssid_var.get().strip()
         if not ssid or "Click" in ssid or "No networks" in ssid:
             self._wifi_op_label.configure(
-                text="Please select a network first.",
-                text_color=DS.AMBER
-            )
+                text="Please select a network first.", text_color=DS.AMBER)
             return
+
+        # Snapshot the password BEFORE clearing the entry
+        pw_snapshot = self._wifi_pw_entry.get()
 
         self._wifi_connecting = True
         self._wifi_connect_btn.configure(state="disabled")
         self._wifi_op_label.configure(
-            text=f"Connecting to {ssid}…",
-            text_color=DS.N400
-        )
+            text=f"Connecting to {ssid}…", text_color=DS.N400)
 
-        # Capture password now — clear field immediately to avoid it lingering
-        pw_snapshot = password
+        # Clear entry and reset show/hide state immediately on the UI thread
         self._wifi_pw_entry.delete(0, "end")
-        # Reset show/hide state
         self._wifi_pw_visible = False
         self._wifi_pw_entry.configure(show="●")
         self._wifi_pw_toggle.configure(text="Show")
 
+        # Hand off the snapshot (not the entry widget) to the background thread
         threading.Thread(
             target=self._wifi_connect_bg,
             args=(ssid, pw_snapshot),
@@ -1118,35 +1001,25 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         ).start()
 
     def _wifi_connect_bg(self, ssid, password):
-        """Background: attempt connection and update UI when done."""
+        """Background: attempt connection, then update UI on main thread."""
         success, message = self._wifi_connect(ssid, password)
-        # Securely discard password from memory as soon as possible
-        password = None  # noqa: F841  (overwrite local reference)
+        password = None  # overwrite as soon as no longer needed  # noqa: F841
+
+        self._wifi_connecting = False
+
         try:
-            self._wifi_connecting = False
-            self._wifi_connect_btn.configure(state="normal")
+            self.after(0, lambda: self._wifi_connect_btn.configure(state="normal"))
 
             if success:
-                self._wifi_op_label.configure(
-                    text=f"✓  {message}",
-                    text_color=DS.G800
-                )
-                # Refresh the current-connection status badge
+                self.after(0, lambda: self._wifi_op_label.configure(
+                    text=f"✓  {message}", text_color=DS.G800))
                 threading.Thread(
-                    target=self._wifi_refresh_current_status,
-                    daemon=True
-                ).start()
-                self.after(0, lambda: self.show_toast(
-                    f"Connected to {ssid} successfully"
-                ))
+                    target=self._wifi_refresh_current_status, daemon=True).start()
+                self.show_toast(f"Connected to {ssid} successfully")
             else:
-                self._wifi_op_label.configure(
-                    text=f"✕  {message}",
-                    text_color=DS.RED
-                )
-                self.after(0, lambda: self.show_toast(
-                    message, mode="error"
-                ))
+                self.after(0, lambda: self._wifi_op_label.configure(
+                    text=f"✕  {message}", text_color=DS.RED))
+                self.show_toast(message, mode="error")
         except Exception:
             pass
 
@@ -1157,17 +1030,11 @@ class SettingsFrame(ctk.CTkScrollableFrame):
     def create_esp32_card(self):
         """Build the ESP32 Controller Connection settings card."""
 
-        # ── state flags
         self._esp_scanning   = False
         self._esp_connecting = False
 
-        # ── resolve the ESP32Connection object from the shared hardware instance
-        # hardware may expose a ._conn attribute (ESP32Hardware wraps it)
-        self._esp_conn: ESP32Connection | None = getattr(
-            self.hardware, "_conn", None
-        )
+        self._esp_conn: ESP32Connection | None = getattr(self.hardware, "_conn", None)
 
-        # ── outer card
         card = ctk.CTkFrame(
             self, fg_color=DS.WHITE, corner_radius=16,
             border_width=1, border_color=DS.N200
@@ -1180,14 +1047,12 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             card,
             text="Manage the USB serial connection to the ESP32 hardware controller.\n"
                  "The app will auto-detect and reconnect when the device is plugged in.",
-            font=_font(26),
-            text_color=GRAY,
-            justify="left"
+            font=_font(26), text_color=GRAY, justify="left"
         ).pack(anchor="w", padx=22, pady=(0, 10))
 
         self._divider(card)
 
-        # ── live status badge row ─────────────────────────────────────────
+        # ── Status badge row
         status_row = ctk.CTkFrame(card, fg_color="transparent")
         status_row.pack(fill="x", padx=22, pady=(0, 14))
 
@@ -1197,35 +1062,24 @@ class SettingsFrame(ctk.CTkScrollableFrame):
         ).pack(side="left")
 
         self._esp_status_badge = ctk.CTkLabel(
-            status_row,
-            text="  Checking…  ",
+            status_row, text="  Checking…  ",
             fg_color=DS.N200, corner_radius=8,
-            text_color=DS.N600,
-            font=_font(22, "bold"),
+            text_color=DS.N600, font=_font(22, "bold"),
             padx=14, pady=5
         )
         self._esp_status_badge.pack(side="left", padx=(12, 0))
 
         self._esp_port_label = ctk.CTkLabel(
-            status_row,
-            text="",
-            font=_font(22),
-            text_color=DS.N400
-        )
+            status_row, text="", font=_font(22), text_color=DS.N400)
         self._esp_port_label.pack(side="left", padx=(10, 0))
 
-        # Reconnect-now hint label (hidden when connected)
         self._esp_hint_label = ctk.CTkLabel(
-            status_row,
-            text="",
-            font=_font(20),
-            text_color=DS.AMBER
-        )
+            status_row, text="", font=_font(20), text_color=DS.AMBER)
         self._esp_hint_label.pack(side="left", padx=(16, 0))
 
         self._divider(card)
 
-        # ── port selector row ─────────────────────────────────────────────
+        # ── Port selector row
         port_row = ctk.CTkFrame(card, fg_color="transparent")
         port_row.pack(fill="x", padx=22, pady=(0, 12))
 
@@ -1234,142 +1088,108 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             font=_font(28), text_color=GRAY
         ).pack(side="left")
 
-        self._esp_port_var = ctk.StringVar(value="")
+        self._esp_port_var  = ctk.StringVar(value="")
         self._esp_port_menu = ctk.CTkComboBox(
             port_row,
             variable=self._esp_port_var,
             values=["Click \"Scan\" to refresh ports"],
             width=380, height=58,
-            font=_font(26),
-            dropdown_font=_font(24),
-            fg_color=FIELD_BG,
-            button_color=DS.G500,
-            border_color=DS.G400,
-            border_width=2,
-            corner_radius=10,
-            state="readonly"
+            font=_font(26), dropdown_font=_font(24),
+            fg_color=FIELD_BG, button_color=DS.G500,
+            border_color=DS.G400, border_width=2,
+            corner_radius=10, state="readonly"
         )
         self._esp_port_menu.pack(side="left", padx=(14, 14))
 
         self._esp_scan_btn = ctk.CTkButton(
-            port_row,
-            text="⟳  Scan",
+            port_row, text="⟳  Scan",
             fg_color=DS.N100, hover_color=DS.N200,
             text_color=DS.N800,
-            width=160, height=58,
-            corner_radius=10,
+            width=160, height=58, corner_radius=10,
             font=_font(26, "bold"),
             command=self._on_esp_scan
         )
         self._esp_scan_btn.pack(side="left")
 
-        # ── action buttons row ────────────────────────────────────────────
+        # ── Action buttons row
         action_row = ctk.CTkFrame(card, fg_color="transparent")
         action_row.pack(fill="x", padx=22, pady=(0, 14))
 
         self._esp_connect_btn = ctk.CTkButton(
-            action_row,
-            text="Connect",
+            action_row, text="Connect",
             fg_color=DS.G500, hover_color=DS.G600,
             text_color=DS.WHITE,
-            width=200, height=62,
-            corner_radius=10,
+            width=200, height=62, corner_radius=10,
             font=_font(28, "bold"),
             command=self._on_esp_connect
         )
         self._esp_connect_btn.pack(side="left", padx=(0, 10))
 
         self._esp_disconnect_btn = ctk.CTkButton(
-            action_row,
-            text="Disconnect",
+            action_row, text="Disconnect",
             fg_color=DS.N100, hover_color=DS.N200,
             text_color=DS.N800,
-            width=200, height=62,
-            corner_radius=10,
+            width=200, height=62, corner_radius=10,
             font=_font(28, "bold"),
             command=self._on_esp_disconnect
         )
         self._esp_disconnect_btn.pack(side="left", padx=(0, 18))
 
         self._esp_op_label = ctk.CTkLabel(
-            action_row,
-            text="",
-            font=_font(24),
-            text_color=DS.N400
-        )
+            action_row, text="", font=_font(24), text_color=DS.N400)
         self._esp_op_label.pack(side="left")
 
-        # ── kick off initial scan and register status callback ────────────
         if self._esp_conn:
-            # Patch the connection manager to notify this UI panel on state changes
             self._esp_conn._on_status_change = self._esp_status_callback
 
-        # Delay slightly so the widget tree is fully rendered before populating
         self.after(200, lambda: threading.Thread(
-            target=self._esp_initial_refresh, daemon=True
-        ).start())
+            target=self._esp_initial_refresh, daemon=True).start())
 
     # ── ESP32 helpers ─────────────────────────────────────────────────────────
 
     def _esp_initial_refresh(self):
-        """Background: populate the port list + sync current status badge."""
         allowed = self._esp_conn.ALLOWED_PORTS if self._esp_conn else None
-        ports = _list_serial_ports(allowed)
+        ports   = _list_serial_ports(allowed)
         try:
             self._esp_update_port_menu(ports)
             if self._esp_conn:
                 self._esp_status_callback(
-                    self._esp_conn.state,
-                    self._esp_conn.port,
-                    ""
-                )
+                    self._esp_conn.state, self._esp_conn.port, "")
         except Exception:
             pass
 
     def _esp_status_callback(self, state: str, port, message: str):
-        """Called by ESP32Connection whenever the connection state changes.
-        Must schedule all Tkinter updates via after() since it runs on bg thread.
-        """
         color_map = {
-            STATE_CONNECTED:    (DS.G100, DS.G800),
-            STATE_DISCONNECTED: (DS.N200, DS.N600),
-            STATE_ERROR:        ("#FEE2E2", DS.RED),
-            STATE_CONNECTING:   ("#FFF8E1", "#795548"),
+            STATE_CONNECTED:    (DS.G100,    DS.G800),
+            STATE_DISCONNECTED: (DS.N200,    DS.N600),
+            STATE_ERROR:        ("#FEE2E2",  DS.RED),
+            STATE_CONNECTING:   ("#FFF8E1",  "#795548"),
         }
         bg, fg = color_map.get(state, (DS.N200, DS.N600))
 
         def _update():
             try:
                 self._esp_status_badge.configure(
-                    text=f"  {state}  ", fg_color=bg, text_color=fg
-                )
+                    text=f"  {state}  ", fg_color=bg, text_color=fg)
                 self._esp_port_label.configure(
-                    text=f"({port})" if port else ""
-                )
+                    text=f"({port})" if port else "")
                 if state == STATE_CONNECTED:
                     self._esp_hint_label.configure(text="")
                     self._esp_op_label.configure(
-                        text=f"✓  Connected to {port}.", text_color=DS.G800
-                    )
+                        text=f"✓  Connected to {port}.", text_color=DS.G800)
                 elif state == STATE_CONNECTING:
                     self._esp_hint_label.configure(text="")
                     self._esp_op_label.configure(
-                        text=message or "Connecting…", text_color=DS.N400
-                    )
+                        text=message or "Connecting…", text_color=DS.N400)
                 elif state == STATE_ERROR:
                     self._esp_hint_label.configure(
-                        text="Tap Connect to retry.",
-                        text_color=DS.AMBER
-                    )
+                        text="Tap Connect to retry.", text_color=DS.AMBER)
                     self._esp_op_label.configure(
                         text=f"✕  {message}" if message else "✕  Connection error.",
-                        text_color=DS.RED
-                    )
-                else:  # DISCONNECTED
+                        text_color=DS.RED)
+                else:
                     self._esp_hint_label.configure(
-                        text="Select a port and tap Connect.",
-                        text_color=DS.N400
-                    )
+                        text="Select a port and tap Connect.", text_color=DS.N400)
                     self._esp_op_label.configure(text="", text_color=DS.N400)
             except Exception:
                 pass
@@ -1380,17 +1200,13 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             pass
 
     def _esp_update_port_menu(self, ports: list[str]):
-        """Update the port ComboBox from a list of port names (thread-safe via after)."""
         def _do():
             try:
                 if ports:
                     self._esp_port_menu.configure(values=ports)
-                    # Pre-select last-known port or first available
                     pref = self._esp_conn.LAST_CONNECTED_PORT if self._esp_conn else None
-                    if pref and pref in ports:
-                        self._esp_port_menu.set(pref)
-                    else:
-                        self._esp_port_menu.set(ports[0])
+                    self._esp_port_menu.set(
+                        pref if (pref and pref in ports) else ports[0])
                 else:
                     self._esp_port_menu.configure(values=["No ports found — plug in ESP32"])
                     self._esp_port_menu.set("No ports found — plug in ESP32")
@@ -1402,7 +1218,6 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             pass
 
     def _on_esp_scan(self):
-        """Trigger port list refresh in background."""
         if self._esp_scanning:
             return
         self._esp_scanning = True
@@ -1412,42 +1227,34 @@ class SettingsFrame(ctk.CTkScrollableFrame):
     def _esp_scan_bg(self):
         try:
             allowed = self._esp_conn.ALLOWED_PORTS if self._esp_conn else None
-            ports = _list_serial_ports(allowed)
+            ports   = _list_serial_ports(allowed)
         finally:
             self._esp_scanning = False
         try:
             self.after(0, lambda: self._esp_scan_btn.configure(
-                state="normal", text="⟳  Scan"
-            ))
+                state="normal", text="⟳  Scan"))
             self._esp_update_port_menu(ports)
             count = len(ports)
             msg = f"{count} port(s) found." if count else "No ports found."
             self.after(0, lambda: self._esp_op_label.configure(
-                text=msg, text_color=DS.G800 if count else DS.AMBER
-            ))
+                text=msg, text_color=DS.G800 if count else DS.AMBER))
         except Exception:
             pass
 
     def _on_esp_connect(self):
-        """Manual connect to the selected port."""
         if self._esp_connecting or not self._esp_conn:
             return
         port = self._esp_port_var.get().strip()
         if not port or "No ports" in port or "Click" in port:
             self._esp_op_label.configure(
-                text="Please select a valid port first.", text_color=DS.AMBER
-            )
+                text="Please select a valid port first.", text_color=DS.AMBER)
             return
         self._esp_connecting = True
         self._esp_connect_btn.configure(state="disabled")
         self._esp_op_label.configure(
-            text=f"Connecting to {port}…", text_color=DS.N400
-        )
+            text=f"Connecting to {port}…", text_color=DS.N400)
         threading.Thread(
-            target=self._esp_connect_bg,
-            args=(port,),
-            daemon=True
-        ).start()
+            target=self._esp_connect_bg, args=(port,), daemon=True).start()
 
     def _esp_connect_bg(self, port: str):
         ok = self._esp_conn.connect(port)
@@ -1455,26 +1262,18 @@ class SettingsFrame(ctk.CTkScrollableFrame):
             self._esp_connecting = False
             self.after(0, lambda: self._esp_connect_btn.configure(state="normal"))
             if ok:
-                self.after(0, lambda: self.show_toast(f"Connected to ESP32 on {port}"))
+                self.show_toast(f"Connected to ESP32 on {port}")
             else:
-                state_msg = self._esp_conn.state
-                self.after(0, lambda: self.show_toast(
-                    f"Could not connect to {port}", mode="error"
-                ))
+                self.show_toast(f"Could not connect to {port}", mode="error")
         except Exception:
             pass
 
     def _on_esp_disconnect(self):
-        """Manually disconnect."""
         if not self._esp_conn:
             return
         self._esp_conn.disconnect()
-        self._esp_op_label.configure(
-            text="Disconnected.", text_color=DS.N600
-        )
+        self._esp_op_label.configure(text="Disconnected.", text_color=DS.N600)
         self.show_toast("ESP32 disconnected")
-
-
 
 
 # ══════════════════════════════════════════════════════

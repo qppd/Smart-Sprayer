@@ -3797,3 +3797,119 @@
   → Spray type: Fertilizer
 2026-03-18 15:35:09 - INFO - Spraying started: 1000.0 mL of Fertilizer for 12.0 seconds. Date: 2026-03-18.
 2026-03-18 15:35:11 - INFO - Spraying completed: 1000 mL of Fertilizer applied. ID: SCH_20260318010633317, Duration: 12.0 seconds.
+2026-04-19 03:57:29 - INFO - Smart Sprayer Logger initialized
+2026-04-19 03:57:29 - INFO - Scheduler initialized
+2026-04-19 03:57:29 - INFO - Scheduler started
+2026-04-19 03:57:33 - INFO - Scheduling panel ready — AUTOMATIC mode default
+2026-04-19 03:58:33 - INFO - SCHEDULE CREATED - Date: 2026-04-19, Time: 04:00, Type: Fertilizer, Container: Container 1
+2026-04-19 03:58:33 - INFO - [Mode] SCH_20260318010633318 → weather_mode='automatic'
+2026-04-19 03:58:35 - INFO - Created SCH_20260318010633318 mode=automatic vol=1000.0 mL container=Container 1
+2026-04-19 04:00:09 - INFO - [AUTOMATIC MODE] Schedule SCH_20260318010633318 checking weather...
+  → Volume: 1000.0 mL
+  → Container: Container 1
+2026-04-19 04:00:10 - INFO - [AUTOMATIC MODE] Weather check PASSED - safe to spray
+2026-04-19 04:00:10 - INFO - Spraying started: 1000.0 mL of Fertilizer for 12.0 seconds. Date: 2026-04-19.
+2026-04-19 04:00:23 - INFO - Spraying completed: 1000 mL of Fertilizer applied. ID: SCH_20260318010633318, Duration: 12.0 seconds.
+2026-04-19 04:08:44 - INFO - Smart Sprayer Logger initialized
+2026-04-19 04:08:44 - INFO - Scheduler initialized
+2026-04-19 04:08:44 - INFO - Scheduler started
+2026-04-19 04:08:47 - INFO - Scheduling panel ready — AUTOMATIC mode default
+2026-04-19 04:11:50 - INFO - SCHEDULE CREATED - Date: 2026-04-19, Time: 04:13, Type: Fertilizer, Container: Container 1
+2026-04-19 04:11:50 - INFO - [Mode] SCH_20260318010633319 → weather_mode='automatic'
+2026-04-19 04:11:55 - INFO - Created SCH_20260318010633319 mode=automatic vol=1000.0 mL container=Container 1
+2026-04-19 04:13:04 - INFO - [AUTOMATIC MODE] Schedule SCH_20260318010633319 checking weather...
+  → Volume: 1000.0 mL
+  → Container: Container 1
+2026-04-19 04:13:19 - WARNING - [AUTOMATIC MODE] Weather check timeout - proceeding with spray anyway
+2026-04-19 04:13:26 - INFO - Spraying started: 1000.0 mL of Fertilizer for 12.0 seconds. Date: 2026-04-19.
+2026-04-19 04:13:54 - INFO - Spraying completed: 1000 mL of Fertilizer applied. ID: SCH_20260318010633319, Duration: 12.0 seconds.
+2026-04-19 04:45:56 - INFO - Smart Sprayer Logger initialized
+2026-04-19 04:45:56 - INFO - Scheduler initialized
+2026-04-19 04:45:56 - INFO - Scheduler started
+2026-04-19 04:46:00 - INFO - Scheduling panel ready — AUTOMATIC mode default
+2026-04-19 04:46:18 - INFO - UI mode → MANUAL
+2026-04-19 04:46:42 - INFO - SCHEDULE CREATED - Date: 2026-04-19, Time: 04:47, Type: Fertilizer, Container: Container 1
+2026-04-19 04:46:42 - INFO - [Mode] SCH_20260318010633320 → weather_mode='manual'
+2026-04-19 04:46:42 - INFO - Created SCH_20260318010633320 mode=manual vol=1000.0 mL container=Container 1
+2026-04-19 04:47:06 - INFO - [MANUAL MODE] Schedule SCH_20260318010633320 executing immediately
+  → Weather checks: SKIPPED
+  → Rescheduling: DISABLED
+  → Volume: 1000.0 mL
+  → Container: Container 1
+  → Spray type: Fertilizer
+2026-04-19 04:47:06 - INFO - Spraying started: 1000.0 mL of Fertilizer for 12.0 seconds. Date: 2026-04-19.
+2026-04-19 04:47:19 - INFO - Spraying completed: 1000 mL of Fertilizer applied. ID: SCH_20260318010633320, Duration: 12.0 seconds.
+2026-04-19 04:52:09 - INFO - UI mode → AUTOMATIC
+2026-04-19 04:53:35 - INFO - SCHEDULE CREATED - Date: 2026-04-19, Time: 04:55, Type: Fertilizer, Container: Container 1
+2026-04-19 04:53:35 - INFO - [Mode] SCH_20260318010633321 → weather_mode='automatic'
+2026-04-19 04:53:35 - INFO - Created SCH_20260318010633321 mode=automatic vol=1000.0 mL container=Container 1
+2026-04-19 04:55:05 - INFO - [AUTOMATIC MODE] Schedule SCH_20260318010633321 checking weather...
+  → Volume: 1000.0 mL
+  → Container: Container 1
+2026-04-19 04:55:05 - INFO - [AUTOMATIC MODE] Weather check PASSED - safe to spray
+2026-04-19 04:55:05 - INFO - Spraying started: 1000.0 mL of Fertilizer for 12.0 seconds. Date: 2026-04-19.
+2026-04-19 04:55:19 - INFO - Spraying completed: 1000 mL of Fertilizer applied. ID: SCH_20260318010633321, Duration: 12.0 seconds.
+2026-04-19 04:58:24 - INFO - Smart Sprayer Logger initialized
+2026-04-19 04:58:24 - INFO - Scheduler initialized
+2026-04-19 04:58:24 - INFO - Scheduler started
+2026-04-19 04:58:27 - INFO - Scheduling panel ready — AUTOMATIC mode default
+2026-04-19 04:59:00 - INFO - SCHEDULE CREATED - Date: 2026-04-19, Time: 05:00, Type: Fertilizer, Container: Container 1
+2026-04-19 04:59:01 - INFO - [Mode] SCH_20260318010633322 → weather_mode='automatic'
+2026-04-19 04:59:02 - INFO - Created SCH_20260318010633322 mode=automatic vol=1000.0 mL container=Container 1
+2026-04-19 04:59:03 - INFO - SCHEDULE CREATED - Date: 2026-04-19, Time: 05:00, Type: Fertilizer, Container: Container 1
+2026-04-19 04:59:03 - INFO - [Mode] SCH_20260318010633323 → weather_mode='automatic'
+2026-04-19 04:59:03 - INFO - Created SCH_20260318010633323 mode=automatic vol=1000.0 mL container=Container 1
+2026-04-19 04:59:25 - WARNING - Spraying session for Fertilizer has been cancelled. All 3 reschedules have been used. Date: 2026-04-19. ID: SCH_20260318010633323.
+2026-04-19 05:00:04 - INFO - [AUTOMATIC MODE] Schedule SCH_20260318010633322 checking weather...
+  → Volume: 1000.0 mL
+  → Container: Container 1
+2026-04-19 05:00:06 - INFO - [AUTOMATIC MODE] Weather check PASSED - safe to spray
+2026-04-19 05:00:07 - INFO - Spraying started: 1000.0 mL of Fertilizer for 12.0 seconds. Date: 2026-04-19.
+2026-04-19 05:00:20 - INFO - Spraying completed: 1000 mL of Fertilizer applied. ID: SCH_20260318010633322, Duration: 12.0 seconds.
+2026-04-19 05:04:20 - INFO - Smart Sprayer Logger initialized
+2026-04-19 05:04:20 - INFO - Scheduler initialized
+2026-04-19 05:04:20 - INFO - Scheduler started
+2026-04-19 05:04:24 - INFO - Scheduling panel ready — AUTOMATIC mode default
+2026-04-19 05:05:33 - INFO - SCHEDULE CREATED - Date: 2026-04-19, Time: 05:06, Type: Fertilizer, Container: Container 1
+2026-04-19 05:05:34 - INFO - [Mode] SCH_20260318010633324 → weather_mode='automatic'
+2026-04-19 05:05:36 - INFO - Created SCH_20260318010633324 mode=automatic vol=4000.0 mL container=Container 1
+2026-04-19 05:06:00 - INFO - [AUTOMATIC MODE] Schedule SCH_20260318010633324 checking weather...
+  → Volume: 4000.0 mL
+  → Container: Container 1
+2026-04-19 05:06:02 - INFO - [AUTOMATIC MODE] Weather check PASSED - safe to spray
+2026-04-19 05:06:02 - INFO - Spraying started: 4000.0 mL of Fertilizer for 48.0 seconds. Date: 2026-04-19.
+2026-04-19 05:06:52 - INFO - Spraying completed: 4000 mL of Fertilizer applied. ID: SCH_20260318010633324, Duration: 48.0 seconds.
+2026-04-19 05:17:29 - INFO - Smart Sprayer Logger initialized
+2026-04-19 05:17:29 - INFO - Scheduler initialized
+2026-04-19 05:17:29 - INFO - Scheduler started
+2026-04-19 05:17:35 - INFO - Scheduling panel ready — AUTOMATIC mode default
+2026-04-19 05:24:03 - INFO - Smart Sprayer Logger initialized
+2026-04-19 05:24:03 - INFO - Scheduler initialized
+2026-04-19 05:24:03 - INFO - Scheduler started
+2026-04-19 05:24:07 - INFO - Scheduling panel ready — AUTOMATIC mode default
+2026-04-19 05:37:02 - INFO - Smart Sprayer Logger initialized
+2026-04-19 05:37:02 - INFO - Scheduler initialized
+2026-04-19 05:37:02 - INFO - Scheduler started
+2026-04-19 05:37:07 - INFO - Scheduling panel ready — AUTOMATIC mode default
+2026-04-19 05:46:00 - INFO - SCHEDULE CREATED - Date: 2026-04-19, Time: 05:47, Type: Fertilizer, Container: Container 1
+2026-04-19 05:46:00 - INFO - [Mode] SCH_20260318010633325 → weather_mode='automatic'
+2026-04-19 05:46:01 - INFO - Created SCH_20260318010633325 mode=automatic vol=2000.0 mL container=Container 1
+2026-04-19 05:47:00 - INFO - [AUTOMATIC MODE] Schedule SCH_20260318010633325 checking weather...
+  → Volume: 2000.0 mL
+  → Container: Container 1
+2026-04-19 05:47:01 - INFO - [AUTOMATIC MODE] Weather check PASSED - safe to spray
+2026-04-19 05:47:02 - INFO - Spraying started: 2000.0 mL of Fertilizer for 24.0 seconds. Date: 2026-04-19.
+2026-04-19 05:47:29 - INFO - Spraying completed: 2000 mL of Fertilizer applied. ID: SCH_20260318010633325, Duration: 24.0 seconds.
+2026-04-19 05:53:12 - INFO - Smart Sprayer Logger initialized
+2026-04-19 05:53:12 - INFO - Scheduler initialized
+2026-04-19 05:53:12 - INFO - Scheduler started
+2026-04-19 05:53:18 - INFO - Scheduling panel ready — AUTOMATIC mode default
+2026-04-19 05:54:19 - INFO - SCHEDULE CREATED - Date: 2026-04-19, Time: 06:00, Type: Fertilizer, Container: Container 1
+2026-04-19 05:54:19 - INFO - [Mode] SCH_20260318010633326 → weather_mode='automatic'
+2026-04-19 05:54:19 - INFO - Created SCH_20260318010633326 mode=automatic vol=2000.0 mL container=Container 1
+2026-04-19 06:00:03 - INFO - [AUTOMATIC MODE] Schedule SCH_20260318010633326 checking weather...
+  → Volume: 2000.0 mL
+  → Container: Container 1
+2026-04-19 06:00:04 - INFO - [AUTOMATIC MODE] Weather check PASSED - safe to spray
+2026-04-19 06:00:05 - INFO - Spraying started: 2000.0 mL of Fertilizer for 24.0 seconds. Date: 2026-04-19.
+2026-04-19 06:00:31 - INFO - Spraying completed: 2000 mL of Fertilizer applied. ID: SCH_20260318010633326, Duration: 24.0 seconds.
